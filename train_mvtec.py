@@ -12,7 +12,8 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
-from keras.preprocessing.image import ImageDataGenerator
+# from keras.preprocessing.image import ImageDataGenerator #unknown issue for this import
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import os
 import numpy as np
 
