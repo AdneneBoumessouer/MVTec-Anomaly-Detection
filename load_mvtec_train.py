@@ -1,6 +1,6 @@
 """
-This script builds a 4D Tensor of shape (batch_size x length x width x channels) from the good and defect MVTec test images contained 
-in the test subdirectory of each object class
+This script builds a 4D Tensor of shape (batch_size x length x width x channels) from the good and defect MVTec train images contained 
+in the train subdirectory of each object class
 """
 
 
@@ -51,16 +51,22 @@ def build_tensor_from_img_dir(DIR, resize=True):
     return imgs
 
 
-mvtec_path = "datasets/mvtec/"
+mvtec_path = "datasets/mvtec"
+# mvtec_path = "/home/adnene33/Documents/WS1920/Automatisierungstechnisches_Projekt/prototype/prototype_1/dataset/mvtec"
 class_names = next(os.walk(mvtec_path))[1]
 
 class_DIR_dict = {}
 class_TENSOR_dict = {}
 
+# from os import listdir
+# from os.path import isfile, join
+
+
 for class_name in class_names:
     class_DIR_dict[class_name] = list(
-        os.walk(mvtec_path + class_name + "/train/good/")
+        os.walk(mvtec_path + "/" + class_name + "/train/good/")  # added '/'
     )[0][0]
+    # class_DIR_dict[class_name] = [f for f in listdir(mypath) if isfile(join(mypath, f))]
     class_TENSOR_dict[class_name] = []
 
 # create a training set for the autoencoder
@@ -70,4 +76,5 @@ for class_name in class_names:
 
 X_train = np.concatenate(list(class_TENSOR_dict.values()), axis=0)
 
+np.save("X_train", X_train)
 # X_train.shape

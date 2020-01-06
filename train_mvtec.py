@@ -12,8 +12,11 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
+
 # from keras.preprocessing.image import ImageDataGenerator #unknown issue for this import
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import (
+    ImageDataGenerator,
+)  # see in: tensorflow.python
 import os
 import numpy as np
 
@@ -204,18 +207,31 @@ batch_size = 32
 epochs = 50
 data_augmentation = True
 flow_from_directory = False
+loss = "L2"
 # num_predictions = 20
-save_dir = os.path.join(os.getcwd(), "saved_models/l2_loss")
-model_name = "ae_50_datagen.h5"
+
+# import tf.image.ssim as ssim
+# from tensorflow.python.ops.image_ops_impl import ssim
+
+if loss == "L2":
+    optimizer = tensorflow.python.ops.image_ops_impl.ssim  # TEST this
+    loss_function = tensorflow.python.ops.image_ops_impl.ssim  # TEST this
+    save_dir = os.path.join(
+        os.getcwd(), "saved_models/SSIM"
+    )  # adjust to accomodate loss_function, CREATE SSIM directory in saved_models
+    model_name = "CAE_" + str(epochs) + "_datagen.h5"
+else:
+    optimizer = keras.optimizers.Adam(
+        learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
+    )
+    loss_function = "mean_squared_error"
+    save_dir = os.path.join(
+        os.getcwd(), "saved_models/l2_loss"
+    )  # adjust to accomodate loss_function
+    model_name = "CAE_" + str(epochs) + "_datagen.h5"
 
 
-optimizer = keras.optimizers.Adam(
-    learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
-)
-
-conv_ae.compile(
-    loss="mean_squared_error", optimizer=optimizer, metrics=["mean_squared_error"]
-)
+conv_ae.compile(loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"])
 
 # history = conv_ae.fit(X_train, X_train, epochs=50,
 #                       validation_data=[X_valid, X_valid], shuffle=True)
@@ -303,18 +319,21 @@ else:
 
 # ====================== SEE RESULTS OF TRAINED AE =======================
 
-# show reconstructed image sample--------------------------------
-img = X_train[100]
-plt.imshow(img)
-plt.show()
+# # show reconstructed image sample--------------------------------
+# img = X_train[100]
+# plt.imshow(img)
+# plt.show()
 
-# expand dimension to one sample
-img_tensor = expand_dims(img, 0)
-img_reconstruction = conv_ae.predict(img_tensor)
-img_reconstruction_3d = img_reconstruction[0]
-plt.imshow(img_reconstruction_3d)
-plt.show()
+# # expand dimension to one sample
+# img_tensor = expand_dims(img, 0)
+# img_reconstruction = conv_ae.predict(img_tensor)
+# img_reconstruction_3d = img_reconstruction[0]
+# plt.imshow(img_reconstruction_3d)
+# plt.show()
 
+# import utils
+
+# utils.show_original_ans_reconstructed_img(X_train[100], conv_ae)  # FIX
 
 # ----------------------------------------------------------------
 
