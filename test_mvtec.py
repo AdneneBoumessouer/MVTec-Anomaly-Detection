@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from train_mvtec import ssim_loss as ssim_loss
 
+
 def residual_map(img1, img2):
     pass
 
@@ -17,10 +18,10 @@ conv_ae = keras.models.load_model(
 )
 
 conv_ae = keras.models.load_model(
-    "saved_models/SSIM/CAE_5_datagen.h5",
+    "saved_models/SSIM/CAE_150_datagen.h5",
     custom_objects={
         "LeakyReLU": keras.layers.LeakyReLU,
-        "ssim_loss": ssim_loss
+        "ssim_loss": ssim_loss,
     },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
 )
 
