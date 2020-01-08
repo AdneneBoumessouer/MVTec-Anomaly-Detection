@@ -12,11 +12,15 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
+import keras.backend as K
 
-# from keras.preprocessing.image import ImageDataGenerator #unknown issue for this import
-from tensorflow.keras.preprocessing.image import (
+from keras.preprocessing.image import (
     ImageDataGenerator,
-)  # see in: tensorflow.python
+)  # unknown issue for this import
+
+# from tensorflow.keras.preprocessing.image import (
+#     ImageDataGenerator,
+# )  # see in: tensorflow.python
 import os
 import numpy as np
 
@@ -194,77 +198,60 @@ conv_decoder = keras.models.Sequential(
 
 conv_ae = keras.models.Sequential([conv_encoder, conv_decoder])
 
-conv_encoder.summary()
-conv_decoder.summary()
-conv_ae.summary()
+# conv_encoder.summary()
+# conv_decoder.summary()
+# conv_ae.summary()
 
 # =============================== TRAINING SETUP =================================
 batch_size = 5  # 32
-epochs = 5
+epochs = 10
 data_augmentation = True
 flow_from_directory = False
-loss = "SSIM"
+loss = "MSSIM"
 # num_predictions = 20
 
-# import tf.image.ssim as ssim
-# from tensorflow.python.ops.image_ops_impl import ssim
-max_value = 1.0
-
-
-# def custom_loss(max_value):
-#     def loss(y_true, y_pred):
-#         return tf.image.ssim(img1=y_true, img2=y_pred, max_val=max_value)
-
-#     return loss
-
-
-def ssim_loss(y_true, y_pred):
-    return -1 * tf.reduce_mean(tf.image.ssim(y_true, y_pred, 1.0))
-
-
-# from keras.losses import mean_squared_error
-# from tf.image import ssim
-# from skimage.measure import compare_ssim as ssim
-
 if loss == "SSIM":
-    # convert X_train and X_valid to grayscale (SSIM only works with grayscale)
-    # X_train = tf.image.rgb_to_grayscale(X_train).numpy()
-    # X_valid = tf.image.rgb_to_grayscale(X_valid).numpy()
+    # ---------------------------- TESTING IN PROGRESS-----------------------------
+    def ssim_loss(img_true, img_pred):
+        return -1 * K.mean(tf.image.ssim(img_true, img_pred, 1.0), axis=-1)
 
+    # SSIM only works with grayscale
     X_train = tf.image.rgb_to_grayscale(X_train)
     X_valid = tf.image.rgb_to_grayscale(X_valid)
 
-    # loss_function = tf.image.ssim  # TEST this
     optimizer = keras.optimizers.Adam(
-        learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
+        learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
     )
-    # compile model
+
     conv_ae.compile(
-        # loss=custom_loss(max_value),
-        loss=ssim_loss,
-        optimizer=optimizer,
-        # metrics=[custom_loss(max_value)],
-        metrics=[ssim_loss, "mean_squared_error"],
+        loss=ssim_loss, optimizer=optimizer, metrics=[ssim_loss, "mean_squared_error"],
     )
-    # specify model name and directory to save model to
-    model_name = "CAE_" + str(epochs) + "_datagen.h5"
-    save_dir = os.path.join(os.getcwd(), "saved_models/SSIM")
-    # TO DO : CREATE SSIM directory in saved_models
+
+elif loss == "MSSIM":
+    # TESTING INTENDED LATER
+    def mssim_loss(img_true, img_pred):
+        return -1 * K.mean(tf.image.ssim_multiscale(img_true, img_pred, 1.0), axis=-1)
+
+    optimizer = keras.optimizers.Adam(
+        learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
+    )
+
+    conv_ae.compile(
+        loss=mssim_loss,
+        optimizer=optimizer,
+        metrics=[mssim_loss, "mean_squared_error"],
+    )
 
 else:
-    # Set loss function as MSE (proportional to L2-loss)
     loss_function = "mean_squared_error"
-    # Set optimizer
+
     optimizer = keras.optimizers.Adam(
         learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
     )
-    # compile model
+
     conv_ae.compile(
         loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
     )
-    # specify model name and directory to save model to
-    model_name = "CAE_" + str(epochs) + "_datagen.h5"
-    save_dir = os.path.join(os.getcwd(), "saved_models/l2_loss")
 
 
 # =============================== TRAINING =================================
@@ -279,6 +266,10 @@ if not data_augmentation:
         validation_data=(X_valid, X_valid),
         shuffle=True,
     )
+    # specify model name and directory to save model to
+    model_name = "CAE_" + str(epochs) + ".h5"
+    save_dir = os.path.join(os.getcwd(), "saved_models/" + loss)
+
 else:
     print("Using real-time data augmentation.")
     # This will do preprocessing and realtime data augmentation:
@@ -310,10 +301,34 @@ else:
         # image data format, either "channels_first" or "channels_last"
         data_format="channels_last",
         # fraction of images reserved for validation (strictly between 0 and 1)
+        # P.S: change depending on flow or flow_from_directory
         validation_split=0.0,
-    )  # P.S: change depending on flow or flow_from_directory
+    )
+    # specify model name and directory to save model to
+    model_name = "CAE_" + str(epochs) + "_datagen.h5"
+    save_dir = os.path.join(os.getcwd(), "saved_models/" + loss)
 
     if flow_from_directory:
+        """
+        !!! NOT YET IMPLEMENTED !!!
+        Example of directory structure (see: https://gist.github.com/fchollet/0830affa1f7f19fd47b06d4cf89ed44d)
+        
+        data/
+            train/
+                good/
+                    screw_001.jpg
+                    screw_002.jpg
+                    ...
+
+            validation/
+                good/
+                    dog001.jpg
+                    dog002.jpg
+                    ...
+                defect/
+                    cat001.jpg
+                    cat002.jpg"""
+
         # Fit the model on the batches generated by datagen.flow_from_directory()
         train_generator = datagen.flow_from_directory(
             directory="datasets/mvtec",
@@ -333,7 +348,7 @@ else:
     else:
         # Fit the model on the batches generated by datagen.flow().
         train_generator = datagen.flow(
-            X_train, X_train, batch_size=batch_size, shuffle=True
+            x=X_train, y=X_train, batch_size=batch_size, shuffle=True
         )
 
         history = conv_ae.fit_generator(
@@ -350,49 +365,9 @@ else:
 # show reconstructed image sample--------------------------------
 
 
-def show_original_and_reconstructed_img_2(image, model):
-    fig, axes = plt.subplots(1, 2)
-    ax = axes.ravel()
-    # label = 'MSE: {:.2f}, SSIM: {:.2f}'
-
-    img1 = tf.convert_to_tensor(expand_dims(image, 0))
-    ax[0].imshow(img1.numpy()[0, :, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
-    ax[0].set_title("Original image")
-
-    img2 = tf.convert_to_tensor(model.predict(expand_dims(image, 0)))
-    ax[1].imshow(img2.numpy()[0, :, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
-    ax[1].set_title("Reconstructed image")
-
-    ssim_value = tf.image.ssim(img1=img1, img2=img2, max_val=1.0)
-    print("SSIM: {:.2f}".format(ssim_value.numpy()[0]))
-
-    plt.show()
-
-
-show_original_and_reconstructed_img_2(X_train[1900], conv_ae)
-
 import utils
 
-utils.show_original_and_reconstructed_img(X_train[100], conv_ae)  # FIX
-utils.show_original_and_reconstructed_img_2(X_train[100], conv_ae)  # FIX
-
-# img1 and img2 must be image tensors
-sim_value = tf.image.ssim(
-    img1=tf.convert_to_tensor(X_train[:4]),
-    img2=tf.convert_to_tensor(X_train[:4]),
-    max_val=1.0,
-)
-
-
-img1 = tf.convert_to_tensor(expand_dims(X_train[500], 0))
-plt.imshow(img1.numpy()[0, :, :, 0])
-img2 = tf.convert_to_tensor(conv_ae.predict(expand_dims(X_train[500], 0)))
-plt.imshow(img2.numpy()[0, :, :, 0])
-sim_value = tf.image.ssim(img1=img1, img2=img2, max_val=1.0)
-# returns <tf.Tensor: id=23418566, shape=(1,), dtype=float32, numpy=array([-0.72969997], dtype=float32)>
-
-# returns scalar value for similarity
-tf.image.ssim(img1=img1, img2=img2, max_val=1.0).numpy()[0]  # return -0.72969997
+utils.show_original_and_reconstructed_img_gray(X_train[100], conv_ae)
 
 # ----------------------------------------------------------------
 
