@@ -46,7 +46,7 @@ conv_encoder = keras.models.Sequential(
             strides=2,
             padding="SAME",
             activation=keras.layers.LeakyReLU(0.2),
-            input_shape=[256, 256, 1],  # SSIM
+            input_shape=[256, 256, 3],  # SSIM
         ),  # CONV0 (added layer)
         # keras.layers.MaxPool2D(pool_size=2),
         keras.layers.Conv2D(
@@ -186,7 +186,7 @@ conv_decoder = keras.models.Sequential(
             activation=keras.layers.LeakyReLU(0.2),
         ),
         keras.layers.Conv2DTranspose(
-            1,  ## SSIM
+            3,  ## SSIM
             kernel_size=4,
             strides=2,
             padding="SAME",
