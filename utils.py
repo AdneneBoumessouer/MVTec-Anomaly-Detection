@@ -1,76 +1,83 @@
 from numpy import expand_dims
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import numpy as np
 
 
-def show_original_and_reconstructed_img(img, model):
-    fig, axes = plt.subplots(1, 2)
+def load_mvtec_data(model_path=None, numpy=False):
+    """
+    Loads training and test sets as Tensors or as numpy arrays.
+    """
+    # load training data
+    X_train_full = np.load("X_train.npy")
+    X_train, X_valid = X_train_full[:-363], X_train_full[-363:]
 
+    # load testing data
+    X_test, y_test = np.load("X_test.npy"), np.load("y_test.npy")
+
+    if "SSIM" in model_path.split("/"):
+        X_train = tf.image.rgb_to_grayscale(X_train)
+        X_valid = tf.image.rgb_to_grayscale(X_valid)
+        X_test = tf.image.rgb_to_grayscale(X_test)
+    else:
+        X_train = tf.convert_to_tensor(X_train)
+        X_valid = tf.convert_to_tensor(X_valid)
+        X_test = tf.convert_to_tensor(X_test)
+
+    if numpy:
+        X_train = X_train.numpy()
+        X_valid = X_valid.numpy()
+
+    return X_train, X_valid, X_test, y_test
+
+
+def compare_images(img1, img2=None, model=None):
+    """
+    Plots img1 and img2 side by side and compute their similarity measure.
+    If img2 is None and model is passed, img2 is recontructed from model.
+    Model input and images' shape must be consistent! 
+    """
+
+    if (type(img2) == type(None) and model == None) or (
+        type(img2) != type(None) and model != None
+    ):
+        raise ValueError("Pass EITHER img2 OR model to reconstruct img2 from")
+
+    if type(img2) == type(None) and model != None:
+        img2 = model.predict(tf.expand_dims(img1, 0))
+        img2 = img2[0]
+        img1_title = "original"
+        img2_title = "reconstructed"
+    else:
+        img1_title = "image 1"
+        img2_title = "image 2"
+
+    _, axes = plt.subplots(1, 2)
     ax = axes.ravel()
 
-    ax[0].imshow(img)
+    if img1.shape[-1] == img1.shape[-1] == 3:
+        # executes when images are RGB
+        ax[0].imshow(img1, vmin=0, vmax=1)
+        ax[0].set_title(img1_title)
+        ax[1].imshow(img2, vmin=0, vmax=1)
+        ax[1].set_title(img2_title)
+        mssim_value = tf.image.ssim_multiscale(
+            img1=tf.expand_dims(img1, 0), img2=tf.expand_dims(img2, 0), max_val=1.0
+        )
+        print("multiscale_SSIM = {:.2f}".format(mssim_value.numpy()[0]))
 
-    # expand dimension to one sample
-    img_tensor = expand_dims(img, 0)
-    img_reconstruction = model.predict(img_tensor)
-    img_reconstruction = img_reconstruction[0]
-    ax[1].imshow(img_reconstruction)
+    elif img1.shape[-1] == img1.shape[-1] == 1:
+        # executes when imgages are Greyscaled
 
-    # show plot
+        ax[0].imshow(img1[:, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
+        ax[0].set_title(img1_title)
+        ax[1].imshow(img2[:, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
+        ax[1].set_title(img2_title)
+        ssim_value = tf.image.ssim(
+            img1=tf.expand_dims(img1, 0), img2=tf.expand_dims(img2, 0), max_val=1.0
+        )
+        print("SSIM: {:.2f}".format(ssim_value.numpy()[0]))
+    else:
+        raise ValueError("image shapes are not consistent!")
     plt.show()
 
-
-def show_original_and_reconstructed_img_gray(image, model):
-    fig, axes = plt.subplots(1, 2)
-    ax = axes.ravel()
-    # label = 'MSE: {:.2f}, SSIM: {:.2f}'
-
-    img1 = tf.convert_to_tensor(expand_dims(image, 0))
-    ax[0].imshow(img1.numpy()[0, :, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
-    ax[0].set_title("Original image")
-
-    img2 = tf.convert_to_tensor(model.predict(expand_dims(image, 0)))
-    ax[1].imshow(img2.numpy()[0, :, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
-    ax[1].set_title("Reconstructed image")
-
-    ssim_value = tf.image.ssim(img1=img1, img2=img2, max_val=1.0)
-    print("SSIM: {:.2f}".format(ssim_value.numpy()[0]))
-
-    plt.show()
-
-
-# --------------------------keep this as backup--------------------------------
-# max_value = 1.0
-# def custom_loss(max_value):
-#     def loss(y_true, y_pred):
-#         return tf.image.ssim(img1=y_true, img2=y_pred, max_val=max_value)
-
-#     return loss
-
-# loss=custom_loss(max_value),
-# metrics=[custom_loss(max_value)],
-# -----------------------------------------------------------------------------
-
-
-# --------tested, works on specific object classes and fails on others---------
-# def ssim_loss(y_true, y_pred):
-#     return -1 * tf.reduce_mean(tf.image.ssim(y_true, y_pred, 1.0))
-# -----------------------------------------------------------------------------
-
-# # img1 and img2 must be image tensors
-# sim_value = tf.image.ssim(
-#     img1=tf.convert_to_tensor(X_train[:4]),
-#     img2=tf.convert_to_tensor(X_train[:4]),
-#     max_val=1.0,
-# )
-
-
-# img1 = tf.convert_to_tensor(expand_dims(X_train[500], 0))
-# plt.imshow(img1.numpy()[0, :, :, 0])
-# img2 = tf.convert_to_tensor(conv_ae.predict(expand_dims(X_train[500], 0)))
-# plt.imshow(img2.numpy()[0, :, :, 0])
-# sim_value = tf.image.ssim(img1=img1, img2=img2, max_val=1.0)
-# # returns <tf.Tensor: id=23418566, shape=(1,), dtype=float32, numpy=array([-0.72969997], dtype=float32)>
-
-# # returns scalar value for similarity
-# tf.image.ssim(img1=img1, img2=img2, max_val=1.0).numpy()[0]  # return -0.72969997
