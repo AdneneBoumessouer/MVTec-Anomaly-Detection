@@ -13,28 +13,18 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 import keras.backend as K
-
-from keras.preprocessing.image import (
-    ImageDataGenerator,
-)  # unknown issue for this import
-
-# from tensorflow.keras.preprocessing.image import (
-#     ImageDataGenerator,
-# )  # see in: tensorflow.python
+import custom_loss_functions
+import utils
+from keras.preprocessing.image import ImageDataGenerator
 import os
 import numpy as np
 
 
 # ========================= LOAD TRAINING DATASET =======================
 X_train_full = np.load("X_train.npy")
-
 X_train, X_valid = X_train_full[:-363], X_train_full[-363:]
 
-# plt.imshow(X_train[1000])
-# plt.show()
-
-
-# ============================ DEFINE MODEL =================================
+# ============================ DEFINE MODEL =============================
 tf.random.set_seed(42)
 np.random.seed(42)
 
@@ -202,19 +192,17 @@ conv_ae = keras.models.Sequential([conv_encoder, conv_decoder])
 # conv_decoder.summary()
 # conv_ae.summary()
 
+
 # =============================== TRAINING SETUP =================================
 batch_size = 5  # 32
 epochs = 10
 data_augmentation = True
 flow_from_directory = False
-loss = "MSSIM"
+loss = "MSSIM"  # 'MSSIM'(input: RGB), 'SSIM'(input:GrayScale) or 'MSE'(equivalent to L2, input: RGB)
 # num_predictions = 20
 
 if loss == "SSIM":
-    # ---------------------------- TESTING IN PROGRESS-----------------------------
-    def ssim_loss(img_true, img_pred):
-        return -1 * K.mean(tf.image.ssim(img_true, img_pred, 1.0), axis=-1)
-
+    loss_function = custom_loss_functions.ssim_loss
     # SSIM only works with grayscale
     X_train = tf.image.rgb_to_grayscale(X_train)
     X_valid = tf.image.rgb_to_grayscale(X_valid)
@@ -222,33 +210,28 @@ if loss == "SSIM":
     optimizer = keras.optimizers.Adam(
         learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
     )
-
     conv_ae.compile(
-        loss=ssim_loss, optimizer=optimizer, metrics=[ssim_loss, "mean_squared_error"],
+        loss=loss_function,
+        optimizer=optimizer,
+        metrics=[loss_function, "mean_squared_error"],
     )
 
 elif loss == "MSSIM":
-    # TESTING INTENDED LATER
-    def mssim_loss(img_true, img_pred):
-        return -1 * K.mean(tf.image.ssim_multiscale(img_true, img_pred, 1.0), axis=-1)
-
+    loss_function = custom_loss_functions.mssim_loss
     optimizer = keras.optimizers.Adam(
         learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
     )
-
     conv_ae.compile(
-        loss=mssim_loss,
+        loss=loss_function,
         optimizer=optimizer,
-        metrics=[mssim_loss, "mean_squared_error"],
+        metrics=[loss_function, "mean_squared_error"],
     )
 
-else:
+elif loss == "MSE":
     loss_function = "mean_squared_error"
-
     optimizer = keras.optimizers.Adam(
         learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
     )
-
     conv_ae.compile(
         loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
     )
@@ -358,18 +341,6 @@ else:
             validation_data=(X_valid, X_valid),
             workers=-1,
         )
-
-
-# ====================== SEE RESULTS OF TRAINED AE =======================
-
-# show reconstructed image sample--------------------------------
-
-
-import utils
-
-utils.show_original_and_reconstructed_img_gray(X_train[100], conv_ae)
-
-# ----------------------------------------------------------------
 
 
 # Save model and weights
