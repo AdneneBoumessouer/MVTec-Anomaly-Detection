@@ -12,7 +12,7 @@ import os
 
 
 def build_tensor_from_img_dir(DIR, resize=True):
-    """Returns images contained in a directory as a tensor of format (batch_size x length x width x channels)"""
+    """Transforms images contained in a directory in a tensor of format (batch_size x length x width x channels)"""
 
     # number of images in directory
     batch_size = len(
