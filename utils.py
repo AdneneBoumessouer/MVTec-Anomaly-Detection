@@ -2,33 +2,40 @@ from numpy import expand_dims
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
+import os
 
 
-def load_mvtec_data(model_path=None, numpy=False):
+def load_mvtec_data_as_tensor(dir_path, validation_split=0.1, numpy=False):
     """
-    Loads training and test sets as Tensors or as numpy arrays.
+    Loads training and test sets as Tensors or as numpy arrays from directory
+    and returns training set, validation set (based on validation_split) and test set.
     """
     # load training data
-    X_train_full = np.load("X_train.npy")
-    X_train, X_valid = X_train_full[:-363], X_train_full[-363:]
+    X_train_full = np.load(os.path.join(dir_path, "X_train.npy"))
+    # TO DO : stratified sampling
+    split_index = int(len(X_train_full) * (1 - validation_split))
+    X_train, X_valid = X_train_full[:split_index], X_train_full[split_index:]
 
     # load testing data
-    X_test, y_test = np.load("X_test.npy"), np.load("y_test.npy")
-
-    if "SSIM" in model_path.split("/"):
-        X_train = tf.image.rgb_to_grayscale(X_train)
-        X_valid = tf.image.rgb_to_grayscale(X_valid)
-        X_test = tf.image.rgb_to_grayscale(X_test)
-    else:
-        X_train = tf.convert_to_tensor(X_train)
-        X_valid = tf.convert_to_tensor(X_valid)
-        X_test = tf.convert_to_tensor(X_test)
+    X_test, y_test = (
+        np.load(os.path.join(dir_path, "X_test.npy")),
+        np.load(os.path.join(dir_path, "y_test.npy")),
+    )
 
     if numpy:
         X_train = X_train.numpy()
         X_valid = X_valid.numpy()
+        X_test = X_test.numpy()
 
     return X_train, X_valid, X_test, y_test
+
+
+def preprocess_tensor(tensor, loss):
+    if loss == "SSIM":
+        tensor = tf.image.rgb_to_grayscale(tensor)
+    else:
+        tensor = tf.convert_to_tensor(tensor)
+    return tensor
 
 
 def compare_images(img1, img2=None, model=None):
@@ -80,4 +87,11 @@ def compare_images(img1, img2=None, model=None):
     else:
         raise ValueError("image shapes are not consistent!")
     plt.show()
+
+
+def residual_map_image(img1, img2):
+    """
+    Returns the Residual Map of two batches of tensor images
+    """
+    return img1 - img2
 
