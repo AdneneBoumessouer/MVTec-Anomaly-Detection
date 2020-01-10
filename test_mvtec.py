@@ -2,14 +2,9 @@ import tensorflow as tf
 from tensorflow import keras
 import matplotlib.pyplot as plt
 import numpy as np
-from train_mvtec import ssim_loss as ssim_loss
-from train_mvtec import mssim_loss as mssim_loss
 import utils
 import importlib
-
-
-def residual_map(img1, img2):
-    pass
+import custom_loss_functions
 
 
 # LOAD MODEL
@@ -29,7 +24,7 @@ elif "SSIM" in model_path.split("/"):
         filepath=model_path,
         custom_objects={
             "LeakyReLU": keras.layers.LeakyReLU,
-            "ssim_loss": ssim_loss,
+            "ssim_loss": custom_loss_functions.ssim_loss,
         },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
     )
 
@@ -38,7 +33,7 @@ elif "SSIM" in model_path.split("/"):
         filepath=model_path,
         custom_objects={
             "LeakyReLU": keras.layers.LeakyReLU,
-            "ssim_loss": mssim_loss,
+            "ssim_loss": custom_loss_functions.mssim_loss,
         },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
     )
 
