@@ -3,6 +3,7 @@ datasets
 X_test.npy
 X_train.npy
 y_test.npy
+my_first_key.pem
 
 
 # Byte-compiled / optimized / DLL files
