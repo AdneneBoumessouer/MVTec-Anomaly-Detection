@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import datetime
 import csv
 import pandas as pd
+import json
 
 
 def main(epochs, batch_size, loss, data_augmentation, flow_from_directory):
@@ -410,22 +411,18 @@ def main(epochs, batch_size, loss, data_augmentation, flow_from_directory):
 
     # save training setup
     train_dict = {
-        "epochs": str(epochs),
-        "batch_size": str(batch_size),
-        "loss": str(loss),
-        "data_augmentation": str(data_augmentation),
-        "flow_from_directory": str(flow_from_directory),
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "loss": loss,
+        "data_augmentation": data_augmentation,
+        "flow_from_directory": flow_from_directory,
+        "color_mode": color_mode,
+        "channels": channels,
     }
-    train_setup_file = os.path.join(save_dir, "train_setup.csv")
-    with open(train_setup_file, mode="w") as f:
-        for key in train_dict.keys():
-            f.write("%s: %s\n" % (key, train_dict[key]))
+    with open(os.path.join(save_dir, "train_setup.json"),"w") as json_file:
+        json.dump(train_dict, json_file)
 
 
-# Score trained model.
-# scores = conv_ae.evaluate(X_test, X_test, verbose=1)
-# print('Test loss:', scores[0])
-# print('Test accuracy:', scores[1])
 
 if __name__ == "__main__":
     # Set training parameters
@@ -439,3 +436,7 @@ if __name__ == "__main__":
     # START TRAINING
     main(epochs, batch_size, loss, data_augmentation, flow_from_directory)
 
+# Score trained model.
+# scores = conv_ae.evaluate(X_test, X_test, verbose=1)
+# print('Test loss:', scores[0])
+# print('Test accuracy:', scores[1])
