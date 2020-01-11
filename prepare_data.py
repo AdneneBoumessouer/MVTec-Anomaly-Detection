@@ -2,36 +2,15 @@ import os
 import shutil
 
 """
+Pre-requisite to use this function:
+Your current working directory must contain a directory named "mvtec" containing the mvtec dataset!
 This script creates following directory structure necessary for Keras's ImageDataGenerator class.
-Target structure:
 
-data/
-    train/
-        good/
-            bottle_001.jpg
-            bottle_002.jpg
-            ...
-            bottle_187.jpg
-        defect/
-            *empty
-
-    validation/
-        good/
-            bottle_188.jpg
-            bottle_189.jpg
-            ...
-            bottle_208.jpg
-        defect/
-            *empty
-    test/
-        good/
-            ...
-        defect/
-            ...
             
 
 For more information on directory structure, see example at:
-https://gist.github.com/fchollet/0830affa1f7f19fd47b06d4cf89ed44d         
+https://gist.github.com/fchollet/0830affa1f7f19fd47b06d4cf89ed44d
+https://realpython.com/working-with-files-in-python/#getting-a-directory-listing         
 """
 
 
@@ -68,6 +47,11 @@ def copy_and_rename_mvtec_train_validation(
 ):
     """Copies and renames all MVTec training images to two separate directories: one for training and one for validating.
     This directory structure is necessary for the use of Keras's ImageDataGenerator classmethod flow_from_directory()"""
+    
+    # create target directories
+    os.makedirs(dst_train_dir, mode=0o770, exist_ok=True)
+    os.makedirs(dst_valid_dir, mode=0o770, exist_ok=True)
+
     class_names = next(os.walk(mvtec_dir))[1]
     class_names.sort()
     for class_name in class_names:
@@ -90,36 +74,11 @@ def copy_and_rename_mvtec_train_validation(
             copy_and_rename_file(src_dir, old_filename, dst_valid_dir, new_filename)
 
 
-# ====================================================================================
-
-# copy_and_rename_mvtec_train(
-#     mvtec_dir="datasets/mvtec", dst_train_dir="datasets/data/train/good"
-# )
-
-copy_and_rename_mvtec_train_validation(
-    mvtec_dir="datasets/mvtec",
-    dst_train_dir="datasets/data/train/good",
-    dst_valid_dir="datasets/data/validation/good",
-    validation_split=0.1,
-)
-
-filenames = [
-    name
-    for name in os.listdir("datasets/data/train/good")
-    if os.path.isfile(os.path.join("datasets/data/train/good", name))
-]
-len(filenames)
-
-
-# class_names
-# ['bottle/train/good',
-#  'cable/train/good',
-#  'capsule/train/good',
-#  'hazelnut/train/good',
-#  'metal_nut/train/good',
-#  'pill/train/good',
-#  'screw/train/good',
-#  'toothbrush/train/good',
-#  'transistor/train/good',
-#  'zipper/train/good']
+if __name__ == "__main__":    
+    copy_and_rename_mvtec_train_validation(
+        mvtec_dir="mvtec",
+        dst_train_dir="datasets/data/train/good",
+        dst_valid_dir="datasets/data/validation/good",
+        validation_split=0.1,
+    )
 
