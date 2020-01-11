@@ -7,32 +7,74 @@ import utils
 import importlib
 import custom_loss_functions
 import os
+from keras.preprocessing.image import ImageDataGenerator
+import csv
+import pandas as pd
+import json
 
-# ====================== LOAD TRAINED MODEL =======================
-model_path = "saved_models/SSIM/CAE_150_datagen.h5"
+def load_trained_model(model_path):
+    # load autoencoder
+    loss = model_path.split('/')[1]
+    if loss == "MSSIM":
+        conv_ae = keras.models.load_model(
+            filepath=model_path,
+            custom_objects={
+                "LeakyReLU": keras.layers.LeakyReLU,
+                "mssim_loss": custom_loss_functions.mssim_loss,
+            },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
+        )
 
-conv_ae = keras.models.load_model(
-    filepath=model_path,
-    custom_objects={
-        "LeakyReLU": keras.layers.LeakyReLU,
-        "ssim_loss": custom_loss_functions.ssim_loss,
-    },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
-)
+    elif loss == "SSIM":
+        conv_ae = keras.models.load_model(
+            filepath=model_path,
+            custom_objects={
+                "LeakyReLU": keras.layers.LeakyReLU,
+                "ssim_loss": custom_loss_functions.ssim_loss,
+            },
+        )       
+    
+    else:
+        conv_ae = keras.models.load_model(
+            filepath=model_path,
+            custom_objects={
+                "LeakyReLU": keras.layers.LeakyReLU,
+            },
+        )
+
+    # load training history
+    dir_name = os.path.dirname(model_path)
+    history = pd.read_csv(os.path.join(dir_name,"history.csv"))
+
+    # load training setup
+    with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
+        train_setup = json.load(read_file)
+
+    return conv_ae, train_setup, history
 
 
-# encoder = conv_ae(autoencoder.input, autoencoder.layers[-2].output)
-
-# decoder_input = Input(shape=(encoding_dim,))
-# decoder = Model(decoder_input, autoencoder.layers[-1](decoder_input))
-
-# encoder.summary()
-# decoder.summary()
+# ================= LOAD TRAINED MODEL AND CORRESPONDING SETUP ===================
+model_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_50_flow_from_dir_datagen.h5"
+conv_ae, train_setup, history = load_trained_model(model_path)
 
 # ====================== LOAD DATA ===============================
 
-X_train, X_valid, X_test, y_test = utils.load_mvtec_data_as_tensor(
-    dir_path="datasets/tensors", validation_split=0.1, numpy=False
-)
+# X_train, X_valid, X_test, y_test = utils.load_mvtec_data_as_tensor(
+#     dir_path="datasets/tensors", validation_split=0.1, numpy=False
+# )
+
+validation_datagen = ImageDataGenerator(rescale=1.0 / 255)
+
+validation_generator = validation_datagen.flow_from_directory(
+                directory="datasets/data/validation",
+                target_size=(256, 256),
+                color_mode=train_setup["color_mode"],
+                batch_size=1,
+                class_mode="input",
+            )
+
+
+img = validation_generator.next()[0] 
+utils.compare_images(img[0], model=conv_ae)
 
 # ====================== SEE RESULTS OF TRAINED AE =======================
 
@@ -59,9 +101,7 @@ utils.compare_images(X_train_full[100], X_train_full[1100])
 utils.compare_images(X_train_full[1101], X_train_full[1100])
 
 
-# with flow_from_directory: use after running train_mvtec.py !
-img = validation_generator.next()[0]  # NOT SCLED [0, 255]
-utils.compare_images(img[0], model=conv_ae)
+
 
 img_imread = mpimg.imread("datasets/data/train/good/bottle_000.png")  # scaled [0,1]
 
@@ -74,18 +114,22 @@ res_map = utils.residual_map_image(img1, img2)
 plt.imshow(res_map[:, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
 
 
-# import csv
-# train_dict = {
-#         "epochs": "1",
-#         "batch_size": "5",
-#         "loss": "MSSIM",
-#         "data_augmentation": "True",
-#         "flow_from_directory": "True",
-#     }
-# with open('test.csv', 'w') as f:
-#     for key in train_dict.keys():
-#         f.write("%s: %s\n"%(key,train_dict[key]))
 
+
+#--------------------------------------------------------------------------
+
+# show encoder and decoder architecture
+
+# encoder = conv_ae(autoencoder.input, autoencoder.layers[-2].output)
+
+# decoder_input = Input(shape=(encoding_dim,))
+# decoder = Model(decoder_input, autoencoder.layers[-1](decoder_input))
+
+# encoder.summary()
+# decoder.summary()
+
+
+#--------------------------------------------------------------------------
 
 # OLD MODEL
 
