@@ -74,6 +74,8 @@ validation_generator = validation_datagen.flow_from_directory(
 
 
 img = validation_generator.next()[0] 
+img_pred = conv_ae.predict(img)
+plt.imshow(img_pred[0])
 utils.compare_images(img[0], model=conv_ae)
 
 # ====================== SEE RESULTS OF TRAINED AE =======================
