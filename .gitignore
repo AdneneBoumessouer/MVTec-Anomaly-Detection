@@ -1,9 +1,13 @@
-datasets
+datasets/
+mvtec/
 .vscode/
 X_test.npy
 X_train.npy
 y_test.npy
 my_first_key.pem
+datasets/tensors/load_mvtec_train.py
+datasets/tensors/load_mvtec_test.py
+
 
 
 # Byte-compiled / optimized / DLL files
