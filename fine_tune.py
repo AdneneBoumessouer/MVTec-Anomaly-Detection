@@ -19,10 +19,19 @@ conv_ae = keras.models.load_model(
     },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
 )
 
+
+# encoder = conv_ae(autoencoder.input, autoencoder.layers[-2].output)
+
+# decoder_input = Input(shape=(encoding_dim,))
+# decoder = Model(decoder_input, autoencoder.layers[-1](decoder_input))
+
+# encoder.summary()
+# decoder.summary()
+
 # ====================== LOAD DATA ===============================
 
 X_train, X_valid, X_test, y_test = utils.load_mvtec_data_as_tensor(
-    dir_path="datasets/tensors", loss="SSIM", numpy=False
+    dir_path="datasets/tensors", validation_split=0.1, numpy=False
 )
 
 # ====================== SEE RESULTS OF TRAINED AE =======================
@@ -65,5 +74,175 @@ res_map = utils.residual_map_image(img1, img2)
 plt.imshow(res_map[:, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
 
 
-os.path.join("datasets/tensors", "X_train.npy")
+# import csv
+# train_dict = {
+#         "epochs": "1",
+#         "batch_size": "5",
+#         "loss": "MSSIM",
+#         "data_augmentation": "True",
+#         "flow_from_directory": "True",
+#     }
+# with open('test.csv', 'w') as f:
+#     for key in train_dict.keys():
+#         f.write("%s: %s\n"%(key,train_dict[key]))
+
+
+# OLD MODEL
+
+# conv_encoder = keras.models.Sequential(
+#     [
+#         keras.layers.Conv2D(
+#             32,
+#             kernel_size=4,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#             input_shape=[256, 256, channels],
+#         ),  # CONV0 (added layer)
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             32,
+#             kernel_size=4,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),  # CONV1
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             32,
+#             kernel_size=4,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),  # CONV2
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             32,
+#             kernel_size=3,
+#             strides=1,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),  # CONV3
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             64,
+#             kernel_size=4,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),  # CONV4
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             64,
+#             kernel_size=3,
+#             strides=1,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),  # CONV5
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             128,
+#             kernel_size=4,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),  # CONV6
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             64,
+#             kernel_size=3,
+#             strides=1,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),  # CONV7
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             32,
+#             kernel_size=3,
+#             strides=1,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),  # CONV8
+#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
+#         keras.layers.Conv2D(
+#             100, kernel_size=8, strides=1, padding="VALID", activation="relu"
+#         ),  # CONV9
+#     ]
+# )
+
+# conv_decoder = keras.models.Sequential(
+#     [
+#         keras.layers.Conv2DTranspose(
+#             32,
+#             kernel_size=3,
+#             strides=8,
+#             padding="VALID",
+#             activation="relu",
+#             input_shape=[1, 1, 100],
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             64,
+#             kernel_size=3,
+#             strides=1,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             128,
+#             kernel_size=4,
+#             strides=1,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             64,
+#             kernel_size=3,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             64,
+#             kernel_size=4,
+#             strides=1,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             32,
+#             kernel_size=3,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             32,
+#             kernel_size=4,
+#             strides=1,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             32,
+#             kernel_size=4,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             32,
+#             kernel_size=4,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#         keras.layers.Conv2DTranspose(
+#             channels,
+#             kernel_size=4,
+#             strides=2,
+#             padding="SAME",
+#             activation=keras.layers.LeakyReLU(0.2),
+#         ),
+#     ]
+# )
 
