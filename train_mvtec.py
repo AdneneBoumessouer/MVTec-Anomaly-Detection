@@ -429,7 +429,7 @@ def main(epochs, batch_size, loss, data_augmentation, flow_from_directory):
 
 if __name__ == "__main__":
     # Set training parameters
-    batch_size = 5
+    batch_size = 4
     epochs = 50
     data_augmentation = True
     flow_from_directory = True

@@ -7,8 +7,11 @@ def ssim_loss(img_true, img_pred):
     return -1 * K.mean(tf.image.ssim(img_true, img_pred, 1.0), axis=-1)
 
 
+# def mssim_loss(img_true, img_pred):
+#     return -1 * K.mean(tf.image.ssim_multiscale(img_true, img_pred, 1.0), axis=-1)
+
 def mssim_loss(img_true, img_pred):
-    return -1 * K.mean(tf.image.ssim_multiscale(img_true, img_pred, 1.0), axis=-1)
+    return 1 - K.mean(tf.image.ssim_multiscale(img_true, img_pred, 1.0), axis=-1)
 
 
 # --------------------------keep this as backup--------------------------------
