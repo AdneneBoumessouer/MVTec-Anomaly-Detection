@@ -9,3 +9,5 @@ Old model seems to work better...possible causes: change in architecture (MaxPoo
 
 Github:
 url = git@github.com:AdneneBoumessouer/AutPr.git
+
+Test: (to be deleted soon.)
