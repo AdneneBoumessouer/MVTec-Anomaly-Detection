@@ -1,5 +1,0 @@
-epochs: 50
-batch_size: 4
-loss: MSSIM
-data_augmentation: True
-flow_from_directory: True
