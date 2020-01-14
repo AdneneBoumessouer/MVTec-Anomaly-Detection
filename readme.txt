@@ -1,11 +1,12 @@
 TO DO:
 
-- see if loading pretrained model needs to recompile??
-- see how to save pretrained model after training for a second time (update history.csv)
+- tf.keras.models.load_model(model_path) doesn't seem to work, see:
+https://github.com/keras-team/keras/issues/10417
+https://www.tensorflow.org/tutorials/keras/save_and_load
 
 
 Observations:
-Old model seems to work better...possible causes: change in architecture (MaxPool2D) and loss function (1 - MSSIM)
+parsing works, training works
 
 
 
