@@ -29,10 +29,13 @@ import json
 import argparse
 
 
-def main(epochs, batch_size, loss, model_path):
+def main(args):
     # ========================= LOAD TRAINING DATASET =======================
     # NEW TRAINING
-    if model_path == None:
+    if args.command == "new":
+        epochs = args.epochs
+        batch_size = args.batch
+        loss = args.loss.upper()
 
         if loss == "SSIM":
             channels = 1
@@ -42,8 +45,8 @@ def main(epochs, batch_size, loss, model_path):
             color_mode = "rgb"
 
         # ============================ DEFINE MODEL =============================
-        tf.random.set_seed(42)
-        np.random.seed(42)
+        # tf.random.set_seed(42)
+        # np.random.seed(42)
 
         conv_encoder = keras.models.Sequential(
             [
@@ -206,66 +209,61 @@ def main(epochs, batch_size, loss, model_path):
             ]
         )
 
-        conv_ae = keras.models.Sequential([conv_encoder, conv_decoder])
+        model = keras.models.Sequential([conv_encoder, conv_decoder])
 
-        conv_encoder.summary()
-        conv_decoder.summary()
-        conv_ae.summary()
+        print(conv_encoder.summary())
+        print(conv_decoder.summary())
+        print(model.summary())
         # adjust architecture, see: https://github.com/keras-team/keras/issues/3923
-    
+
+        # =============================== TRAINING SETUP =================================
+
+        # set loss function, optimizer and metric
+        if loss == "SSIM":
+            loss_function = custom_loss_functions.ssim_loss
+
+            optimizer = keras.optimizers.Adam(
+                learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
+            )
+            model.compile(
+                loss=loss_function,
+                optimizer=optimizer,
+                metrics=[loss_function, "mean_squared_error"],
+            )
+
+        elif loss == "MSSIM":
+            loss_function = custom_loss_functions.mssim_loss
+            optimizer = keras.optimizers.Adam(
+                learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
+            )
+            model.compile(
+                loss=loss_function,
+                optimizer=optimizer,
+                metrics=[loss_function, "mean_squared_error"],
+            )
+
+        elif loss == "MSE":
+            loss_function = "mean_squared_error"
+            optimizer = keras.optimizers.Adam(
+                learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
+            )
+            model.compile(
+                loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
+            )
+
     # RESUME TRAINING
-    else:        
-        # load model
-        conv_ae, train_setup, history_resume = utils.load_trained_model(model_path)
-        batch_size = train_setup['batch_size']
-        color_mode = train_setup['color_mode']
-        loss = train_setup['loss']
-        # see if model needs to recompile??
-
-
-    # =============================== TRAINING SETUP =================================
-
-    # set loss function, optimizer and metric
-    if loss == "SSIM":
-        loss_function = custom_loss_functions.ssim_loss
-
-        optimizer = keras.optimizers.Adam(
-            learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
-        )
-        conv_ae.compile(
-            loss=loss_function,
-            optimizer=optimizer,
-            metrics=[loss_function, "mean_squared_error"],
-        )
-
-    elif loss == "MSSIM":
-        loss_function = custom_loss_functions.mssim_loss
-        optimizer = keras.optimizers.Adam(
-            learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
-        )
-        conv_ae.compile(
-            loss=loss_function,
-            optimizer=optimizer,
-            metrics=[loss_function, "mean_squared_error"],
-        )
-
-    elif loss == "MSE":
-        loss_function = "mean_squared_error"
-        optimizer = keras.optimizers.Adam(
-            learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
-        )
-        conv_ae.compile(
-            loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
-        )
+    elif args.command == "resume":
+        model_path = args.path
+        epochs = args.epochs
+        batch_size = args.batch_size        
         
-    # else:
-    #     # RESUME TRAINING
-    #     # load model
-    #     conv_ae, train_setup, history_resume = utils.load_trained_model(model_path)
-    #     batch_size = train_setup['batch_size']
-    #     color_mode = train_setup['color_mode']
-    #     loss = train_setup['loss']
-
+        # load model
+        # model, train_setup, history_resume = utils.load_model_HDF5(model_path)
+        model, train_setup, history_resume = utils.load_SavedModel(model_path)
+        # batch_size = train_setup['batch_size'] # unnecessary with new SavedModel format
+        color_mode = train_setup['color_mode'] # has to be consistent with previous model
+        # loss = train_setup['loss'] # unnecessary with new SavedModel format
+        
 
     # =============================== TRAINING =================================
     if batch_size != 1:
@@ -327,7 +325,7 @@ def main(epochs, batch_size, loss, model_path):
     )    
 
     # Fit the model on the batches generated by datagen.flow_from_directory()
-    history = conv_ae.fit_generator(
+    history = model.fit_generator(
         generator=train_generator,
         epochs=epochs,
         steps_per_epoch=train_generator.samples // batch_size,
@@ -337,17 +335,18 @@ def main(epochs, batch_size, loss, model_path):
     )
 
     # specify model name and directory to save model to
-    model_name = 'CAE_e{}_b{}_0.h5'.format(epochs,batch_size)
+    # model_name = 'CAE_e{}_b{}_0.h5'.format(epochs,batch_size) # not using HDF5
+    model_name = 'CAE_e{}_b{}_0'.format(epochs,batch_size)
     now = datetime.datetime.now()
     save_dir = os.path.join(
         os.getcwd(), "saved_models", loss, now.strftime("%d-%m-%Y_%H:%M:%S")
     )
 
-    # save entire model
+    # save model using SavedModel format (not HDF5)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     model_path = os.path.join(save_dir, model_name)
-    conv_ae.save(model_path)
+    model.save(model_path)
     print("Saved trained model at %s " % model_path)
 
     # save training history
@@ -358,13 +357,23 @@ def main(epochs, batch_size, loss, model_path):
     print("Saved training history at %s " % hist_csv_file)
 
     # save training setup
-    train_dict = {
-        "epochs": epochs,
-        "batch_size": batch_size,
-        "loss": loss,
-        "color_mode": color_mode,
-        "channels": channels,
-    }
+    if argparse.command == 'new':
+        train_dict = {
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "loss": loss,
+            "color_mode": color_mode,
+            "channels": channels,
+        }
+    elif argparse.command == 'resume':
+        train_dict = {
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "loss": loss,
+            "color_mode": color_mode,
+            "channels": channels,
+            'path_to_previous_model': args.path,
+        }
     with open(os.path.join(save_dir, "train_setup.json"), "w") as json_file:
         json.dump(train_dict, json_file)
 
@@ -409,26 +418,18 @@ parser_resume_training.add_argument(
     metavar="",
     help="number of training epochs",
 )
+parser_resume_training.add_argument(
+    "-b", "--batch", type=int, required=True, metavar="", help="batch size"
+)
 
-args = parser.parse_args(["new", "-e", "50", "-b", "4", "-l", "mssim"])
+# args = parser.parse_args(["new", "-e", "50", "-b", "4", "-l", "mssim"])
+args = parser.parse_args()
 
 if __name__ == "__main__":
-    if args.command == "new":
-        epochs = args.epochs
-        batch_size = args.batch
-        loss = args.loss.upper()
-        main(epochs, batch_size, loss, model_path=None)
-    elif args.command == "resume":
-        model_path = args.path
-        epochs = args.spochs
-        # load model        
+    main(args)
 
-        # continue training
-
-    # START TRAINING
-    main(epochs, batch_size, loss)
 
 # Score trained model.
-# scores = conv_ae.evaluate(X_test, X_test, verbose=1)
+# scores = model.evaluate(X_test, X_test, verbose=1)
 # print('Test loss:', scores[0])
 # print('Test accuracy:', scores[1])
