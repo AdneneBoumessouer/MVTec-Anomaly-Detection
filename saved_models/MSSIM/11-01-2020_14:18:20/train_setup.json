@@ -1,0 +1,7 @@
+{
+    "epochs": 50,
+    "batch_size": 4,
+    "loss": "MSSIM",
+    "color_mode": "rgb",
+    "channels": 3
+}
