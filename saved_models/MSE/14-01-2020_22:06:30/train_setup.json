@@ -1,0 +1,1 @@
+{"epochs": 1, "batch_size": 1, "loss": "MSE", "color_mode": "rgb", "channels": 3}
