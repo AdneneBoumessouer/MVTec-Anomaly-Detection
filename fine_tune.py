@@ -12,49 +12,13 @@ import csv
 import pandas as pd
 import json
 
-def load_trained_model(model_path):
-    # load autoencoder
-    loss = model_path.split('/')[1]
-    if loss == "MSSIM":
-        conv_ae = keras.models.load_model(
-            filepath=model_path,
-            custom_objects={
-                "LeakyReLU": keras.layers.LeakyReLU,
-                "mssim_loss": custom_loss_functions.mssim_loss,
-            },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
-        )
+"""THIS SCRIPT IS NOT YET COMPLETE"""
 
-    elif loss == "SSIM":
-        conv_ae = keras.models.load_model(
-            filepath=model_path,
-            custom_objects={
-                "LeakyReLU": keras.layers.LeakyReLU,
-                "ssim_loss": custom_loss_functions.ssim_loss,
-            },
-        )       
-    
-    else:
-        conv_ae = keras.models.load_model(
-            filepath=model_path,
-            custom_objects={
-                "LeakyReLU": keras.layers.LeakyReLU,
-            },
-        )
-
-    # load training history
-    dir_name = os.path.dirname(model_path)
-    history = pd.read_csv(os.path.join(dir_name,"history.csv"))
-
-    # load training setup
-    with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
-        train_setup = json.load(read_file)
-
-    return conv_ae, train_setup, history
 
 
 # ================= LOAD TRAINED MODEL AND CORRESPONDING SETUP ===================
 model_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_50_flow_from_dir_datagen.h5"
-conv_ae, train_setup, history = load_trained_model(model_path)
+conv_ae, train_setup, history = utils.load_trained_model(model_path)
 
 # ====================== LOAD DATA ===============================
 
@@ -80,6 +44,39 @@ img = validation_generator.next()[0]
 utils.compare_images(img[0], model=conv_ae)
 
 # ====================== SEE RESULTS OF TRAINED AE =======================
+
+
+model_path=  "saved_models/SSIM/CAE_150_datagen.h5"
+CAE_ssim = keras.models.load_model(
+    filepath=model_path,
+    custom_objects={
+        "LeakyReLU": keras.layers.LeakyReLU,
+        "ssim_loss": custom_loss_functions.ssim_loss,
+    },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
+)
+
+validation_datagen = ImageDataGenerator(rescale=1.0 / 255)
+
+validation_generator = validation_datagen.flow_from_directory(
+                directory="datasets/data/validation",
+                target_size=(256, 256),
+                color_mode="grayscale",
+                batch_size=1,
+                class_mode="input",
+            )
+
+img = validation_generator.next()[0] 
+# img_pred = conv_ae.predict(img)
+# plt.imshow(img_pred[0])
+utils.compare_images(img[0], model=CAE_ssim)
+
+# this does not work
+
+img = validation_generator.next()[0] 
+# img_pred = conv_ae.predict(img)
+# plt.imshow(img_pred[0])
+utils.compare_images(img[0], model=conv_ae)
+
 
 # with flow
 X_train_full = np.load("X_train.npy")
@@ -115,8 +112,6 @@ utils.compare_images(img1, model=conv_ae)
 img2 = conv_ae.predict(tf.expand_dims(img1, 0))[0]
 res_map = utils.residual_map_image(img1, img2)
 plt.imshow(res_map[:, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
-
-
 
 
 #--------------------------------------------------------------------------

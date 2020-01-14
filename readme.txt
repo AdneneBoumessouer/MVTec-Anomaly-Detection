@@ -1,10 +1,19 @@
 TO DO:
-Retrieve requirements.txt file of Amazon's tensorflow2_p36's conda env (or local environment if it works)
-Refactor main so that it is possible to pass a model_path as argument to start a new round of training.
+
+- see if loading pretrained model needs to recompile??
+- see how to save pretrained model after training for a second time (update history.csv)
 
 
 Observations:
 Old model seems to work better...possible causes: change in architecture (MaxPool2D) and loss function (1 - MSSIM)
+
+
+
+
+Retrieve local requirements:
+pip freeze > requirements.txt
+pip install -r requirements.txt 
+
 
 
 Github:
