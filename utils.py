@@ -10,12 +10,28 @@ import csv
 import pandas as pd
 import json
 
-def load_trained_model(model_path):
-    """Loads model, training setup and training history"""
+
+def load_SavedModel(model_path):
+    """Save model with SavedModel format. This is the one used in training script.
+    https://www.tensorflow.org/tutorials/keras/save_and_load"""
+    # load model
+    model = tf.keras.models.load_model(model_path)
+    # load training history
+    dir_name = os.path.dirname(model_path)
+    history = pd.read_csv(os.path.join(dir_name,"history.csv"))
+    # load training setup
+    with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
+        train_setup = json.load(read_file)
+    return model, train_setup, history
+
+
+def load_model_HDF5(model_path):
+    """Loads model (HDF5 format), training setup and training history.
+    This format makes it difficult to load a trained model for further training"""
     # load autoencoder
     loss = model_path.split('/')[1]
     if loss == "MSSIM":
-        conv_ae = keras.models.load_model(
+        model = keras.models.load_model(
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
@@ -24,7 +40,7 @@ def load_trained_model(model_path):
         )
 
     elif loss == "SSIM":
-        conv_ae = keras.models.load_model(
+        model = keras.models.load_model(
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
@@ -33,7 +49,7 @@ def load_trained_model(model_path):
         )       
     
     else:
-        conv_ae = keras.models.load_model(
+        model = keras.models.load_model(
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
@@ -48,8 +64,10 @@ def load_trained_model(model_path):
     with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
         train_setup = json.load(read_file)
 
-    return conv_ae, train_setup, history
+    return model, train_setup, history
 
+
+# ===================== This function will probably be dropped ====================
 # old_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_50_flow_from_dir_datagen_0.h5"
 def new_path(old_path):
     """create a new filename for pretrained model"""
@@ -64,7 +82,8 @@ def new_path(old_path):
 
 
 
-
+# =============== DEPRECATED FUNCTIONS (kept as backup! You never know!) ==================================
+# These functions are deprecated since they use the flow method which has been replaced by flow from directory
 def load_mvtec_data_as_tensor(dir_path, validation_split=0.1, numpy=False):
     """
     Loads training and test sets as Tensors or as numpy arrays from directory
