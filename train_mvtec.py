@@ -357,7 +357,7 @@ def main(args):
     print("Saved training history at %s " % hist_csv_file)
 
     # save training setup
-    if argparse.command == 'new':
+    if args.command == 'new':
         train_dict = {
             "epochs": epochs,
             "batch_size": batch_size,
