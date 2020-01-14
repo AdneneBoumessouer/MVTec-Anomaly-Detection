@@ -4,7 +4,7 @@ import keras.backend as K
 
 
 def ssim_loss(img_true, img_pred):
-    return -1 * K.mean(tf.image.ssim(img_true, img_pred, 1.0), axis=-1)
+    return (1 - K.mean(tf.image.ssim(img_true, img_pred, 1.0), axis=-1))/2
 
 
 # def mssim_loss(img_true, img_pred):
