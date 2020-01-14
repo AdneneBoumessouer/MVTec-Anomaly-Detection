@@ -40,7 +40,7 @@ elif "SSIM" in model_path.split("/"):
 
 # LOAD TEST SET
 importlib.reload(utils)
-_, _, X_test, y_test = utils.load_mvtec_data(model_path, numpy=False)
+_, _, X_test, y_test = utils.load_mvtec_data_as_tensor(model_path, numpy=False)
 
 # PREDICT ON TEST SET
 X_reconst = CAE_ssim.predict(X_test)
