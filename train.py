@@ -30,12 +30,16 @@ import json
 import argparse
 
 
-def main(args, train_data_dir):
-    # ========================= LOAD TRAINING DATASET =======================
+def main(args):
+    # ========================= LOAD TRAINING SETUP =======================
+    directory = args.directory
+    train_data_dir = os.path.join(directory,'train')
+    epochs = args.epochs
+    batch_size = args.batch
+    validation_split = 0.1 # incorporate to args
+    
     # NEW TRAINING
     if args.command == "new":
-        epochs = args.epochs
-        batch_size = args.batch
         loss = args.loss.upper()
 
         if loss == "SSIM":
@@ -255,8 +259,6 @@ def main(args, train_data_dir):
     # RESUME TRAINING
     elif args.command == "resume":
         model_path = args.model
-        epochs = args.epochs
-        batch_size = args.batch
 
         # load model
         model, train_setup, _ = utils.load_SavedModel(model_path)
@@ -362,6 +364,7 @@ def main(args, train_data_dir):
     # save training setup
     if args.command == "new":
         train_dict = {
+            "directory": directory,
             "epochs": epochs,
             "batch_size": batch_size,
             "loss": loss,
@@ -371,6 +374,7 @@ def main(args, train_data_dir):
         }
     elif args.command == "resume":
         train_dict = {
+            "directory": directory,
             "epochs": epochs,
             "batch_size": batch_size,
             "loss": loss,
@@ -412,6 +416,10 @@ parser_new_training.add_argument(
     help="loss function used during training",
 )
 
+parser_new_training.add_argument(
+    "-d", "--directory", type=str, required=True, metavar="", help="training directory"
+)
+
 # create the subparser to resume the training of an existing model
 parser_resume_training = subparsers.add_parser("resume")
 parser_resume_training.add_argument(
@@ -429,15 +437,10 @@ parser_resume_training.add_argument(
     "-b", "--batch", type=int, required=True, metavar="", help="batch size"
 )
 
-# args = parser.parse_args(["new", "-e", "50", "-b", "4", "-l", "mssim"])
+# args = parser.parse_args(["new", '-d', "mvtec/hazelnut/train",  "-e", "50", "-b", "4", "-l", "mssim"])
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    train_data_dir = "mvtec/hazelnut/train"
-    main(args, train_data_dir)
+    main(args)
 
-
-# Score trained model.
-# scores = model.evaluate(X_test, X_test, verbose=1)
-# print('Test loss:', scores[0])
-# print('Test accuracy:', scores[1])
+# python3 train.py new -d mvtec/hazelnut -e 1 -b 1 -l mse
