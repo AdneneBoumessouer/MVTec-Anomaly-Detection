@@ -21,14 +21,17 @@ import json
 
 import argparse
 
-
+# saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5
 def main(args):
     model_path = args.model
-    val_data_dir = args.valdir
 
     # load model and setup
-    model, train_setup, _ = utils.load_SavedModel(model_path)
+    # model_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5"
+    # model, train_setup, _ = utils.load_SavedModel(model_path)
+    model, train_setup, _ = utils.load_model_HDF5(model_path)
 
+    directory = train_setup["directory"]
+    val_data_dir = os.path.join(directory, "train")
     color_mode = train_setup["color_mode"]
     validation_split = train_setup["validation_split"]
     channels = train_setup["channels"]
@@ -66,18 +69,30 @@ def main(args):
     inputs = np.zeros(shape=(nb_images, 256, 256, channels))
     for i in range(nb_images):
         input_image = validation_generator.next()[0]
-        input_tensor[i, :, :, :] = input_image
+        inputs[i, :, :, :] = input_image
 
     # get reconstructed images (predictions)
     reconstructions = model.predict_generator(
         validation_generator, steps=validation_generator.samples, verbose=1,
     )
 
+    index = 0
+    utils.compare_images(inputs[index], reconstructions[index])
+
     # compute Residual Maps
     resmaps = utils.residual_maps(inputs, reconstructions, loss=loss)
 
-    # approximate threshold
+    # determine threshold
 
+    # save threshold
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-m", "--model", type=str, required=True, metavar="", help="path to existing model"
+)
+
+args = parser.parse_args()
 
 if __name__ == "__main__":
     main()
