@@ -14,6 +14,76 @@ import json
 
 """THIS SCRIPT IS MESSY AND NOT YET COMPLETE"""
 
+mytuple = ("apple", "banana", "cherry")
+myit = iter(mytuple)
+
+for i in range(3):
+    print(next(myit))
+
+for i in range(3):
+    print(next(myit))
+
+# ========================== TRAIN ====================================
+train_datagen = ImageDataGenerator(
+    rescale=1. / 255,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    validation_split=0.1)
+
+# this is the augmentation configuration we will use for testing:
+# only rescaling
+test_datagen = ImageDataGenerator(rescale=1. / 255,
+    validation_split=0.1)
+
+train_data_dir = 'mvtec/cable/train'
+
+train_generator = train_datagen.flow_from_directory(
+    train_data_dir, #SAME
+    target_size=(256, 256),
+    batch_size=4,
+    class_mode='input',
+    shuffle=True, ######
+    subset='training')
+
+filenames_train = train_generator.filenames
+
+validation_generator = test_datagen.flow_from_directory(
+    train_data_dir, #SAME
+    target_size=(256, 256),
+    batch_size=1,
+    class_mode='input',
+    subset='validation')
+
+filenames_valid = validation_generator.filenames
+
+model.fit_generator(
+    train_generator,
+    steps_per_epoch=nb_train_samples // batch_size,
+    epochs=epochs,
+    validation_data=validation_generator,
+    validation_steps=nb_validation_samples // batch_size)
+
+# ========================== TEST ====================================
+
+
+# this is the augmentation configuration we will use for testing:
+# only rescaling
+test_datagen = ImageDataGenerator(
+    rescale=1. / 255)
+
+test_data_dir = 'mvtec/cable/test'
+
+test_generator = test_datagen.flow_from_directory(
+    test_data_dir, #SAME
+    target_size=(256, 256),
+    batch_size=1,
+    class_mode='input',
+    shuffle=False)
+
+filenames_test = test_generator.filenames
+
+
 
 
 # ================= LOAD TRAINED MODEL AND CORRESPONDING SETUP ===================
@@ -34,50 +104,7 @@ validation_generator = validation_datagen.flow_from_directory(
                 batch_size=train_setup["batch_size"],
                 class_mode="input",
             )
-# ====================== Experimentation ======================
-# try to train loaded model
 
-
-# # set loss function, optimizer and metric
-# if train_setup["loss"] == "SSIM":
-#     loss_function = custom_loss_functions.ssim_loss
-
-#     optimizer = keras.optimizers.Adam(
-#         learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
-#     )
-#     model.compile(
-#         loss=loss_function,
-#         optimizer=optimizer,
-#         metrics=[loss_function, "mean_squared_error"],
-#     )
-
-# elif train_setup["loss"] == "MSSIM":
-#     loss_function = custom_loss_functions.mssim_loss
-#     optimizer = keras.optimizers.Adam(
-#         learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
-#     )
-#     model.compile(
-#         loss=loss_function,
-#         optimizer=optimizer,
-#         metrics=[loss_function, "mean_squared_error"],
-#     )
-
-# elif train_setup["loss"] == "MSE":
-#     loss_function = "mean_squared_error"
-#     optimizer = keras.optimizers.Adam(
-#         learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
-#     )
-#     model.compile(
-#         loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
-#     )
-
-
-# history_test = model.fit_generator(
-#         generator=validation_generator,
-#         epochs=train_setup["epochs"],
-#         steps_per_epoch=validation_generator.samples // train_setup["batch_size"],
-#         workers=-1,
-#     )
 # =======================================================================
 model_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5"
 model, train_setup, history = utils.load_model_HDF5(model_path)
@@ -109,15 +136,23 @@ model = keras.models.load_model(
 
 validation_datagen = ImageDataGenerator(rescale=1.0 / 255)
 
-validation_generator = validation_datagen.flow_from_directory(
-                directory="datasets/data/validation",
+validation_generator_1 = validation_datagen.flow_from_directory(
+                directory="mvtec/pill/train/good",
                 target_size=(256, 256),
                 color_mode="grayscale",
                 batch_size=1,
                 class_mode="input",
             )
 
-img = validation_generator.next()[0] 
+validation_generator_2 = validation_datagen.flow_from_directory(
+                directory="mvtec/pill/test/crack",
+                target_size=(256, 256),
+                color_mode="grayscale",
+                batch_size=1,
+                class_mode="input",
+            )
+
+img = validation_generator_1.next()[0] 
 # img_pred = model.predict(img)
 # plt.imshow(img_pred[0])
 utils.compare_images(img[0], model=model)
@@ -129,22 +164,40 @@ img = validation_generator.next()[0]
 # plt.imshow(img_pred[0])
 utils.compare_images(img[0], model=model)
 
-
+# ===========================================================================
 # with flow
-X_train_full = np.load("X_train.npy")
 importlib.reload(utils)
 
+X_train, X_valid, X_test, y_test = utils.load_mvtec_data_as_tensor('datasets/tensors')
 
-utils.compare_images(X_train[1500], model=model)
+# model_path = 'saved_models/l2_loss/ae_50_datagen.h5'
+model_path = 'saved_models/SSIM/CAE_150_datagen.h5'
+model = keras.models.load_model(
+    filepath=model_path,
+    custom_objects={
+        "LeakyReLU": keras.layers.LeakyReLU,
+        "ssim_loss": custom_loss_functions.ssim_loss,
+    },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
+)
+
+X_train = utils.preprocess_tensor(X_train, 'SSIM')
+img1 = X_train[1501]
+# img1 = tf.image.rgb_to_grayscale(img1)
+img2 =  model.predict(tf.expand_dims(img1, 0))[0]
+utils.compare_images(img1, img2)
+
+
 import matplotlib.image as mpimg
+X_test = utils.preprocess_tensor(X_test, 'SSIM')
+img = X_test[720] #mpimg.imread("mvtec/pill/test/crack/003.png") # scaled [0,1]
+# img = tf.image.rgb_to_grayscale(img)
+img3 =  model.predict(tf.expand_dims(img, 0))[0]
+utils.compare_images(img, img3)
 
-img = mpimg.imread("datasets/data/train/good/bottle_000.png")
-
-
-img_imread = mpimg.imread("datasets/data/train/good/bottle_000.png")  # scaled [0,1]
 
 
 # plot image, reconstruction and residual map
+np.load()
 img1 = X_train[1200]
 utils.compare_images(img1, model=model)
 img2 = model.predict(tf.expand_dims(img1, 0))[0]
