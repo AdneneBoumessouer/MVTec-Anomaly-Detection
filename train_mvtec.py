@@ -260,11 +260,7 @@ def main(args):
         # load model
         # model, train_setup, history_resume = utils.load_model_HDF5(model_path)
         model, train_setup, _ = utils.load_SavedModel(model_path)
-        # batch_size = train_setup['batch_size'] # unnecessary with new SavedModel format
-        color_mode = train_setup[
-            "color_mode"
-        ]  # has to be consistent with previous model
-        # loss = train_setup['loss'] # unnecessary with new SavedModel format
+        color_mode = train_setup["color_mode"]
 
     # =============================== TRAINING =================================
     if batch_size != 1:
@@ -331,7 +327,7 @@ def main(args):
         epochs=epochs,
         steps_per_epoch=train_generator.samples // batch_size,
         validation_data=validation_generator,
-        validation_steps=validation_generator.samples // batch_size,
+        validation_steps=validation_generator.samples // 1,
         workers=-1,
     )
 
@@ -384,6 +380,7 @@ parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(
     help="help for subcommand", title="commands", dest="command"
 )
+
 # create the subparser to begin training a new model
 parser_new_training = subparsers.add_parser("new")
 parser_new_training.add_argument(
@@ -406,6 +403,7 @@ parser_new_training.add_argument(
     choices=["mssim", "ssim", "mse"],
     help="loss function used during training",
 )
+
 # create the subparser to resume the training of an existing model
 parser_resume_training = subparsers.add_parser("resume")
 parser_resume_training.add_argument(
