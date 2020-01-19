@@ -13,10 +13,10 @@ import tensorflow as tf
 from tensorflow import keras
 import keras.backend as K
 import custom_loss_functions
+import architectures
 import utils
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
-from numpy import expand_dims
 
 import requests
 import matplotlib.image as mpimg
@@ -33,11 +33,11 @@ import argparse
 def main(args):
     # ========================= LOAD TRAINING SETUP =======================
     directory = args.directory
-    train_data_dir = os.path.join(directory,'train')
+    train_data_dir = os.path.join(directory, "train")
     epochs = args.epochs
     batch_size = args.batch
-    validation_split = 0.1 # incorporate to args
-    
+    validation_split = 0.1  # incorporate to args
+
     # NEW TRAINING
     if args.command == "new":
         loss = args.loss.upper()
@@ -49,176 +49,10 @@ def main(args):
             channels = 3
             color_mode = "rgb"
 
-        # ============================ DEFINE MODEL =============================
-        # tf.random.set_seed(42)
-        # np.random.seed(42)
+        # ==================== GET MODEL ARCHITECTURE =======================
 
-        conv_encoder = keras.models.Sequential(
-            [
-                keras.layers.Conv2D(
-                    32,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                    input_shape=[256, 256, channels],
-                ),  # CONV0 (added layer)
-                keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 128
-                keras.layers.Conv2D(
-                    32,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # CONV1
-                keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 64
-                keras.layers.Conv2D(
-                    32,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # CONV2
-                keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 32
-                keras.layers.Conv2D(
-                    32,
-                    kernel_size=3,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # CONV3
-                keras.layers.MaxPool2D(pool_size=1, padding="same"),  # 32
-                keras.layers.Conv2D(
-                    64,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # CONV4
-                keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 16
-                keras.layers.Conv2D(
-                    64,
-                    kernel_size=3,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # CONV5
-                keras.layers.MaxPool2D(pool_size=1, padding="same"),  # 16
-                keras.layers.Conv2D(
-                    128,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # CONV6
-                keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 8
-                keras.layers.Conv2D(
-                    64,
-                    kernel_size=3,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # CONV7
-                keras.layers.MaxPool2D(pool_size=1, padding="same"),  # 8
-                keras.layers.Conv2D(
-                    32,
-                    kernel_size=3,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # CONV8
-                keras.layers.MaxPool2D(pool_size=1, padding="same"),  # 8
-                keras.layers.Conv2D(
-                    100, kernel_size=8, strides=1, padding="VALID", activation="relu"
-                ),  # CONV9
-            ]
-        )
+        model = architectures.autoencoder_0(channels)
 
-        conv_decoder = keras.models.Sequential(
-            [
-                keras.layers.Conv2DTranspose(
-                    32,
-                    kernel_size=3,
-                    strides=8,
-                    padding="VALID",
-                    activation="relu",
-                    input_shape=[1, 1, 100],
-                ),  # (None, 8, 8, 32)
-                keras.layers.Conv2DTranspose(
-                    64,
-                    kernel_size=3,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # (None, 8, 8, 32)
-                keras.layers.Conv2DTranspose(
-                    128,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # (None, 8, 8, 32)
-                keras.layers.Conv2DTranspose(
-                    64,
-                    kernel_size=3,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # (None, 16, 8, 32)
-                keras.layers.UpSampling2D(size=2),
-                keras.layers.Conv2DTranspose(
-                    64,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # (None, 16, 8, 32)
-                keras.layers.Conv2DTranspose(
-                    32,
-                    kernel_size=3,
-                    strides=2,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # (None, 32, 8, 32)
-                keras.layers.UpSampling2D(size=2),
-                keras.layers.Conv2DTranspose(
-                    32,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # (None, 32, 8, 32)
-                keras.layers.Conv2DTranspose(
-                    32,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),  # (None, 64, 8, 32)
-                keras.layers.UpSampling2D(size=2),
-                keras.layers.Conv2DTranspose(
-                    32,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),
-                keras.layers.UpSampling2D(size=2),
-                keras.layers.Conv2DTranspose(
-                    channels,
-                    kernel_size=4,
-                    strides=1,
-                    padding="SAME",
-                    activation=keras.layers.LeakyReLU(0.2),
-                ),
-            ]
-        )
-
-        model = keras.models.Sequential([conv_encoder, conv_decoder])
-
-        print(conv_encoder.summary())
-        print(conv_decoder.summary())
-        print(model.summary())
         # adjust architecture, see: https://github.com/keras-team/keras/issues/3923
 
         # =============================== TRAINING SETUP =================================
@@ -281,7 +115,7 @@ def main(args):
         zca_whitening=False,  # apply ZCA whitening
         zca_epsilon=1e-06,  # epsilon for ZCA whitening
         # randomly rotate images in the range (degrees, 0 to 180)
-        rotation_range=10,
+        rotation_range=15,
         # randomly shift images horizontally (fraction of total width)
         width_shift_range=0.1,
         # randomly shift images vertically (fraction of total height)
@@ -444,3 +278,4 @@ if __name__ == "__main__":
     main(args)
 
 # python3 train.py new -d mvtec/hazelnut -e 1 -b 1 -l mse
+# python3 train.py new -d mvtec/hazelnut -e 100 -b 24 -l mse
