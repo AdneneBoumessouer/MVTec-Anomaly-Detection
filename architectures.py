@@ -83,7 +83,8 @@ def autoencoder_0(channels):
                 kernel_size=3,
                 strides=8,
                 padding="VALID",
-                activation="relu",
+                # activation="relu",
+                activation=keras.layers.LeakyReLU(0.2),
                 input_shape=[1, 1, 100],
             ),
             keras.layers.Conv2DTranspose(
@@ -147,7 +148,8 @@ def autoencoder_0(channels):
                 kernel_size=4,
                 strides=2,
                 padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
+                # activation=keras.layers.LeakyReLU(0.2),
+                activation="relu",
             ),
         ]
     )
