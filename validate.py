@@ -21,13 +21,13 @@ import json
 
 import argparse
 
-# saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5
-# model_path = 'saved_models/MSE/20-01-2020_08:14:13/CAE_e1_b24_0'
+# model_path = saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5
+
+
 def main(args):
     model_path = args.model
 
     # load model and setup
-    # model_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5"
     model, train_setup, _ = utils.load_SavedModel(model_path)
     # model, train_setup, _ = utils.load_model_HDF5(model_path)
 
