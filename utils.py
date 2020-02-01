@@ -9,12 +9,22 @@ import csv
 import pandas as pd
 import json
 
+"""
+SAVE AND LOAD LINKS:
+https://www.tensorflow.org/tutorials/keras/save_and_load#hdf5_format
+https://www.tensorflow.org/api_docs/python/tf/keras/models/save_model
+https://www.tensorflow.org/api_docs/python/tf/saved_model/save
+https://www.tensorflow.org/api_docs/python/tf/keras/models/load_model
+
+
+https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
+"""
+
 
 def load_SavedModel(model_path):
-    """Save model with SavedModel format. This is the one used in training script.
-    https://www.tensorflow.org/tutorials/keras/save_and_load"""
+    """Save model with SavedModel format. This is the one used in training script."""
     # load model
-    model = tf.keras.models.load_model(model_path)
+    model = tf.keras.models.load_model(model_path, compile=True)
     # load training history
     dir_name = os.path.dirname(model_path)
     history = pd.read_csv(os.path.join(dir_name, "history.csv"))
@@ -35,7 +45,8 @@ def load_model_HDF5(model_path):
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
                 "mssim_loss": custom_loss_functions.mssim_loss,
-            },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
+            },
+            compile=True,
         )
 
     elif loss == "SSIM":
@@ -45,11 +56,14 @@ def load_model_HDF5(model_path):
                 "LeakyReLU": keras.layers.LeakyReLU,
                 "ssim_loss": custom_loss_functions.ssim_loss,
             },
+            compile=True,
         )
 
     else:
         model = keras.models.load_model(
-            filepath=model_path, custom_objects={"LeakyReLU": keras.layers.LeakyReLU,},
+            filepath=model_path,
+            custom_objects={"LeakyReLU": keras.layers.LeakyReLU,},
+            compile=True,
         )
 
     # load training history
