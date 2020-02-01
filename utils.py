@@ -1,21 +1,36 @@
 from numpy import expand_dims
 import matplotlib.pyplot as plt
 import tensorflow as tf
-import numpy as np
-import tensorflow as tf
 from tensorflow import keras
+import numpy as np
 import custom_loss_functions
 import os
 import csv
 import pandas as pd
 import json
 
-def load_trained_model(model_path):
-    """Loads model, training setup and training history"""
+
+def load_SavedModel(model_path):
+    """Save model with SavedModel format. This is the one used in training script.
+    https://www.tensorflow.org/tutorials/keras/save_and_load"""
+    # load model
+    model = tf.keras.models.load_model(model_path)
+    # load training history
+    dir_name = os.path.dirname(model_path)
+    history = pd.read_csv(os.path.join(dir_name, "history.csv"))
+    # load training setup
+    with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
+        train_setup = json.load(read_file)
+    return model, train_setup, history
+
+
+def load_model_HDF5(model_path):
+    """Loads model (HDF5 format), training setup and training history.
+    This format makes it difficult to load a trained model for further training"""
     # load autoencoder
-    loss = model_path.split('/')[1]
+    loss = model_path.split("/")[1]
     if loss == "MSSIM":
-        conv_ae = keras.models.load_model(
+        model = keras.models.load_model(
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
@@ -24,78 +39,40 @@ def load_trained_model(model_path):
         )
 
     elif loss == "SSIM":
-        conv_ae = keras.models.load_model(
+        model = keras.models.load_model(
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
                 "ssim_loss": custom_loss_functions.ssim_loss,
             },
-        )       
-    
+        )
+
     else:
-        conv_ae = keras.models.load_model(
-            filepath=model_path,
-            custom_objects={
-                "LeakyReLU": keras.layers.LeakyReLU,
-            },
+        model = keras.models.load_model(
+            filepath=model_path, custom_objects={"LeakyReLU": keras.layers.LeakyReLU,},
         )
 
     # load training history
     dir_name = os.path.dirname(model_path)
-    history = pd.read_csv(os.path.join(dir_name,"history.csv"))
+    history = pd.read_csv(os.path.join(dir_name, "history.csv"))
 
     # load training setup
     with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
         train_setup = json.load(read_file)
 
-    return conv_ae, train_setup, history
-
-# old_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_50_flow_from_dir_datagen_0.h5"
-def new_path(old_path):
-    """create a new filename for pretrained model"""
-    dir_name = os.path.dirname(old_path)
-    suffix = os.path.basename(old_path).split('.')[1]
-    old_filename = os.path.basename(old_path).split('.')[0]    
-    prefix = old_filename[:-1]
-    index = old_filename[-1]
-    new_index = str(int(index)+1)
-    new_filename = prefix + new_index + '.' + suffix
-    return os.path.join(dir_name, new_filename)
+    return model, train_setup, history
 
 
-
-
-def load_mvtec_data_as_tensor(dir_path, validation_split=0.1, numpy=False):
+def residual_maps(inputs, reconstructions, loss):
     """
-    Loads training and test sets as Tensors or as numpy arrays from directory
-    and returns training set, validation set (based on validation_split) and test set.
+    Returns a batch of residual maps.
     """
-    # load training data
-    X_train_full = np.load(os.path.join(dir_path, "X_train.npy"))
-    # TO DO : stratified sampling
-    split_index = int(len(X_train_full) * (1 - validation_split))
-    X_train, X_valid = X_train_full[:split_index], X_train_full[split_index:]
-
-    # load testing data
-    X_test, y_test = (
-        np.load(os.path.join(dir_path, "X_test.npy")),
-        np.load(os.path.join(dir_path, "y_test.npy")),
-    )
-
-    if numpy:
-        X_train = X_train.numpy()
-        X_valid = X_valid.numpy()
-        X_test = X_test.numpy()
-
-    return X_train, X_valid, X_test, y_test
-
-
-def preprocess_tensor(tensor, loss):
+    if loss == "MSE":
+        return inputs - reconstructions  # **2 ?
     if loss == "SSIM":
-        tensor = tf.image.rgb_to_grayscale(tensor)
-    else:
-        tensor = tf.convert_to_tensor(tensor)
-    return tensor
+        return tf.image.ssim(inputs, reconstructions, 1.0)  # adjust to output in [0,1]?
+    elif loss == "MSSIM":
+        return tf.image.ssim_multiscale(inputs, reconstructions, 1.0)
 
 
 def compare_images(img1, img2=None, model=None):
@@ -149,9 +126,21 @@ def compare_images(img1, img2=None, model=None):
     plt.show()
 
 
-def residual_map_image(img1, img2):
-    """
-    Returns the Residual Map of two batches of tensor images
-    """
-    return img1 - img2
+# ===================== This function will probably be dropped ====================
+
+
+# old_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_50_flow_from_dir_datagen_0.h5"
+def new_path(old_path):
+    """create a new filename for pretrained model"""
+    dir_name = os.path.dirname(old_path)
+    suffix = os.path.basename(old_path).split(".")[1]
+    old_filename = os.path.basename(old_path).split(".")[0]
+    prefix = old_filename[:-1]
+    index = old_filename[-1]
+    new_index = str(int(index) + 1)
+    new_filename = prefix + new_index + "." + suffix
+    return os.path.join(dir_name, new_filename)
+
+
+# ====================================================================================
 

@@ -1,11 +1,22 @@
 TO DO:
+- Add in train.py which object category to train on
+- Test train.py on one class of MVTec Dataset
+- Inversigate computed Residual Maps on existing loaded models
 
-- see if loading pretrained model needs to recompile??
-- see how to save pretrained model after training for a second time (update history.csv)
+- Inversigate problem with loading a trained existing model: tf.keras.models.load_model(model_path) doesn't seem to work, see:
+https://github.com/keras-team/keras/issues/10417
+https://www.tensorflow.org/tutorials/keras/save_and_load
+
+IDEAS: 
+- Remove Parser and replace with a .json file for training setup
+- Add initial epoch in ImageDataGenerator if training is resumed
 
 
-Observations:
-Old model seems to work better...possible causes: change in architecture (MaxPool2D) and loss function (1 - MSSIM)
+
+
+OBSERVATIONS:
+
+parsing works, training works
 
 
 
