@@ -181,11 +181,22 @@ def main(args):
         os.getcwd(), "saved_models", loss, now.strftime("%d-%m-%Y_%H:%M:%S")
     )
 
-    # save model using SavedModel format (not HDF5)
+    # save model
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     model_path = os.path.join(save_dir, model_name)
-    model.save(model_path)
+    # using SavedModel format
+    # model.save(model_path) # variant 1
+    tf.keras.models.save_model(
+        model, model_path, include_optimizer=True, save_format="tf"
+    )  # variant 2
+
+    # using SavedModel format
+    # model.save(model_path+'.h5') # variant 1
+    # tf.keras.models.save_model(
+    #     model, model_path, include_optimizer=True, save_format="h5"
+    # ) # variant 2
+
     print("Saved trained model at %s " % model_path)
 
     # save training history
