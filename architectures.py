@@ -12,7 +12,7 @@ def autoencoder_0(channels):
                 strides=2,
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
-                input_shape=[256, 256, channels],
+                input_shape=(256, 256, channels),
             ),
             keras.layers.Conv2D(
                 32,
@@ -85,7 +85,7 @@ def autoencoder_0(channels):
                 padding="VALID",
                 # activation="relu",
                 activation=keras.layers.LeakyReLU(0.2),
-                input_shape=[1, 1, 100],
+                input_shape=(1, 1, 100),
             ),
             keras.layers.Conv2DTranspose(
                 64,
