@@ -21,15 +21,15 @@ import json
 
 import argparse
 
-# model_path = saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5
+model_path = "saved_models/MSE/02-02-2020_11:06:55/CAE_e1_b1_0"
 
 
 def main(args):
     model_path = args.model
 
     # load model and setup
-    model, train_setup, _ = utils.load_SavedModel(model_path)
-    # model, train_setup, _ = utils.load_model_HDF5(model_path)
+    # model, train_setup, _ = utils.load_SavedModel(model_path)
+    model, train_setup, _ = utils.load_model_HDF5(model_path)
 
     directory = train_setup["directory"]
     val_data_dir = os.path.join(directory, "train")
