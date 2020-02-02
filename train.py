@@ -187,15 +187,15 @@ def main(args):
     model_path = os.path.join(save_dir, model_name)
     # using SavedModel format
     # model.save(model_path) # variant 1
-    tf.keras.models.save_model(
-        model, model_path, include_optimizer=True, save_format="tf"
-    )  # variant 2
-
-    # using SavedModel format
-    # model.save(model_path+'.h5') # variant 1
     # tf.keras.models.save_model(
-    #     model, model_path, include_optimizer=True, save_format="h5"
-    # ) # variant 2
+    #     model, model_path, include_optimizer=True, save_format="tf"
+    # )  # variant 2
+
+    # using HDF5 format
+    # model.save(model_path+'.h5') # variant 1
+    tf.keras.models.save_model(
+        model, model_path, include_optimizer=True, save_format="h5"
+    )  # variant 2
 
     print("Saved trained model at %s " % model_path)
 
@@ -286,6 +286,12 @@ parser_resume_training.add_argument(
 args = parser.parse_args()
 
 if __name__ == "__main__":
+    if tf.test.is_gpu_available():
+        print("GPU was detected.")
+    else:
+        print("No GPU was detected. CNNs can be very slow without a GPU.")
+    print("Tensorflow version: {}".format(tf.__version__))
+    print("Keras version: {}".format(keras.__version__))
     main(args)
 
 # python3 train.py new -d mvtec/hazelnut -e 1 -b 1 -l mse
