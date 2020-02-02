@@ -21,7 +21,7 @@ import json
 
 import argparse
 
-model_path = "saved_models/MSE/02-02-2020_11:06:55/CAE_e1_b1_0"
+model_path = "saved_models/MSE/02-02-2020_16:32:49/CAE_e150_b12_0"
 
 
 def main(args):
@@ -37,10 +37,11 @@ def main(args):
     validation_split = train_setup["validation_split"]
     channels = train_setup["channels"]
     loss = train_setup["loss"]
+    batch_size = train_setup["batch_size"]
 
     # This will do preprocessing
     validation_datagen = ImageDataGenerator(
-        rescale=1.0 / 255, validation_split=validation_split
+        rescale=1.0 / 255, validation_split=validation_split, zca_epsilon=1e-06,
     )
 
     # Generate validation batches with datagen.flow_from_directory()
@@ -69,15 +70,24 @@ def main(args):
     nb_images = input_generator.samples
     inputs = np.zeros(shape=(nb_images, 256, 256, channels))
     for i in range(nb_images):
-        input_image = validation_generator.next()[0]
+        input_image = input_generator.next()[0]
         inputs[i, :, :, :] = input_image
 
     # get reconstructed images (predictions)
     reconstructions = model.predict_generator(
-        validation_generator, steps=validation_generator.samples, verbose=1,
+        validation_generator,
+        steps=validation_generator.samples / batch_size,
+        verbose=1,
     )
 
-    index = 0
+    recon = model.predict(inputs)
+
+    index = 1
+    plt.imshow(inputs[index])
+    img_original = tf.expand_dims(inputs[index], 0)
+    img_reconstruction = model.predict(img_original)
+    plt.imshow(img_reconstruction[0])
+
     utils.compare_images(inputs[index], reconstructions[index])
 
     # compute Residual Maps
