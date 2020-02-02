@@ -142,7 +142,9 @@ def main(args):
 
     # For validation dataset, only rescaling
     validation_datagen = ImageDataGenerator(
-        rescale=1.0 / 255, validation_split=validation_split
+        rescale=1.0 / 255,
+        data_format="channels_last",
+        validation_split=validation_split,
     )
 
     # Generate training batches with datagen.flow_from_directory()
@@ -174,7 +176,6 @@ def main(args):
         steps_per_epoch=train_generator.samples // batch_size,
         validation_data=validation_generator,
         validation_steps=validation_generator.samples,
-        verbose=1,
         workers=-1,
     )
 
