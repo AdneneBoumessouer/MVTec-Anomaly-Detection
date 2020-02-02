@@ -22,7 +22,9 @@ https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-ten
 
 
 def load_SavedModel(model_path):
-    """Save model with SavedModel format. This is the one used in training script."""
+    """Save model with SavedModel format.
+    This format seems to trigger an error message upon loading the model:
+    ValueError: An empty Model cannot be used as a Layer."""
     # load model
     model = tf.keras.models.load_model(model_path, compile=True)
     # load training history
@@ -36,7 +38,8 @@ def load_SavedModel(model_path):
 
 def load_model_HDF5(model_path):
     """Loads model (HDF5 format), training setup and training history.
-    This format makes it difficult to load a trained model for further training"""
+    This format makes it difficult to load a trained model for further training,
+    but works good enough for one training round."""
     # load autoencoder
     loss = model_path.split("/")[1]
     if loss == "MSSIM":
@@ -62,7 +65,10 @@ def load_model_HDF5(model_path):
     else:
         model = keras.models.load_model(
             filepath=model_path,
-            custom_objects={"LeakyReLU": keras.layers.LeakyReLU,},
+            custom_objects={
+                "LeakyReLU": keras.layers.LeakyReLU,
+                "l2_loss": custom_loss_functions.l2_loss,
+            },
             compile=True,
         )
 
