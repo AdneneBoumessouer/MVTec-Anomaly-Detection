@@ -115,7 +115,7 @@ def main(args):
         zca_whitening=False,  # apply ZCA whitening
         zca_epsilon=1e-06,  # epsilon for ZCA whitening
         # randomly rotate images in the range (degrees, 0 to 180)
-        rotation_range=180,
+        rotation_range=15,
         # randomly shift images horizontally (fraction of total width)
         width_shift_range=0.1,
         # randomly shift images vertically (fraction of total height)
