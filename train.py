@@ -141,7 +141,11 @@ def main(args):
     )
 
     # For validation dataset, only rescaling
-    # validation_datagen = ImageDataGenerator(rescale=1.0 / 255, validation_split=0.1)
+    validation_datagen = ImageDataGenerator(
+        rescale=1.0 / 255, validation_split=validation_split
+    )
+
+    NB_TRAINING_INSTANCES = 10000
 
     # Generate training batches with datagen.flow_from_directory()
     train_generator = train_datagen.flow_from_directory(
@@ -155,11 +159,11 @@ def main(args):
     )
 
     # Generate validation batches with datagen.flow_from_directory()
-    validation_generator = train_datagen.flow_from_directory(
+    validation_generator = validation_datagen.flow_from_directory(
         directory=train_data_dir,
         target_size=(256, 256),
         color_mode=color_mode,
-        batch_size=batch_size,
+        batch_size=1,  # batch_size
         class_mode="input",
         subset="validation",
         shuffle=True,
@@ -169,9 +173,9 @@ def main(args):
     history = model.fit_generator(
         generator=train_generator,
         epochs=epochs,
-        steps_per_epoch=train_generator.samples,  #  // batch_size
+        steps_per_epoch=NB_TRAINING_INSTANCES // batch_size,
         validation_data=validation_generator,
-        validation_steps=validation_generator.samples,  #  // batch_size
+        validation_steps=validation_generator.samples,
         verbose=2,
         workers=-1,
     )
