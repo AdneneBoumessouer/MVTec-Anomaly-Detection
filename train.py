@@ -115,7 +115,7 @@ def main(args):
         zca_whitening=False,  # apply ZCA whitening
         zca_epsilon=1e-06,  # epsilon for ZCA whitening
         # randomly rotate images in the range (degrees, 0 to 180)
-        rotation_range=15,
+        rotation_range=180,
         # randomly shift images horizontally (fraction of total width)
         width_shift_range=0.1,
         # randomly shift images vertically (fraction of total height)
@@ -167,9 +167,10 @@ def main(args):
     history = model.fit_generator(
         generator=train_generator,
         epochs=epochs,
-        steps_per_epoch=train_generator.samples // batch_size,
+        steps_per_epoch=train_generator.samples,  #  // batch_size
         validation_data=validation_generator,
-        validation_steps=validation_generator.samples // batch_size,
+        validation_steps=validation_generator.samples,  #  // batch_size
+        verbose=2,
         workers=-1,
     )
 
@@ -295,4 +296,6 @@ if __name__ == "__main__":
     main(args)
 
 # python3 train.py new -d mvtec/hazelnut -e 1 -b 1 -l mse
-# python3 train.py new -d mvtec/hazelnut -e 100 -b 24 -l mse
+# python3 train.py new -d mvtec/hazelnut -e 150 -b 24 -l mse
+# python3 train.py new -d mvtec/hazelnut -e 150 -b 24 -l ssim
+# python3 train.py new -d mvtec/hazelnut -e 150 -b 24 -l mssim
