@@ -1,0 +1,1 @@
+{"batch_size": 12, "channels": 3, "color_mode": "rgb", "loss": "MSE", "validation_split": 0.1, "directory": "mvtec/hazelnut", "epochs": 150}
