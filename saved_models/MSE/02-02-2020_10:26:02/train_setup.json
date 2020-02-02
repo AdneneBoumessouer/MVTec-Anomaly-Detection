@@ -1,1 +1,0 @@
-{"directory": "mvtec/hazelnut", "epochs": 1, "validation_split": 0.1, "channels": 3, "batch_size": 1, "loss": "MSE", "color_mode": "rgb"}
