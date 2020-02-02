@@ -174,7 +174,7 @@ def main(args):
         steps_per_epoch=train_generator.samples // batch_size,
         validation_data=validation_generator,
         validation_steps=validation_generator.samples,
-        verbose=2,
+        verbose=1,
         workers=-1,
     )
 
