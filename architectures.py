@@ -292,12 +292,12 @@ def autoencoder_inception_resnet_v2():
     return model, description_dict
 
 
-def load_model(which, channels=3):
-    if which.lower() == "mvtec":
+def load_model(model_name, channels=3):
+    if model_name.lower() == "mvtec":
         model, description_dict = autoencoder_mvtec(channels)
-    elif which.lower == "resnet":
+    elif model_name.lower == "resnet":
         model, description_dict = autoencoder_inception_resnet_v2()
-    elif which.lower() == "nasnet":
+    elif model_name.lower() == "nasnet":
         pass
     return model, description_dict
 
