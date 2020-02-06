@@ -52,6 +52,7 @@ def main(args):
 
         # Load model architecture
         model, description_dict = architectures.load_model(model_name, channels)
+        preprocess_input = description_dict["preprocess_input"]
 
         # specify model name and directory to save model to
         now = datetime.datetime.now()
@@ -172,7 +173,7 @@ def main(args):
         # set rescaling factor (applied before any other transformation)
         rescale=1.0 / 255,
         # set function that will be applied on each input
-        preprocessing_function=None,
+        preprocessing_function=preprocess_input,  # None
         # image data format, either "channels_first" or "channels_last"
         data_format="channels_last",
         # fraction of images reserved for validation (strictly between 0 and 1)
