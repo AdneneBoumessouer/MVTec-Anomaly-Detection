@@ -69,64 +69,59 @@ def main(args):
         if not os.path.isdir(log_dir):
             os.makedirs(log_dir)
 
+        learning_rate = 0.002
+        # learning_rate = 2e-4
+        # learning_rate = 0.001
+
         # set loss function, optimizer, metric and callbacks
         if loss == "SSIM":
             loss_function = custom_loss_functions.ssim
             optimizer = keras.optimizers.Adam(
-                learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
+                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
             )
             model.compile(
                 loss=loss_function,
                 optimizer=optimizer,
                 metrics=[loss_function, "mean_squared_error"],
             )
-            # early stopping minimum change
-            min_delta = 0.0005
 
         elif loss == "MSSIM":
             loss_function = custom_loss_functions.mssim
             optimizer = keras.optimizers.Adam(
-                learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
+                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
             )
             model.compile(
                 loss=loss_function,
                 optimizer=optimizer,
                 metrics=[loss_function, "mean_squared_error"],
             )
-            # early stopping minimum change
-            min_delta = 0.0005
 
         elif loss == "L2":
             loss_function = custom_loss_functions.l2
             optimizer = keras.optimizers.Adam(
-                learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
+                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
             )
             model.compile(
                 loss=loss_function, optimizer=optimizer, metrics=[
                     "mean_squared_error"]
             )
-            # early stopping minimum change
-            min_delta = 0.001
 
         elif loss == "MSE":
             loss_function = "mean_squared_error"
             optimizer = keras.optimizers.Adam(
-                learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
-            )  # 0.001
+                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
+            )
             model.compile(
                 loss=loss_function, optimizer=optimizer, metrics=[
                     "mean_squared_error"]
             )
-            # early stopping minimum change
-            min_delta = 0.001
 
         # callbacks
         early_stopping_cb = keras.callbacks.EarlyStopping(
             # monitor="loss",
             monitor="val_loss",
-            patience=7,
+            patience=10,
             mode="min",
-            # min_delta=min_delta,
             verbose=1,
         )
         checkpoint_cb = keras.callbacks.ModelCheckpoint(
@@ -254,6 +249,7 @@ def main(args):
         train_dict = {
             "directory": directory,
             "epochs": epochs,
+            "learning_rate": learning_rate,
             "batch_size": batch_size,
             "loss": loss,
             "color_mode": color_mode,
