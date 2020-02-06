@@ -14,7 +14,7 @@ def autoencoder_0(channels):
                 activation=keras.layers.LeakyReLU(0.2),
                 input_shape=(256, 256, channels),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 32,
                 kernel_size=4,
@@ -22,7 +22,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 32,
                 kernel_size=4,
@@ -30,7 +30,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 32,
                 kernel_size=3,
@@ -38,7 +38,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 64,
                 kernel_size=4,
@@ -46,7 +46,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 64,
                 kernel_size=3,
@@ -54,7 +54,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 128,
                 kernel_size=4,
@@ -62,7 +62,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),  # CONV6
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 64,
                 kernel_size=3,
@@ -78,7 +78,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 100, kernel_size=8, strides=1, padding="VALID", activation="relu"
             ),
@@ -97,7 +97,7 @@ def autoencoder_0(channels):
                 activation=keras.layers.LeakyReLU(0.2),
                 input_shape=(1, 1, 100),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 64,
                 kernel_size=3,
@@ -105,7 +105,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 128,
                 kernel_size=4,
@@ -113,7 +113,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 64,
                 kernel_size=3,
@@ -121,7 +121,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 64,
                 kernel_size=4,
@@ -129,7 +129,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=3,
@@ -137,7 +137,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=4,
@@ -145,7 +145,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=4,
@@ -153,7 +153,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=4,
@@ -161,7 +161,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
-            keras.layers.BatchNormalization(),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 channels,
                 kernel_size=4,
@@ -177,7 +177,11 @@ def autoencoder_0(channels):
     print(conv_decoder.summary())
     print(model.summary())
 
-    return model
+    description_dict = {"pretrained": False,
+                        "configuation": "MVTec",
+                        "comments": None}
+
+    return model, description_dict
 
 
 def autoencoder_1(channels):
@@ -430,4 +434,3 @@ def autoencoder_2():
     # # LAST LAYER:
 
     base_encoder.summary()
-
