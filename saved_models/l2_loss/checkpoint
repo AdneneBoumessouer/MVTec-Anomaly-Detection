@@ -1,2 +1,0 @@
-model_checkpoint_path: "ae_50_datagen_weights"
-all_model_checkpoint_paths: "ae_50_datagen_weights"
