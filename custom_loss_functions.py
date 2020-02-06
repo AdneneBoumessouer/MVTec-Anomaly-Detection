@@ -3,15 +3,15 @@ from tensorflow import keras
 import keras.backend as K
 
 
-def ssim_loss(img_true, img_pred):
+def ssim(img_true, img_pred):
     return (1 - K.mean(tf.image.ssim(img_true, img_pred, 1.0), axis=-1)) / 2
 
 
-def mssim_loss(img_true, img_pred):
+def mssim(img_true, img_pred):
     return 1 - K.mean(tf.image.ssim_multiscale(img_true, img_pred, 1.0), axis=-1)
 
 
-def l2_loss(img_true, img_pred):
+def l2(img_true, img_pred):
     return 2 * tf.nn.l2_loss(img_true - img_pred)
 
 
