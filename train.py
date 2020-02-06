@@ -33,6 +33,7 @@ import argparse
 def main(args):
     # Get model setup
     directory = args.directory
+    model_name = args.model
     train_data_dir = os.path.join(directory, "train")
     epochs = args.epochs
     batch_size = args.batch
@@ -50,7 +51,7 @@ def main(args):
             color_mode = "rgb"
 
         # Load model architecture
-        model, description_dict = architectures.autoencoder_0(channels)
+        model, description_dict = architectures.load_model(model_name, channels)
 
         # adjust architecture, see: https://github.com/keras-team/keras/issues/3923
 
@@ -102,8 +103,7 @@ def main(args):
                 learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
             )
             model.compile(
-                loss=loss_function, optimizer=optimizer, metrics=[
-                    "mean_squared_error"]
+                loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
             )
 
         elif loss == "MSE":
@@ -112,8 +112,7 @@ def main(args):
                 learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
             )
             model.compile(
-                loss=loss_function, optimizer=optimizer, metrics=[
-                    "mean_squared_error"]
+                loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
             )
 
         # callbacks
@@ -131,9 +130,11 @@ def main(args):
             verbose=1,
             save_best_only=True,
             save_weights_only=False,
-            period=1)
+            period=1,
+        )
         tensorboard_cb = keras.callbacks.TensorBoard(
-            log_dir=log_dir, write_graph=True, update_freq="epoch")
+            log_dir=log_dir, write_graph=True, update_freq="epoch"
+        )
 
     # RESUME TRAINING
     elif args.command == "resume":
@@ -280,6 +281,17 @@ subparsers = parser.add_subparsers(
 
 # create the subparser to begin training a new model
 parser_new_training = subparsers.add_parser("new")
+
+parser_new_training.add_argument(
+    "-m",
+    "--model",
+    type=str,
+    required=True,
+    metavar="",
+    choices=["mvtec", "resnet", "nasnet"],
+    help="model used during training",
+)
+
 parser_new_training.add_argument(
     "-e",
     "--epochs",
@@ -308,7 +320,7 @@ parser_new_training.add_argument(
 # create the subparser to resume the training of an existing model
 parser_resume_training = subparsers.add_parser("resume")
 parser_resume_training.add_argument(
-    "-m", "--model", type=str, required=True, metavar="", help="path to existing model"
+    "-p", "--path", type=str, required=True, metavar="", help="path to existing model"
 )
 parser_resume_training.add_argument(
     "-e",
@@ -334,20 +346,10 @@ if __name__ == "__main__":
     print("Keras version: {}".format(keras.__version__))
     main(args)
 
-# for testing
-# python3 train.py new -d mvtec/hazelnut -e 1 -b 1 -l mse
-
-# python3 train.py new -d mvtec/hazelnut -e 150 -b 12 -l ssim
-# python3 train.py new -d mvtec/hazelnut -e 150 -b 12 -l mssim
-# python3 train.py new -d mvtec/hazelnut -e 150 -b 12 -l l2
-# python3 train.py new -d mvtec/hazelnut -e 150 -b 12 -l mse
-
-# suggested by new paper in appendix
-# python3 train.py new -d mvtec/hazelnut -e 150 -b 24 -l ssim
-# python3 train.py new -d mvtec/hazelnut -e 150 -b 24 -l mssim
-# python3 train.py new -d mvtec/hazelnut -e 150 -b 24 -l l2
-# python3 train.py new -d mvtec/hazelnut -e 150 -b 24 -l mse
+# Examples to initiate training
 
 # python3 train.py new -d mvtec/capsule -e 150 -b 12 -l l2
+# python3 train.py new -d mvtec/capsule -m mvtec -e 150 -b 12 -l l2
+# python3 train.py new -d mvtec/capsule -m mvtec -e 200 -b 12 -l mse
 
 # tensorboard --logdir=/home/adnen.boumessouer/AutPr/saved_models/SSIM/05-02-2020_12:45:18/logs
