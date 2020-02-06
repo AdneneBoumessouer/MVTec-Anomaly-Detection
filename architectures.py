@@ -180,7 +180,11 @@ def autoencoder_mvtec(channels):
     print(conv_decoder.summary())
     print(model.summary())
 
-    description_dict = {"pretrained": False, "configuation": "MVTec", "comments": None}
+    description_dict = {
+        "pretrained": False,
+        "configuation": "MVTec",
+        "preprocess_input": None,
+    }
 
     return model, description_dict
 
@@ -283,10 +287,12 @@ def autoencoder_inception_resnet_v2():
 
     model = keras.models.Sequential([encoder, decoder])
 
+    preprocess_input = keras.applications.inception_resnet_v2.preprocess_input
+
     description_dict = {
         "pretrained": True,
         "configuation": "inception_resnet_v2",
-        "comments": None,
+        "preprocess_input": preprocess_input,
     }
 
     return model, description_dict
