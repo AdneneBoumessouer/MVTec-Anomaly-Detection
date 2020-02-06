@@ -53,8 +53,6 @@ def main(args):
         # Load model architecture
         model, description_dict = architectures.load_model(model_name, channels)
 
-        # adjust architecture, see: https://github.com/keras-team/keras/issues/3923
-
         # specify model name and directory to save model to
         now = datetime.datetime.now()
         save_dir = os.path.join(
@@ -117,15 +115,10 @@ def main(args):
 
         # callbacks
         early_stopping_cb = keras.callbacks.EarlyStopping(
-            # monitor="loss",
-            monitor="val_loss",
-            patience=10,
-            mode="min",
-            verbose=1,
+            monitor="val_loss", patience=10, mode="min", verbose=1,
         )
         checkpoint_cb = keras.callbacks.ModelCheckpoint(
             filepath=model_path,
-            # monitor="loss",
             monitor="val_loss",
             verbose=1,
             save_best_only=True,
