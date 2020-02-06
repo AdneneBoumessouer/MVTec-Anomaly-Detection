@@ -21,7 +21,14 @@ import json
 
 import argparse
 
-model_path = "saved_models/MSE/02-02-2020_16:32:49/CAE_e150_b12_0"
+
+def plot_img(imgs, index):
+    """Takes an image tensor and plots one image according to index"""
+    if imgs.shape[-1] == 3:
+        plt.imshow(imgs[index])
+    else:
+        plt.imshow(imgs[index, :, :, 0], cmap=plt.cm.gray)
+    plt.show()
 
 
 def main(args):
@@ -29,7 +36,7 @@ def main(args):
 
     # load model and setup
     # model, train_setup, _ = utils.load_SavedModel(model_path)
-    model, train_setup, _ = utils.load_model_HDF5(model_path)
+    model, train_setup, history = utils.load_model_HDF5(model_path)
 
     directory = train_setup["directory"]
     val_data_dir = os.path.join(directory, "train")
@@ -68,30 +75,21 @@ def main(args):
 
     # retrieve preprocessed input images as a numpy array
     nb_images = input_generator.samples
-    inputs = np.zeros(shape=(nb_images, 256, 256, channels))
+    imgs_input = np.zeros(shape=(nb_images, 256, 256, channels))
     for i in range(nb_images):
-        input_image = input_generator.next()[0]
-        inputs[i, :, :, :] = input_image
+        img_input = input_generator.next()[0]
+        imgs_input[i, :, :, :] = img_input
 
     # get reconstructed images (predictions)
-    reconstructions = model.predict_generator(
+    imgs_pred = model.predict_generator(
         validation_generator,
-        steps=validation_generator.samples / batch_size,
+        steps=validation_generator.samples,
         verbose=1,
     )
+    # imgs_pred = model.predict(imgs_input)
 
-    recon = model.predict(inputs)
-
-    index = 1
-    plt.imshow(inputs[index])
-    img_original = tf.expand_dims(inputs[index], 0)
-    img_reconstruction = model.predict(img_original)
-    plt.imshow(img_reconstruction[0])
-
-    utils.compare_images(inputs[index], reconstructions[index])
-
-    # compute Residual Maps
-    resmaps = utils.residual_maps(inputs, reconstructions, loss=loss)
+    # compute residual maps
+    imgs_diff = imgs_input - imgs_pred
 
     # determine threshold
 
@@ -107,3 +105,15 @@ args = parser.parse_args()
 
 if __name__ == "__main__":
     main()
+
+model_path = "saved_models/MSE/02-02-2020_16:32:49/CAE_e150_b12_0"
+
+
+# index = 1
+# plt.imshow(inputs[index])
+# img_original = tf.expand_dims(inputs[index], 0)
+# img_reconstruction = model.predict(img_original)
+# plt.imshow(img_reconstruction[0])
+
+# # compute Residual Maps
+# resmaps = utils.residual_maps(inputs, reconstructions, loss=loss)
