@@ -1,0 +1,1 @@
+{"validation_split": 0.1, "loss": "L2", "batch_size": 12, "configuation": "MVTec", "directory": "mvtec/capsule", "comments": null, "epochs": 150, "channels": 3, "color_mode": "rgb", "pretrained": false}

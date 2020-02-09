@@ -2,25 +2,20 @@ import tensorflow as tf
 from tensorflow import keras
 
 
-def autoencoder_0(channels):
+def autoencoder_mvtec(channels):
     """old model"""
     conv_encoder = keras.models.Sequential(
         [
+            # keras.layers.InputLayer(input_shape=(256, 256, channels)),
             keras.layers.Conv2D(
                 32,
                 kernel_size=4,
                 strides=2,
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
-                input_shape=[256, 256, channels],
+                input_shape=(256, 256, channels),
             ),
-            keras.layers.Conv2D(
-                32,
-                kernel_size=4,
-                strides=2,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 32,
                 kernel_size=4,
@@ -28,6 +23,15 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
+            keras.layers.Conv2D(
+                32,
+                kernel_size=4,
+                strides=2,
+                padding="SAME",
+                activation=keras.layers.LeakyReLU(0.2),
+            ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 32,
                 kernel_size=3,
@@ -35,6 +39,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 64,
                 kernel_size=4,
@@ -42,6 +47,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 64,
                 kernel_size=3,
@@ -49,6 +55,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 128,
                 kernel_size=4,
@@ -56,6 +63,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),  # CONV6
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 64,
                 kernel_size=3,
@@ -63,6 +71,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 32,
                 kernel_size=3,
@@ -70,14 +79,18 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2D(
                 100, kernel_size=8, strides=1, padding="VALID", activation="relu"
             ),
+            # keras.layers.BatchNormalization(),
+            # keras.layers.Flatten(),
         ]
     )
 
     conv_decoder = keras.models.Sequential(
         [
+            # keras.layers.InputLayer(input_shape=(1, 1, 100)),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=3,
@@ -85,8 +98,9 @@ def autoencoder_0(channels):
                 padding="VALID",
                 # activation="relu",
                 activation=keras.layers.LeakyReLU(0.2),
-                input_shape=[1, 1, 100],
+                input_shape=(1, 1, 100),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 64,
                 kernel_size=3,
@@ -94,6 +108,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 128,
                 kernel_size=4,
@@ -101,6 +116,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 64,
                 kernel_size=3,
@@ -108,6 +124,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 64,
                 kernel_size=4,
@@ -115,6 +132,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=3,
@@ -122,6 +140,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=4,
@@ -129,6 +148,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=4,
@@ -136,6 +156,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 32,
                 kernel_size=4,
@@ -143,6 +164,7 @@ def autoencoder_0(channels):
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
             ),
+            # keras.layers.BatchNormalization(),
             keras.layers.Conv2DTranspose(
                 channels,
                 kernel_size=4,
@@ -158,257 +180,249 @@ def autoencoder_0(channels):
     print(conv_decoder.summary())
     print(model.summary())
 
-    return model
+    description_dict = {
+        "pretrained": False,
+        "configuation": "MVTec",
+        "preprocess_input": None,
+    }
+
+    return model, description_dict
 
 
-def autoencoder_1(channels):
-    """current model"""
-    conv_encoder = keras.models.Sequential(
-        [
-            keras.layers.Conv2D(
-                32,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-                input_shape=[256, 256, channels],
-            ),  # CONV0 (added layer)
-            keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 128
-            keras.layers.Conv2D(
-                32,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # CONV1
-            keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 64
-            keras.layers.Conv2D(
-                32,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # CONV2
-            keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 32
-            keras.layers.Conv2D(
-                32,
-                kernel_size=3,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # CONV3
-            keras.layers.MaxPool2D(pool_size=1, padding="same"),  # 32
-            keras.layers.Conv2D(
-                64,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # CONV4
-            keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 16
-            keras.layers.Conv2D(
-                64,
-                kernel_size=3,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # CONV5
-            keras.layers.MaxPool2D(pool_size=1, padding="same"),  # 16
-            keras.layers.Conv2D(
-                128,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # CONV6
-            keras.layers.MaxPool2D(pool_size=2, padding="same"),  # 8
-            keras.layers.Conv2D(
-                64,
-                kernel_size=3,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # CONV7
-            keras.layers.MaxPool2D(pool_size=1, padding="same"),  # 8
-            keras.layers.Conv2D(
-                32,
-                kernel_size=3,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # CONV8
-            keras.layers.MaxPool2D(pool_size=1, padding="same"),  # 8
-            keras.layers.Conv2D(
-                100, kernel_size=8, strides=1, padding="VALID", activation="relu"
-            ),  # CONV9
-        ]
-    )
-
-    conv_decoder = keras.models.Sequential(
-        [
-            keras.layers.Conv2DTranspose(
-                32,
-                kernel_size=3,
-                strides=8,
-                padding="VALID",
-                activation="relu",
-                input_shape=[1, 1, 100],
-            ),  # (None, 8, 8, 32)
-            keras.layers.Conv2DTranspose(
-                64,
-                kernel_size=3,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # (None, 8, 8, 32)
-            keras.layers.Conv2DTranspose(
-                128,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # (None, 8, 8, 32)
-            keras.layers.Conv2DTranspose(
-                64,
-                kernel_size=3,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # (None, 16, 8, 32)
-            keras.layers.UpSampling2D(size=2),
-            keras.layers.Conv2DTranspose(
-                64,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # (None, 16, 8, 32)
-            keras.layers.Conv2DTranspose(
-                32,
-                kernel_size=3,
-                strides=2,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # (None, 32, 8, 32)
-            keras.layers.UpSampling2D(size=2),
-            keras.layers.Conv2DTranspose(
-                32,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # (None, 32, 8, 32)
-            keras.layers.Conv2DTranspose(
-                32,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),  # (None, 64, 8, 32)
-            keras.layers.UpSampling2D(size=2),
-            keras.layers.Conv2DTranspose(
-                32,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),
-            keras.layers.UpSampling2D(size=2),
-            keras.layers.Conv2DTranspose(
-                channels,
-                kernel_size=4,
-                strides=1,
-                padding="SAME",
-                activation=keras.layers.LeakyReLU(0.2),
-            ),
-        ]
-    )
-
-    model = keras.models.Sequential([conv_encoder, conv_decoder])
-
-    print(conv_encoder.summary())
-    print(conv_decoder.summary())
-    print(model.summary())
-
-    return model
+# ==================================================================
+# ==================================================================
+# ==================================================================
 
 
-def autoencoder_2():
-    """Prototype for transfer learning"""
+def autoencoder_inception_resnet_v2():
 
-    base_encoder = keras.applications.xception.Xception(
-        input_shape=(256, 256, 3),
+    # encoder
+    base_encoder = keras.applications.inception_resnet_v2.InceptionResNetV2(
         include_top=False,
         weights="imagenet",
         input_tensor=None,
+        input_shape=(299, 299, 3),
         pooling=None,
     )
-    # LAST LAYER: block14_sepconv2_act (Activation) (None, 8, 8, 2048)
+    for layer in base_encoder.layers:
+        layer.trainable = False
 
-    conv_encoder = keras.models.Sequential(
+    encoder = keras.models.Sequential(
         [
             base_encoder,
             keras.layers.Conv2D(
-                512,
-                kernel_size=1,
-                strides=1,
-                padding="VALID",
-                activation=keras.layers.LeakyReLU(0.2),
+                512, kernel_size=1, strides=1, padding="SAME", activation=None,
+            ),
+            keras.layers.Conv2D(
+                512, kernel_size=1, strides=1, padding="SAME", activation=None,
             ),
         ]
     )
+    print(encoder.summary())
 
-    conv_decoder = keras.models.Sequential(
-        [
-            keras.layers.Conv2DTranspose(
-                512,
-                kernel_size=4,
-                strides=2,
-                padding="SAME",
-                activation=None,
-                input_shape=[8, 8, 512],
-            ),
-            keras.layers.BatchNormalization(),
-            keras.layers.ReLu(),
-            keras.layers.Conv2DTranspose(
-                256,
-                kernel_size=4,
-                strides=2,
-                padding="SAME",
-                activation=None,
-                input_shape=[8, 8, 512],
-            ),
-            keras.layers.BatchNormalization(),
-            keras.layers.ReLu(),
-        ]
-    )
+    # decoder
+    inputs = keras.layers.Input(shape=tuple(encoder.output.shape[-3:]))
 
-    # base_encoder = keras.applications.inception_resnet_v2.InceptionResNetV2(
-    #     input_shape=(256, 256, 3),
-    #     include_top=False,
-    #     weights="imagenet",
-    #     input_tensor=None,
-    #     pooling="avg",
-    # )
-    # # LAST LAYER: conv_7b_ac (Activation)         (None, 6, 6, 1536)
+    layer_1 = keras.layers.Conv2DTranspose(
+        512, kernel_size=4, strides=2, padding="VALID", activation=None,
+    )(inputs)
+    layer_2 = keras.layers.BatchNormalization()(layer_1)
+    layer_3 = keras.layers.ReLU()(layer_2)
+    layer_4 = keras.layers.Conv2DTranspose(
+        512, kernel_size=3, strides=1, padding="SAME", activation=None,
+    )(layer_3)
+    layer_5 = keras.layers.BatchNormalization()(layer_4)
+    layer_6 = keras.layers.ReLU()(layer_5)
+    ####
+    add_1 = keras.layers.Add()([layer_1, layer_6])
+    ####
+    layer_7 = keras.layers.Conv2DTranspose(
+        256, kernel_size=3, strides=2, padding="VALID", activation=None,
+    )(add_1)
+    layer_8 = keras.layers.BatchNormalization()(layer_7)
+    layer_9 = keras.layers.ReLU()(layer_8)
+    layer_10 = keras.layers.Conv2DTranspose(
+        256, kernel_size=3, strides=1, padding="SAME", activation=None,
+    )(layer_9)
+    layer_11 = keras.layers.BatchNormalization()(layer_10)
+    layer_12 = keras.layers.ReLU()(layer_11)
+    ####
+    add_2 = keras.layers.Add()([layer_7, layer_12])
+    ####
+    layer_13 = keras.layers.Conv2DTranspose(
+        128, kernel_size=4, strides=2, padding="SAME", activation=None,
+    )(add_2)
+    layer_14 = keras.layers.BatchNormalization()(layer_13)
+    layer_15 = keras.layers.ReLU()(layer_14)
+    layer_16 = keras.layers.Conv2DTranspose(
+        128, kernel_size=3, strides=1, padding="SAME", activation=None,
+    )(layer_15)
+    layer_17 = keras.layers.BatchNormalization()(layer_16)
+    layer_18 = keras.layers.ReLU()(layer_17)
+    ####
+    add_3 = keras.layers.Add()([layer_13, layer_18])
+    ####
+    layer_19 = keras.layers.Conv2DTranspose(
+        64, kernel_size=3, strides=2, padding="VALID", activation=None,
+    )(add_3)
+    layer_20 = keras.layers.BatchNormalization()(layer_19)
+    layer_21 = keras.layers.ReLU()(layer_20)
+    layer_22 = keras.layers.Conv2DTranspose(
+        64, kernel_size=3, strides=1, padding="SAME", activation=None,
+    )(layer_21)
+    layer_23 = keras.layers.BatchNormalization()(layer_22)
+    layer_24 = keras.layers.ReLU()(layer_23)
+    ####
+    add_4 = keras.layers.Add()([layer_19, layer_24])
+    ####
+    layer_25 = keras.layers.Conv2DTranspose(
+        3,
+        kernel_size=3,
+        strides=2,
+        padding="VALID",
+        activation=keras.activations.sigmoid,
+    )(add_4)
 
-    # base_encoder = keras.applications.resnet_v2.ResNet50V2(
-    #     input_shape=(256, 256, 3),
-    #     include_top=False,
-    #     weights="imagenet",
-    #     input_tensor=None,
-    #     pooling=None,
-    # )
-    # # LAST LAYER: post_relu (Activation)          (None, 8, 8, 2048)
+    decoder = keras.models.Model(inputs=inputs, outputs=layer_25)
 
-    # base_encoder = keras.applications.resnet.ResNet50(
-    #     input_shape=(256, 256, 3),
-    #     include_top=False,
-    #     weights="imagenet",
-    #     input_tensor=None,
-    #     pooling=None,
-    # )
-    # # LAST LAYER:
+    model = keras.models.Sequential([encoder, decoder])
 
-    base_encoder.summary()
+    preprocess_input = keras.applications.inception_resnet_v2.preprocess_input
+
+    description_dict = {
+        "pretrained": True,
+        "configuation": "inception_resnet_v2",
+        "preprocess_input": preprocess_input,
+    }
+
+    return model, description_dict
+
+
+def load_model(model_name, channels=3):
+    if model_name.lower() == "mvtec":
+        model, description_dict = autoencoder_mvtec(channels)
+    elif model_name.lower == "resnet":
+        model, description_dict = autoencoder_inception_resnet_v2()
+    elif model_name.lower() == "nasnet":
+        pass
+    return model, description_dict
+
+
+# ==================================================================
+# def autoencoder_NASNetMobile(channels):
+#     base_encoder = keras.applications.nasnet.NASNetMobile(
+#         input_shape=(224, 224, 3),
+#         include_top=False,
+#         weights="imagenet",
+#         input_tensor=None,
+#         pooling=None,
+#     )
+#     print(base_encoder.summary())
+
+#     # decoder
+#     inputs = keras.layers.Input(shape=tuple(base_encoder.output.shape[-3:]))
+
+#     layer_1 = keras.layers.Conv2DTranspose(
+#         512, kernel_size=4, strides=2, padding="SAME", activation=None,
+#     )(inputs)
+#     layer_2 = keras.layers.BatchNormalization()(layer_1)
+#     layer_3 = keras.layers.ReLU()(layer_2)
+
+
+# ==================================================================
+# ==================================================================
+
+# def autoencoder_inception_resnet_v2_old(channels):
+
+#     # encoder
+#     base_encoder = keras.applications.inception_resnet_v2.InceptionResNetV2(
+#         include_top=False,
+#         weights="imagenet",
+#         input_tensor=None,
+#         input_shape=(299, 299, 3),
+#         pooling=None,
+#     )
+#     # print(base_encoder.summary())
+
+#     conv_encoder = keras.models.Sequential(
+#         [
+#             base_encoder,
+#             keras.layers.Conv2D(
+#                 512, kernel_size=1, strides=1, padding="SAME", activation=None,
+#             ),
+#             keras.layers.Conv2D(
+#                 512, kernel_size=1, strides=1, padding="SAME", activation=None,
+#             ),
+#         ]
+#     )
+#     print(conv_encoder.summary())
+
+#     # decoder
+#     inputs = keras.layers.Input(shape=tuple(conv_encoder.output.shape[-3:]))
+
+#     layer_1 = keras.layers.Conv2DTranspose(
+#         512, kernel_size=4, strides=2, padding="SAME", activation=None,
+#     )(inputs)
+#     layer_2 = keras.layers.BatchNormalization()(layer_1)
+#     layer_3 = keras.layers.ReLU()(layer_2)
+#     layer_4 = keras.layers.Conv2DTranspose(
+#         512, kernel_size=3, strides=1, padding="SAME", activation=None,
+#     )(layer_3)
+#     layer_5 = keras.layers.BatchNormalization()(layer_4)
+#     layer_6 = keras.layers.ReLU()(layer_5)
+#     ####
+#     add_1 = keras.layers.Add()([layer_1, layer_6])
+#     ####
+#     layer_7 = keras.layers.Conv2DTranspose(
+#         256, kernel_size=4, strides=2, padding="SAME", activation=None,
+#     )(add_1)
+#     layer_8 = keras.layers.BatchNormalization()(layer_7)
+#     layer_9 = keras.layers.ReLU()(layer_8)
+#     layer_10 = keras.layers.Conv2DTranspose(
+#         256, kernel_size=3, strides=1, padding="SAME", activation=None,
+#     )(layer_9)
+#     layer_11 = keras.layers.BatchNormalization()(layer_10)
+#     layer_12 = keras.layers.ReLU()(layer_11)
+#     ####
+#     add_2 = keras.layers.Add()([layer_7, layer_12])
+#     ####
+#     layer_13 = keras.layers.Conv2DTranspose(
+#         128, kernel_size=4, strides=2, padding="SAME", activation=None,
+#     )(add_2)
+#     layer_14 = keras.layers.BatchNormalization()(layer_13)
+#     layer_15 = keras.layers.ReLU()(layer_14)
+#     layer_16 = keras.layers.Conv2DTranspose(
+#         128, kernel_size=3, strides=1, padding="SAME", activation=None,
+#     )(layer_15)
+#     layer_17 = keras.layers.BatchNormalization()(layer_16)
+#     layer_18 = keras.layers.ReLU()(layer_17)
+#     ####
+#     add_3 = keras.layers.Add()([layer_13, layer_18])
+#     ####
+#     layer_19 = keras.layers.Conv2DTranspose(
+#         64, kernel_size=4, strides=2, padding="SAME", activation=None,
+#     )(add_3)
+#     layer_20 = keras.layers.BatchNormalization()(layer_19)
+#     layer_21 = keras.layers.ReLU()(layer_20)
+#     layer_22 = keras.layers.Conv2DTranspose(
+#         64, kernel_size=3, strides=1, padding="SAME", activation=None,
+#     )(layer_21)
+#     layer_23 = keras.layers.BatchNormalization()(layer_22)
+#     layer_24 = keras.layers.ReLU()(layer_23)
+#     ####
+#     add_4 = keras.layers.Add()([layer_19, layer_24])
+#     ####
+#     layer_25 = keras.layers.Conv2DTranspose(
+#         3,
+#         kernel_size=4,
+#         strides=2,
+#         padding="SAME",
+#         activation=keras.activations.sigmoid,
+#     )(add_4)
+
+#     conv_decoder = keras.models.Model(inputs=inputs, outputs=layer_25)
+
+#     model = keras.models.Sequential([conv_encoder, conv_decoder])
+
+#     return model
 

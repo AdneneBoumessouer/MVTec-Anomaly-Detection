@@ -31,8 +31,9 @@ import argparse
 
 
 def main(args):
-    # ========================= LOAD TRAINING SETUP =======================
+    # Get model setup
     directory = args.directory
+    model_name = args.model
     train_data_dir = os.path.join(directory, "train")
     epochs = args.epochs
     batch_size = args.batch
@@ -49,20 +50,34 @@ def main(args):
             channels = 3
             color_mode = "rgb"
 
-        # ==================== GET MODEL ARCHITECTURE =======================
+        # Load model architecture
+        model, description_dict = architectures.load_model(model_name, channels)
+        preprocess_input = description_dict["preprocess_input"]
 
-        model = architectures.autoencoder_0(channels)
+        # specify model name and directory to save model to
+        now = datetime.datetime.now()
+        save_dir = os.path.join(
+            os.getcwd(), "saved_models", loss, now.strftime("%d-%m-%Y_%H:%M:%S")
+        )
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+        model_name = "CAE_e{}_b{}_0".format(epochs, batch_size)
+        model_path = os.path.join(save_dir, model_name + ".h5")
 
-        # adjust architecture, see: https://github.com/keras-team/keras/issues/3923
+        # specify logging directory for tensorboard visualization
+        log_dir = os.path.join(save_dir, "logs")
+        if not os.path.isdir(log_dir):
+            os.makedirs(log_dir)
 
-        # =============================== TRAINING SETUP =================================
+        learning_rate = 0.002
+        # learning_rate = 2e-4
+        # learning_rate = 0.001
 
-        # set loss function, optimizer and metric
+        # set loss function, optimizer, metric and callbacks
         if loss == "SSIM":
-            loss_function = custom_loss_functions.ssim_loss
-
+            loss_function = custom_loss_functions.ssim
             optimizer = keras.optimizers.Adam(
-                learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
+                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
             )
             model.compile(
                 loss=loss_function,
@@ -71,9 +86,9 @@ def main(args):
             )
 
         elif loss == "MSSIM":
-            loss_function = custom_loss_functions.mssim_loss
+            loss_function = custom_loss_functions.mssim
             optimizer = keras.optimizers.Adam(
-                learning_rate=2e-4, beta_1=0.9, beta_2=0.999, amsgrad=False
+                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
             )
             model.compile(
                 loss=loss_function,
@@ -81,14 +96,39 @@ def main(args):
                 metrics=[loss_function, "mean_squared_error"],
             )
 
-        elif loss == "MSE":
-            loss_function = custom_loss_functions.l2_loss
+        elif loss == "L2":
+            loss_function = custom_loss_functions.l2
             optimizer = keras.optimizers.Adam(
-                learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False
+                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
             )
             model.compile(
                 loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
             )
+
+        elif loss == "MSE":
+            loss_function = "mean_squared_error"
+            optimizer = keras.optimizers.Adam(
+                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
+            )
+            model.compile(
+                loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
+            )
+
+        # callbacks
+        early_stopping_cb = keras.callbacks.EarlyStopping(
+            monitor="val_loss", patience=10, mode="min", verbose=1,
+        )
+        checkpoint_cb = keras.callbacks.ModelCheckpoint(
+            filepath=model_path,
+            monitor="val_loss",
+            verbose=1,
+            save_best_only=True,
+            save_weights_only=False,
+            period=1,
+        )
+        tensorboard_cb = keras.callbacks.TensorBoard(
+            log_dir=log_dir, write_graph=True, update_freq="epoch"
+        )
 
     # RESUME TRAINING
     elif args.command == "resume":
@@ -133,7 +173,7 @@ def main(args):
         # set rescaling factor (applied before any other transformation)
         rescale=1.0 / 255,
         # set function that will be applied on each input
-        preprocessing_function=None,
+        preprocessing_function=preprocess_input,  # None
         # image data format, either "channels_first" or "channels_last"
         data_format="channels_last",
         # fraction of images reserved for validation (strictly between 0 and 1)
@@ -141,7 +181,11 @@ def main(args):
     )
 
     # For validation dataset, only rescaling
-    # validation_datagen = ImageDataGenerator(rescale=1.0 / 255, validation_split=0.1)
+    validation_datagen = ImageDataGenerator(
+        rescale=1.0 / 255,
+        data_format="channels_last",
+        validation_split=validation_split,
+    )
 
     # Generate training batches with datagen.flow_from_directory()
     train_generator = train_datagen.flow_from_directory(
@@ -151,17 +195,21 @@ def main(args):
         batch_size=batch_size,
         class_mode="input",
         subset="training",
+        shuffle=True,
     )
 
     # Generate validation batches with datagen.flow_from_directory()
-    validation_generator = train_datagen.flow_from_directory(
+    validation_generator = validation_datagen.flow_from_directory(
         directory=train_data_dir,
         target_size=(256, 256),
         color_mode=color_mode,
-        batch_size=batch_size,
+        batch_size=1,  # batch_size
         class_mode="input",
         subset="validation",
+        shuffle=False,
     )
+
+    print("\ntensorboard --logdir={}\n".format(log_dir))
 
     # Fit the model on the batches generated by datagen.flow_from_directory()
     history = model.fit_generator(
@@ -169,35 +217,20 @@ def main(args):
         epochs=epochs,
         steps_per_epoch=train_generator.samples // batch_size,
         validation_data=validation_generator,
-        validation_steps=validation_generator.samples // batch_size,
-        workers=-1,
+        validation_steps=validation_generator.samples,
+        callbacks=[checkpoint_cb, early_stopping_cb, tensorboard_cb],
+        # workers=-1,
     )
 
-    # specify model name and directory to save model to
-    # model_name = 'CAE_e{}_b{}_0.h5'.format(epochs,batch_size) # not using HDF5
-    model_name = "CAE_e{}_b{}_0".format(epochs, batch_size)
-    now = datetime.datetime.now()
-    save_dir = os.path.join(
-        os.getcwd(), "saved_models", loss, now.strftime("%d-%m-%Y_%H:%M:%S")
-    )
+    # # save model using HDF5 format
+    # if not os.path.isdir(save_dir):
+    #     os.makedirs(save_dir)
+    # model_path = os.path.join(save_dir, model_name)
 
-    # save model
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-    model_path = os.path.join(save_dir, model_name)
-    # using SavedModel format
-    # model.save(model_path) # variant 1
-    tf.keras.models.save_model(
-        model, model_path, include_optimizer=True, save_format="tf"
-    )  # variant 2
-
-    # using SavedModel format
-    # model.save(model_path+'.h5') # variant 1
     # tf.keras.models.save_model(
     #     model, model_path, include_optimizer=True, save_format="h5"
-    # ) # variant 2
-
-    print("Saved trained model at %s " % model_path)
+    # )
+    # print("Saved trained model at %s " % model_path)
 
     # save training history
     hist_df = pd.DataFrame(history.history)
@@ -211,12 +244,14 @@ def main(args):
         train_dict = {
             "directory": directory,
             "epochs": epochs,
+            "learning_rate": learning_rate,
             "batch_size": batch_size,
             "loss": loss,
             "color_mode": color_mode,
             "channels": channels,
             "validation_split": validation_split,
         }
+        train_dict.update(description_dict)
     elif args.command == "resume":
         train_dict = {
             "directory": directory,
@@ -240,6 +275,17 @@ subparsers = parser.add_subparsers(
 
 # create the subparser to begin training a new model
 parser_new_training = subparsers.add_parser("new")
+
+parser_new_training.add_argument(
+    "-m",
+    "--model",
+    type=str,
+    required=True,
+    metavar="",
+    choices=["mvtec", "resnet", "nasnet"],
+    help="model used during training",
+)
+
 parser_new_training.add_argument(
     "-e",
     "--epochs",
@@ -257,7 +303,7 @@ parser_new_training.add_argument(
     type=str,
     required=True,
     metavar="",
-    choices=["mssim", "ssim", "mse"],
+    choices=["mssim", "ssim", "l2", "mse"],
     help="loss function used during training",
 )
 
@@ -268,7 +314,7 @@ parser_new_training.add_argument(
 # create the subparser to resume the training of an existing model
 parser_resume_training = subparsers.add_parser("resume")
 parser_resume_training.add_argument(
-    "-m", "--model", type=str, required=True, metavar="", help="path to existing model"
+    "-p", "--path", type=str, required=True, metavar="", help="path to existing model"
 )
 parser_resume_training.add_argument(
     "-e",
@@ -286,7 +332,18 @@ parser_resume_training.add_argument(
 args = parser.parse_args()
 
 if __name__ == "__main__":
+    if tf.test.is_gpu_available():
+        print("GPU was detected.")
+    else:
+        print("No GPU was detected. CNNs can be very slow without a GPU.")
+    print("Tensorflow version: {}".format(tf.__version__))
+    print("Keras version: {}".format(keras.__version__))
     main(args)
 
-# python3 train.py new -d mvtec/hazelnut -e 1 -b 1 -l mse
-# python3 train.py new -d mvtec/hazelnut -e 100 -b 24 -l mse
+# Examples to initiate training
+
+# python3 train.py new -d mvtec/capsule -e 150 -b 12 -l l2
+# python3 train.py new -d mvtec/capsule -m mvtec -e 150 -b 12 -l l2
+# python3 train.py new -d mvtec/capsule -m mvtec -e 200 -b 12 -l mse
+
+# tensorboard --logdir=/home/adnen.boumessouer/AutPr/saved_models/SSIM/05-02-2020_12:45:18/logs
