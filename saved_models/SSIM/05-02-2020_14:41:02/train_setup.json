@@ -1,1 +1,0 @@
-{"directory": "mvtec/capsule", "batch_size": 12, "channels": 1, "loss": "SSIM", "epochs": 150, "pretrained": false, "color_mode": "grayscale", "configuation": "MVTec", "validation_split": 0.1, "comments": null}
