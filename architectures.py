@@ -293,6 +293,7 @@ def autoencoder_inception_resnet_v2():
     description_dict = {
         "pretrained": True,
         "configuation": "inception_resnet_v2",
+        "shape": (299, 299),
         "preprocess_input": preprocess_input,
     }
 
