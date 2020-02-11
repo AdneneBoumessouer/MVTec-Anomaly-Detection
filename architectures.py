@@ -183,6 +183,7 @@ def autoencoder_mvtec(channels):
     description_dict = {
         "pretrained": False,
         "configuation": "MVTec",
+        "shape": (256, 256),
         "preprocess_input": None,
     }
 
