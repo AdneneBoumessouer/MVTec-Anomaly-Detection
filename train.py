@@ -52,7 +52,11 @@ def main(args):
 
         # Load model architecture
         model, description_dict = architectures.load_model(model_name, channels)
+
+        # Get model configuration
+        pretrained = description_dict["pretrained"]
         preprocess_input = description_dict["preprocess_input"]
+        shape = description_dict["shape"]
 
         # specify model name and directory to save model to
         now = datetime.datetime.now()
@@ -190,7 +194,7 @@ def main(args):
     # Generate training batches with datagen.flow_from_directory()
     train_generator = train_datagen.flow_from_directory(
         directory=train_data_dir,
-        target_size=(256, 256),
+        target_size=shape,
         color_mode=color_mode,
         batch_size=batch_size,
         class_mode="input",
@@ -201,7 +205,7 @@ def main(args):
     # Generate validation batches with datagen.flow_from_directory()
     validation_generator = validation_datagen.flow_from_directory(
         directory=train_data_dir,
-        target_size=(256, 256),
+        target_size=shape,
         color_mode=color_mode,
         batch_size=1,  # batch_size
         class_mode="input",
