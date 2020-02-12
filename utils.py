@@ -81,3 +81,8 @@ def load_model_HDF5(model_path):
         train_setup = json.load(read_file)
 
     return model, train_setup, history
+
+
+def get_epochs_trained(history_dict):
+    key = history_dict.keys()[0]
+    return len(history_dict[key])
