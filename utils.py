@@ -76,13 +76,28 @@ def load_model_HDF5(model_path):
     dir_name = os.path.dirname(model_path)
     history = pd.read_csv(os.path.join(dir_name, "history.csv"))
 
+    # load model configuration
+    with open(os.path.join(dir_name, "model_config.json"), "r") as read_file:
+        model_config = json.load(read_file)
+
     # load training setup
     with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
         train_setup = json.load(read_file)
 
-    return model, train_setup, history
+    return model, model_config, train_setup, history
 
 
 def get_epochs_trained(history_dict):
     key = history_dict.keys()[0]
     return len(history_dict[key])
+
+
+# # save model using HDF5 format (place after: model.fit_generator)
+# if not os.path.isdir(save_dir):
+#     os.makedirs(save_dir)
+# model_path = os.path.join(save_dir, model_name)
+
+# tf.keras.models.save_model(
+#     model, model_path, include_optimizer=True, save_format="h5"
+# )
+# print("Saved trained model at %s " % model_path)
