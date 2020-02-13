@@ -36,7 +36,7 @@ def main(args):
 
     # load model and setup
     # model, train_setup, _ = utils.load_SavedModel(model_path)
-    model, train_setup, history = utils.load_model_HDF5(model_path)
+    model, model_config, train_setup, history = utils.load_model_HDF5(model_path)
 
     directory = train_setup["directory"]
     val_data_dir = os.path.join(directory, "train")
@@ -82,9 +82,7 @@ def main(args):
 
     # get reconstructed images (predictions)
     imgs_pred = model.predict_generator(
-        validation_generator,
-        steps=validation_generator.samples,
-        verbose=1,
+        validation_generator, steps=validation_generator.samples, verbose=1,
     )
     # imgs_pred = model.predict(imgs_input)
 
