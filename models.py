@@ -3,9 +3,12 @@ from tensorflow import keras
 
 
 # def autoencoder_mvtec(channels):
-def build_model(model_name, channels=3):
-    if model_name == "mvtec":
-        """old model"""
+def build_model(architecture, channels=3):
+    if architecture == "mvtec":
+        """Model mentionned in the MVTec Paper, originally proposed by Bergmann et Al. 
+        Implemented here with an additional convolutional layer at the beginning to 
+        accomodate the larger input size of 256 x 256 instead of 128 x 128.    
+        Note: Using using Keras's sequential API """
         conv_encoder = keras.models.Sequential(
             [
                 # keras.layers.InputLayer(input_shape=(256, 256, channels)),
@@ -182,17 +185,18 @@ def build_model(model_name, channels=3):
         print(conv_decoder.summary())
         print(model.summary())
 
-        description_dict = {
+        config = {
             "pretrained": False,
             "configuation": "MVTec",
             "shape": (256, 256),
             "preprocess_input": None,
         }
 
-        return model, description_dict
+        return model, config
 
-    elif model_name == "resnet":
-
+    elif architecture == "resnet":
+        """The Model is composed of a pretrained encoder (InceptionResNetV2) and a decoder.
+        Note: Using using Keras's functional API """
         # encoder
         base_encoder = keras.applications.inception_resnet_v2.InceptionResNetV2(
             include_top=False,
@@ -287,14 +291,14 @@ def build_model(model_name, channels=3):
 
         preprocess_input = keras.applications.inception_resnet_v2.preprocess_input
 
-        description_dict = {
+        config = {
             "pretrained": True,
             "configuation": "inception_resnet_v2",
             "shape": (299, 299),
             "preprocess_input": preprocess_input,
         }
 
-        return model, description_dict
+        return model, config
 
 
 # def build_model(model_name, channels=3):
