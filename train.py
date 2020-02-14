@@ -31,13 +31,15 @@ import argparse
 
 
 def main(args):
-    # Get model setup
+    # Get training data setup
     directory = args.directory
-    architecture = args.architecture
     train_data_dir = os.path.join(directory, "train")
-    nb_training_images = args.images
+    nb_training_images_aug = args.images
     batch_size = args.batch
     validation_split = 0.1  # incorporate to args
+
+    architecture = args.architecture
+    comment = args.comment
 
     # NEW TRAINING
     if args.command == "new":
@@ -51,12 +53,7 @@ def main(args):
             color_mode = "rgb"
 
         # Build model
-        model, model_config = models.build_model(architecture, channels)
-
-        # Get model model_configuration
-        pretrained = model_config["pretrained"]
-        preprocess_input = model_config["preprocess_input"]
-        shape = model_config["shape"]
+        model = models.build_model(architecture, channels)
 
         # specify model name and directory to save model to
         now = datetime.datetime.now()
@@ -73,9 +70,7 @@ def main(args):
         if not os.path.isdir(log_dir):
             os.makedirs(log_dir)
 
-        # learning_rate = 0.002
-        learning_rate = 2e-4
-        # learning_rate = 0.001
+        learning_rate = 2e-4  # 0.001 0.002
 
         # set loss function, optimizer, metric and callbacks
         if loss == "SSIM":
@@ -106,7 +101,8 @@ def main(args):
                 learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
             )
             model.compile(
-                loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
+                loss=loss_function, optimizer=optimizer, metrics=[
+                    "mean_squared_error"]
             )
 
         elif loss == "MSE":
@@ -115,7 +111,8 @@ def main(args):
                 learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
             )
             model.compile(
-                loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
+                loss=loss_function, optimizer=optimizer, metrics=[
+                    "mean_squared_error"]
             )
 
         # callbacks
@@ -124,9 +121,9 @@ def main(args):
         )
         checkpoint_cb = keras.callbacks.ModelCheckpoint(
             filepath=model_path,
-            monitor="val_loss",
+            # monitor="val_loss",
             verbose=1,
-            save_best_only=True,
+            save_best_only=False,  # True
             save_weights_only=False,
             period=1,
         )
@@ -135,45 +132,52 @@ def main(args):
         )
 
     # RESUME TRAINING
-    elif args.command == "resume":
-        model_path = args.model
+    # elif args.command == "resume":
+    #     model_path = args.model
 
-        # load model
-        model, train_setup, _ = utils.load_SavedModel(model_path)
-        color_mode = train_setup["color_mode"]
-        validation_split = train_setup["validation_split"]
+    #     # load model
+    #     model, train_setup, _ = utils.load_SavedModel(model_path)
+    #     color_mode = train_setup["color_mode"]
+    #     validation_split = train_setup["validation_split"]
 
     # =============================== TRAINING =================================
+
+    if architecture == "mvtec":
+        rescale = 1.0 / 255
+        shape = (256, 256)
+        preprocessing_function = None
+        preprocessing = None
+    elif architecture == "resnet":
+        rescale = None
+        shape = (299, 299)
+        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
+        preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
+    elif architecture == "nasnet":
+        rescale = None
+        shape = (224, 224)
+        preprocessing_function = keras.applications.nasnet.preprocess_input
+        preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
+        pass
 
     print("Using Keras's flow_from_directory method.")
     # This will do preprocessing and realtime data augmentation:
     train_datagen = ImageDataGenerator(
-        featurewise_center=False,  # set input mean to 0 over the dataset
-        samplewise_center=False,  # set each sample mean to 0
-        featurewise_std_normalization=False,  # divide inputs by std of the dataset
-        samplewise_std_normalization=False,  # divide each input by its std
-        zca_whitening=False,  # apply ZCA whitening
-        zca_epsilon=1e-06,  # epsilon for ZCA whitening
         # randomly rotate images in the range (degrees, 0 to 180)
-        rotation_range=15,
+        rotation_range=10,
         # randomly shift images horizontally (fraction of total width)
-        width_shift_range=0.1,
+        width_shift_range=0.05,
         # randomly shift images vertically (fraction of total height)
-        height_shift_range=0.1,
-        shear_range=0.0,  # set range for random shear
-        zoom_range=0.0,  # set range for random zoom 0.15
-        channel_shift_range=0.0,  # set range for random channel shifts
+        height_shift_range=0.05,
         # set mode for filling points outside the input boundaries
         fill_mode="nearest",
-        cval=0.0,  # value used for fill_mode = "constant"
-        horizontal_flip=False,  # randomly flip images
-        vertical_flip=False,  # randomly flip images
+        # value used for fill_mode = "constant"
+        cval=0.0,
         # randomly change brightness (darker < 1 < brighter)
-        brightness_range=[0.9, 1.1],
+        brightness_range=[0.95, 1.05],
         # set rescaling factor (applied before any other transformation)
-        rescale=1.0 / 255,
+        rescale=rescale,
         # set function that will be applied on each input
-        preprocessing_function=preprocess_input,  # None
+        preprocessing_function=preprocessing_function,
         # image data format, either "channels_first" or "channels_last"
         data_format="channels_last",
         # fraction of images reserved for validation (strictly between 0 and 1)
@@ -182,9 +186,10 @@ def main(args):
 
     # For validation dataset, only rescaling
     validation_datagen = ImageDataGenerator(
-        rescale=1.0 / 255,
+        rescale=rescale,
         data_format="channels_last",
         validation_split=validation_split,
+        preprocessing_function=preprocessing_function,
     )
 
     # Generate training batches with datagen.flow_from_directory()
@@ -203,17 +208,17 @@ def main(args):
         directory=train_data_dir,
         target_size=shape,
         color_mode=color_mode,
-        batch_size=1,  # batch_size
+        batch_size=batch_size,  # 1
         class_mode="input",
         subset="validation",
-        shuffle=False,
+        shuffle=True,
     )
 
     # Print command to paste in broser for visualizing in Tensorboard
     print("\ntensorboard --logdir={}\n".format(log_dir))
 
     # Try with this number of epochs
-    epochs = nb_training_images // train_generator.samples
+    epochs = nb_training_images_aug // train_generator.samples
 
     # Fit the model on the batches generated by datagen.flow_from_directory()
     history = model.fit_generator(
@@ -221,10 +226,14 @@ def main(args):
         epochs=epochs,
         steps_per_epoch=train_generator.samples // batch_size,
         validation_data=validation_generator,
-        validation_steps=validation_generator.samples,
-        callbacks=[checkpoint_cb, early_stopping_cb, tensorboard_cb],
-        # workers=-1,
+        validation_steps=validation_generator.samples // batch_size,
+        # callbacks=[checkpoint_cb],
     )
+
+    tf.keras.models.save_model(
+        model, model_path, include_optimizer=True, save_format="h5"
+    )
+    print("Saved trained model at %s " % model_path)
 
     # save training history
     hist_df = pd.DataFrame(history.history)
@@ -237,35 +246,46 @@ def main(args):
 
     # save training setup and model configuration
     if args.command == "new":
-        train_setup = {
-            "directory": directory,
-            "epochs": epochs,
-            "learning_rate": learning_rate,
-            "batch_size": batch_size,
-            "loss": loss,
-            "color_mode": color_mode,
-            "channels": channels,
-            "validation_split": validation_split,
-            "epochs_trained": epochs_trained,
-        }
-        # train_setup.update(model_config)
-    elif args.command == "resume":
-        train_setup = {
-            "directory": directory,
-            "epochs": epochs,
-            "batch_size": batch_size,
-            "loss": loss,
-            "color_mode": color_mode,
-            "channels": channels,
-            "validation_split": validation_split,
-            "path_to_previous_model": args.model,
+        setup = {
+            "data_setup": {
+                "directory": directory,
+                "nb_training_images": train_generator.samples,
+                "nb_validation_images": validation_generator.samples,
+            },
+            "preprocessing_setup": {
+                "rescale": rescale,
+                "shape": shape,
+                "preprocessing": preprocessing
+            },
+            "train_setup": {
+                "architecture": architecture,
+                "nb_training_images_aug": nb_training_images_aug,
+                "epochs": epochs,
+                "learning_rate": learning_rate,
+                "batch_size": batch_size,
+                "loss": loss,
+                "color_mode": color_mode,
+                "channels": channels,
+                "validation_split": validation_split,
+                "epochs_trained": epochs_trained,
+            },
+            "comment": comment,
         }
 
-    with open(os.path.join(save_dir, "train_setup.json"), "w") as json_file:
-        json.dump(train_setup, json_file)
+    # elif args.command == "resume":
+    #     train_setup = {
+    #         "directory": directory,
+    #         "epochs": epochs,
+    #         "batch_size": batch_size,
+    #         "loss": loss,
+    #         "color_mode": color_mode,
+    #         "channels": channels,
+    #         "validation_split": validation_split,
+    #         "path_to_previous_model": args.model,
+    #     }
 
-    with open(os.path.join(save_dir, "model_config.json"), "w") as json_file:
-        json.dump(model_config, json_file)
+    with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
+        json.dump(setup, json_file)
 
 
 # create top level parser
@@ -295,7 +315,7 @@ parser_new_training.add_argument(
     "-i",
     "--images",
     type=int,
-    required=True,
+    default=10000,
     metavar="",
     help="number of training images",
 )
@@ -311,6 +331,9 @@ parser_new_training.add_argument(
     choices=["mssim", "ssim", "l2", "mse"],
     help="loss function used during training",
 )
+
+parser_new_training.add_argument(
+    "-c", "--comment", type=str, help="write comment regarding training")
 
 # create the subparser to resume the training of an existing model
 parser_resume_training = subparsers.add_parser("resume")
@@ -343,7 +366,7 @@ if __name__ == "__main__":
 
 # Examples to initiate training
 
-# python3 train.py new -d mvtec/capsule -a mvtec -i 10000 -b 24 -l mse
-# python3 train.py new -d mvtec/capsule -a resnet -i 10000 -b 24 -l mse
+# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l mse -c <add optional comment here>
+# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l mse -c <add optional comment here>
 
-# tensorboard --logdir=/home/adnen.boumessouer/AutPr/saved_models/SSIM/05-02-2020_12:45:18/logs
+# ssh -i id_rsa adnen.boumessouer@35.247.50.177
