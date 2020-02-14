@@ -76,28 +76,28 @@ def load_model_HDF5(model_path):
     dir_name = os.path.dirname(model_path)
     history = pd.read_csv(os.path.join(dir_name, "history.csv"))
 
-    # load model configuration
-    with open(os.path.join(dir_name, "model_config.json"), "r") as read_file:
-        model_config = json.load(read_file)
+    # # load model configuration
+    # with open(os.path.join(dir_name, "model_config.json"), "r") as read_file:
+    #     model_config = json.load(read_file)
 
     # load training setup
-    with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
-        train_setup = json.load(read_file)
+    with open(os.path.join(dir_name, "setup.json"), "r") as read_file:
+        setup = json.load(read_file)
 
-    return model, model_config, train_setup, history
+    return model, setup, history
 
 
 def get_epochs_trained(history_dict):
-    key = history_dict.keys()[0]
+    key = list(history_dict.keys())[0]
     return len(history_dict[key])
 
 
-# # save model using HDF5 format (place after: model.fit_generator)
-# if not os.path.isdir(save_dir):
-#     os.makedirs(save_dir)
-# model_path = os.path.join(save_dir, model_name)
-
-# tf.keras.models.save_model(
-#     model, model_path, include_optimizer=True, save_format="h5"
-# )
-# print("Saved trained model at %s " % model_path)
+def get_total_number_test_images(test_data_dir):
+    total_number = 0
+    sub_dir_names = os.listdir(test_data_dir)
+    for sub_dir_name in sub_dir_names:
+        sub_dir_path = os.path.join(test_data_dir, sub_dir_name)
+        filenames = os.listdir(sub_dir_path)
+        number = len(filenames)
+        total_number = total_number + number
+    return total_number
