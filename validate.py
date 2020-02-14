@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 import tensorflow as tf
 from tensorflow import keras
@@ -22,7 +23,7 @@ import json
 import argparse
 
 
-def plot_img(imgs, index):
+def plot_img(imgs, index, save=False):
     """Takes an image tensor and plots one image according to index"""
     if imgs.shape[-1] == 3:
         plt.imshow(imgs[index])
@@ -32,86 +33,115 @@ def plot_img(imgs, index):
 
 
 def main(args):
-    model_path = args.model
+    model_path = args.path
 
-    # load model and setup
-    # model, train_setup, _ = utils.load_SavedModel(model_path)
-    model, model_config, train_setup, history = utils.load_model_HDF5(model_path)
+    # load model, setup and history
+    model, setup, history = utils.load_model_HDF5(model_path)
 
-    directory = train_setup["directory"]
+    # data setup
+    directory = setup["data_setup"]["directory"]
     val_data_dir = os.path.join(directory, "train")
-    color_mode = train_setup["color_mode"]
-    validation_split = train_setup["validation_split"]
-    channels = train_setup["channels"]
-    loss = train_setup["loss"]
-    batch_size = train_setup["batch_size"]
+    nb_training_images = setup["data_setup"]["nb_training_images"]
+    nb_validation_images = setup["data_setup"]["nb_validation_images"]
+
+    # preprocessing_setup
+    rescale = setup["preprocessing_setup"]["rescale"]
+    shape = setup["preprocessing_setup"]["shape"]
+    preprocessing = setup["preprocessing_setup"]["preprocessing"]
+
+    # train_setup
+    color_mode = setup["train_setup"]["color_mode"]
+    learning_rate = setup["train_setup"]["learning_rate"]
+    epochs_trained = setup["train_setup"]["epochs_trained"]
+    nb_training_images_aug = setup["train_setup"]["nb_training_images_aug"]
+    epochs = setup["train_setup"]["epochs"]
+    batch_size = setup["train_setup"]["batch_size"]
+    channels = setup["train_setup"]["channels"]
+    validation_split = setup["train_setup"]["validation_split"]
+    architecture = setup["train_setup"]["architecture"]
+    loss = setup["train_setup"]["loss"]
+
+    comment = setup["comment"]
 
     # This will do preprocessing
+    if architecture == "mvtec":
+        preprocessing_function = None
+    elif architecture == "resnet":
+        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
+    elif architecture == "nasnet":
+        preprocessing_function = keras.applications.nasnet.preprocess_input
+
+    # same preprocessing as in training
     validation_datagen = ImageDataGenerator(
-        rescale=1.0 / 255, validation_split=validation_split, zca_epsilon=1e-06,
-    )
-
-    # Generate validation batches with datagen.flow_from_directory()
-    validation_generator = validation_datagen.flow_from_directory(
-        directory=val_data_dir,
-        target_size=(256, 256),
-        color_mode=color_mode,
-        batch_size=1,
-        shuffle=False,
-        class_mode="input",
-        subset="validation",
-    )
-
-    # Generate input-image batches with datagen.flow_from_directory()
-    input_generator = validation_datagen.flow_from_directory(
-        directory=val_data_dir,
-        target_size=(256, 256),
-        color_mode=color_mode,
-        batch_size=1,
-        shuffle=False,
-        class_mode="input",
-        subset="validation",
+        rescale=rescale,
+        data_format="channels_last",
+        validation_split=validation_split,
+        preprocessing_function=preprocessing_function,
     )
 
     # retrieve preprocessed input images as a numpy array
-    nb_images = input_generator.samples
-    imgs_input = np.zeros(shape=(nb_images, 256, 256, channels))
-    for i in range(nb_images):
-        img_input = input_generator.next()[0]
-        imgs_input[i, :, :, :] = img_input
+    validation_generator = validation_datagen.flow_from_directory(
+        directory=val_data_dir,
+        target_size=shape,
+        color_mode=color_mode,
+        batch_size=nb_validation_images,
+        shuffle=False,
+        class_mode="input",
+        subset="validation",
+    )
+    imgs_input = validation_generator.next()[0]
 
     # get reconstructed images (predictions)
-    imgs_pred = model.predict_generator(
-        validation_generator, steps=validation_generator.samples, verbose=1,
-    )
-    # imgs_pred = model.predict(imgs_input)
+    imgs_pred = model.predict(imgs_input)
 
     # compute residual maps
     imgs_diff = imgs_input - imgs_pred
 
     # determine threshold
+    imgs_diff_1d = imgs_diff.flatten()
+    mean = np.mean(imgs_diff_1d)
+    std = np.std(imgs_diff_1d)
 
-    # save threshold
+    # k = 1.65 # confidence 90%
+    # k = 1.96 # confidence 95%
+    k = 2.58  # confidence 99%
+    # k = 3.00 # confidence 99.73%
+    # k = 3.30 # confidence 99.90%
+
+    threshold = mean + k*std
+
+    # create directory to save results
+    parent_dir = Path(model_path).parent
+    save_dir = os.path.join(parent_dir, "val_results")
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    # save validation results
+    val_results = {
+        "mean": mean,
+        "std": std,
+        "threshold": threshold,
+    }
+
+    with open(os.path.join(save_dir, "val_results.json"), "w") as json_file:
+        json.dump(val_results, json_file)
+
+    # save images
+    plt.imsave(os.path.join(save_dir, "img_input.png"), imgs_input[0])
+    plt.imsave(os.path.join(save_dir, "img_pred.png"), imgs_pred[0])
+    plt.imsave(os.path.join(save_dir, "img_diff.png"), imgs_diff[0])
 
 
+# create parser
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-m", "--model", type=str, required=True, metavar="", help="path to existing model"
+    "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
 )
-
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    main()
+    main(args)
 
-model_path = "saved_models/MSE/02-02-2020_16:32:49/CAE_e150_b12_0"
+model_path = "saved_models/MSE/14-02-2020_15:10:24/CAE_mvtec_b24.h5"
 
-
-# index = 1
-# plt.imshow(inputs[index])
-# img_original = tf.expand_dims(inputs[index], 0)
-# img_reconstruction = model.predict(img_original)
-# plt.imshow(img_reconstruction[0])
-
-# # compute Residual Maps
-# resmaps = utils.residual_maps(inputs, reconstructions, loss=loss)
+# model, setup, _ = utils.load_SavedModel(model_path)
