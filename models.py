@@ -185,14 +185,7 @@ def build_model(architecture, channels=3):
         print(conv_decoder.summary())
         print(model.summary())
 
-        config = {
-            "pretrained": False,
-            "configuation": "MVTec",
-            "shape": (256, 256),
-            "preprocess_input": None,
-        }
-
-        return model, config
+        return model
 
     elif architecture == "resnet":
         """The Model is composed of a pretrained encoder (InceptionResNetV2) and a decoder.
@@ -286,19 +279,10 @@ def build_model(architecture, channels=3):
         )(add_4)
 
         decoder = keras.models.Model(inputs=inputs, outputs=layer_25)
-
+        print(decoder.summary())
         model = keras.models.Sequential([encoder, decoder])
-
-        preprocess_input = keras.applications.inception_resnet_v2.preprocess_input
-
-        config = {
-            "pretrained": True,
-            "configuation": "inception_resnet_v2",
-            "shape": (299, 299),
-            "preprocess_input": preprocess_input,
-        }
-
-        return model, config
+        print(model.summary())
+        return model
 
 
 # def build_model(model_name, channels=3):
@@ -428,4 +412,3 @@ def build_model(architecture, channels=3):
 #     model = keras.models.Sequential([conv_encoder, conv_decoder])
 
 #     return model
-
