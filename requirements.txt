@@ -140,7 +140,7 @@ spyder-kernels==1.8.1
 statsmodels==0.11.0
 tblib==1.6.0
 tensorboard==2.0.0
-tensorflow==2.0.0
+tensorflow==2.0.1
 tensorflow-datasets==1.2.0
 tensorflow-estimator==2.0.0
 tensorflow-metadata==0.14.0
