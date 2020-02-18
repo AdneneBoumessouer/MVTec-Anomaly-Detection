@@ -13,7 +13,7 @@ import tensorflow as tf
 from tensorflow import keras
 import keras.backend as K
 import custom_loss_functions
-import architectures
+import models
 import utils
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
@@ -31,13 +31,15 @@ import argparse
 
 
 def main(args):
-    # Get model setup
+    # Get training data setup
     directory = args.directory
-    model_name = args.model
     train_data_dir = os.path.join(directory, "train")
-    epochs = args.epochs
+    nb_training_images_aug = args.images
     batch_size = args.batch
-    validation_split = 0.1  # incorporate to args
+    validation_split = 0.1
+
+    architecture = args.architecture
+    comment = args.comment
 
     # NEW TRAINING
     if args.command == "new":
@@ -50,13 +52,8 @@ def main(args):
             channels = 3
             color_mode = "rgb"
 
-        # Load model architecture
-        model, description_dict = architectures.load_model(model_name, channels)
-
-        # Get model configuration
-        pretrained = description_dict["pretrained"]
-        preprocess_input = description_dict["preprocess_input"]
-        shape = description_dict["shape"]
+        # Build model
+        model = models.build_model(architecture, channels)
 
         # specify model name and directory to save model to
         now = datetime.datetime.now()
@@ -65,7 +62,7 @@ def main(args):
         )
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
-        model_name = "CAE_e{}_b{}_0".format(epochs, batch_size)
+        model_name = "CAE_" + architecture + "_b{}".format(batch_size)
         model_path = os.path.join(save_dir, model_name + ".h5")
 
         # specify logging directory for tensorboard visualization
@@ -73,60 +70,40 @@ def main(args):
         if not os.path.isdir(log_dir):
             os.makedirs(log_dir)
 
-        learning_rate = 0.002
-        # learning_rate = 2e-4
-        # learning_rate = 0.001
+        learning_rate = 2e-4  # 0.001 0.002
 
         # set loss function, optimizer, metric and callbacks
         if loss == "SSIM":
             loss_function = custom_loss_functions.ssim
-            optimizer = keras.optimizers.Adam(
-                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
-            )
-            model.compile(
-                loss=loss_function,
-                optimizer=optimizer,
-                metrics=[loss_function, "mean_squared_error"],
-            )
 
         elif loss == "MSSIM":
             loss_function = custom_loss_functions.mssim
-            optimizer = keras.optimizers.Adam(
-                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
-            )
-            model.compile(
-                loss=loss_function,
-                optimizer=optimizer,
-                metrics=[loss_function, "mean_squared_error"],
-            )
 
         elif loss == "L2":
             loss_function = custom_loss_functions.l2
-            optimizer = keras.optimizers.Adam(
-                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
-            )
-            model.compile(
-                loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
-            )
 
         elif loss == "MSE":
             loss_function = "mean_squared_error"
-            optimizer = keras.optimizers.Adam(
-                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, amsgrad=False
-            )
-            model.compile(
-                loss=loss_function, optimizer=optimizer, metrics=["mean_squared_error"]
-            )
+
+        optimizer = keras.optimizers.Adam(
+            learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
+        )
+
+        model.compile(
+            loss=loss_function,
+            optimizer=optimizer,
+            metrics=[loss_function, "mean_squared_error"],
+        )
 
         # callbacks
         early_stopping_cb = keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=10, mode="min", verbose=1,
+            monitor="val_loss", patience=12, mode="min", verbose=1,
         )
         checkpoint_cb = keras.callbacks.ModelCheckpoint(
             filepath=model_path,
-            monitor="val_loss",
+            # monitor="val_loss",
             verbose=1,
-            save_best_only=True,
+            save_best_only=False,  # True
             save_weights_only=False,
             period=1,
         )
@@ -135,49 +112,52 @@ def main(args):
         )
 
     # RESUME TRAINING
-    elif args.command == "resume":
-        model_path = args.model
+    # elif args.command == "resume":
+    #     model_path = args.model
 
-        # load model
-        model, train_setup, _ = utils.load_SavedModel(model_path)
-        color_mode = train_setup["color_mode"]
-        validation_split = train_setup["validation_split"]
+    #     # load model
+    #     model, train_setup, _ = utils.load_SavedModel(model_path)
+    #     color_mode = train_setup["color_mode"]
+    #     validation_split = train_setup["validation_split"]
 
     # =============================== TRAINING =================================
-    if batch_size != 1:
-        print("Using real-time data augmentation.")
-    else:
-        print("Not using data augmentation")
+
+    if architecture == "mvtec":
+        rescale = 1.0 / 255
+        shape = (256, 256)
+        preprocessing_function = None
+        preprocessing = None
+    elif architecture == "resnet":
+        rescale = None
+        shape = (299, 299)
+        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
+        preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
+    elif architecture == "nasnet":
+        rescale = None
+        shape = (224, 224)
+        preprocessing_function = keras.applications.nasnet.preprocess_input
+        preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
+        pass
 
     print("Using Keras's flow_from_directory method.")
     # This will do preprocessing and realtime data augmentation:
     train_datagen = ImageDataGenerator(
-        featurewise_center=False,  # set input mean to 0 over the dataset
-        samplewise_center=False,  # set each sample mean to 0
-        featurewise_std_normalization=False,  # divide inputs by std of the dataset
-        samplewise_std_normalization=False,  # divide each input by its std
-        zca_whitening=False,  # apply ZCA whitening
-        zca_epsilon=1e-06,  # epsilon for ZCA whitening
         # randomly rotate images in the range (degrees, 0 to 180)
-        rotation_range=15,
+        rotation_range=10,
         # randomly shift images horizontally (fraction of total width)
-        width_shift_range=0.1,
+        width_shift_range=0.05,
         # randomly shift images vertically (fraction of total height)
-        height_shift_range=0.1,
-        shear_range=0.0,  # set range for random shear
-        zoom_range=0.0,  # set range for random zoom 0.15
-        channel_shift_range=0.0,  # set range for random channel shifts
+        height_shift_range=0.05,
         # set mode for filling points outside the input boundaries
         fill_mode="nearest",
-        cval=0.0,  # value used for fill_mode = "constant"
-        horizontal_flip=False,  # randomly flip images
-        vertical_flip=False,  # randomly flip images
+        # value used for fill_mode = "constant"
+        cval=0.0,
         # randomly change brightness (darker < 1 < brighter)
-        brightness_range=[0.9, 1.1],
+        brightness_range=[0.95, 1.05],
         # set rescaling factor (applied before any other transformation)
-        rescale=1.0 / 255,
+        rescale=rescale,
         # set function that will be applied on each input
-        preprocessing_function=preprocess_input,  # None
+        preprocessing_function=preprocessing_function,
         # image data format, either "channels_first" or "channels_last"
         data_format="channels_last",
         # fraction of images reserved for validation (strictly between 0 and 1)
@@ -186,9 +166,10 @@ def main(args):
 
     # For validation dataset, only rescaling
     validation_datagen = ImageDataGenerator(
-        rescale=1.0 / 255,
+        rescale=rescale,
         data_format="channels_last",
         validation_split=validation_split,
+        preprocessing_function=preprocessing_function,
     )
 
     # Generate training batches with datagen.flow_from_directory()
@@ -207,13 +188,17 @@ def main(args):
         directory=train_data_dir,
         target_size=shape,
         color_mode=color_mode,
-        batch_size=1,  # batch_size
+        batch_size=batch_size,  # 1
         class_mode="input",
         subset="validation",
-        shuffle=False,
+        shuffle=True,
     )
 
+    # Print command to paste in broser for visualizing in Tensorboard
     print("\ntensorboard --logdir={}\n".format(log_dir))
+
+    # Try with this number of epochs
+    epochs = nb_training_images_aug // train_generator.samples
 
     # Fit the model on the batches generated by datagen.flow_from_directory()
     history = model.fit_generator(
@@ -221,20 +206,15 @@ def main(args):
         epochs=epochs,
         steps_per_epoch=train_generator.samples // batch_size,
         validation_data=validation_generator,
-        validation_steps=validation_generator.samples,
-        callbacks=[checkpoint_cb, early_stopping_cb, tensorboard_cb],
-        # workers=-1,
+        validation_steps=validation_generator.samples // batch_size,
+        # callbacks=[checkpoint_cb],
     )
 
-    # # save model using HDF5 format
-    # if not os.path.isdir(save_dir):
-    #     os.makedirs(save_dir)
-    # model_path = os.path.join(save_dir, model_name)
-
-    # tf.keras.models.save_model(
-    #     model, model_path, include_optimizer=True, save_format="h5"
-    # )
-    # print("Saved trained model at %s " % model_path)
+    # Save model
+    tf.keras.models.save_model(
+        model, model_path, include_optimizer=True, save_format="h5"
+    )
+    print("Saved trained model at %s " % model_path)
 
     # save training history
     hist_df = pd.DataFrame(history.history)
@@ -243,32 +223,50 @@ def main(args):
         hist_df.to_csv(f)
     print("Saved training history at %s " % hist_csv_file)
 
-    # save training setup
+    epochs_trained = utils.get_epochs_trained(history.history)
+
+    # save training setup and model configuration
     if args.command == "new":
-        train_dict = {
-            "directory": directory,
-            "epochs": epochs,
-            "learning_rate": learning_rate,
-            "batch_size": batch_size,
-            "loss": loss,
-            "color_mode": color_mode,
-            "channels": channels,
-            "validation_split": validation_split,
+        setup = {
+            "data_setup": {
+                "directory": directory,
+                "nb_training_images": train_generator.samples,
+                "nb_validation_images": validation_generator.samples,
+            },
+            "preprocessing_setup": {
+                "rescale": rescale,
+                "shape": shape,
+                "preprocessing": preprocessing
+            },
+            "train_setup": {
+                "architecture": architecture,
+                "nb_training_images_aug": nb_training_images_aug,
+                "epochs": epochs,
+                "learning_rate": learning_rate,
+                "batch_size": batch_size,
+                "loss": loss,
+                "color_mode": color_mode,
+                "channels": channels,
+                "validation_split": validation_split,
+                "epochs_trained": epochs_trained,
+            },
+            "comment": comment,
         }
-        train_dict.update(description_dict)
-    elif args.command == "resume":
-        train_dict = {
-            "directory": directory,
-            "epochs": epochs,
-            "batch_size": batch_size,
-            "loss": loss,
-            "color_mode": color_mode,
-            "channels": channels,
-            "validation_split": validation_split,
-            "path_to_previous_model": args.model,
-        }
-    with open(os.path.join(save_dir, "train_setup.json"), "w") as json_file:
-        json.dump(train_dict, json_file)
+
+    # elif args.command == "resume":
+    #     train_setup = {
+    #         "directory": directory,
+    #         "epochs": epochs,
+    #         "batch_size": batch_size,
+    #         "loss": loss,
+    #         "color_mode": color_mode,
+    #         "channels": channels,
+    #         "validation_split": validation_split,
+    #         "path_to_previous_model": args.model,
+    #     }
+
+    with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
+        json.dump(setup, json_file)
 
 
 # create top level parser
@@ -281,22 +279,26 @@ subparsers = parser.add_subparsers(
 parser_new_training = subparsers.add_parser("new")
 
 parser_new_training.add_argument(
-    "-m",
-    "--model",
+    "-d", "--directory", type=str, required=True, metavar="", help="training directory"
+)
+
+parser_new_training.add_argument(
+    "-a",
+    "--architecture",
     type=str,
     required=True,
     metavar="",
     choices=["mvtec", "resnet", "nasnet"],
-    help="model used during training",
+    help="model to use in training",
 )
 
 parser_new_training.add_argument(
-    "-e",
-    "--epochs",
+    "-i",
+    "--images",
     type=int,
-    required=True,
+    default=10000,
     metavar="",
-    help="number of training epochs",
+    help="number of training images",
 )
 parser_new_training.add_argument(
     "-b", "--batch", type=int, required=True, metavar="", help="batch size"
@@ -312,8 +314,7 @@ parser_new_training.add_argument(
 )
 
 parser_new_training.add_argument(
-    "-d", "--directory", type=str, required=True, metavar="", help="training directory"
-)
+    "-c", "--comment", type=str, help="write comment regarding training")
 
 # create the subparser to resume the training of an existing model
 parser_resume_training = subparsers.add_parser("resume")
@@ -346,8 +347,7 @@ if __name__ == "__main__":
 
 # Examples to initiate training
 
-# python3 train.py new -d mvtec/capsule -e 150 -b 12 -l l2
-# python3 train.py new -d mvtec/capsule -m mvtec -e 150 -b 12 -l l2
-# python3 train.py new -d mvtec/capsule -m mvtec -e 200 -b 12 -l mse
+# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l mse -c <add optional comment here>
+# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l mse -c <add optional comment here>
 
-# tensorboard --logdir=/home/adnen.boumessouer/AutPr/saved_models/SSIM/05-02-2020_12:45:18/logs
+# ssh -i id_rsa adnen.boumessouer@35.247.50.177
