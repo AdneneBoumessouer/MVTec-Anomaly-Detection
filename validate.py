@@ -63,6 +63,17 @@ def main(args):
 
     comment = setup["comment"]
 
+    # create directory to save results
+    parent_dir = str(Path(model_path).parent)
+    save_dir = os.path.join(parent_dir, "val_results")
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    # Plot and save loss and val_loss
+    plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
+    fig = plot.get_figure()
+    fig.savefig(os.path.join(save_dir, "losses.png"))
+
     # This will do preprocessing
     if architecture == "mvtec":
         preprocessing_function = None
@@ -89,18 +100,18 @@ def main(args):
         class_mode="input",
         subset="validation",
     )
-    imgs_input = validation_generator.next()[0]
+    imgs_val_input = validation_generator.next()[0]
 
     # get reconstructed images (predictions)
-    imgs_pred = model.predict(imgs_input)
+    imgs_val_pred = model.predict(imgs_val_input)
 
     # compute residual maps
-    imgs_diff = imgs_input - imgs_pred
+    imgs_val_diff = imgs_val_input - imgs_val_pred
 
     # determine threshold
-    imgs_diff_1d = imgs_diff.flatten()
-    mean = np.mean(imgs_diff_1d)
-    std = np.std(imgs_diff_1d)
+    imgs_val_diff_1d = imgs_val_diff.flatten()
+    mean = np.mean(imgs_val_diff_1d)
+    std = np.std(imgs_val_diff_1d)
 
     # k = 1.65 # confidence 90%
     # k = 1.96 # confidence 95%
@@ -110,26 +121,22 @@ def main(args):
 
     threshold = mean + k*std
 
-    # create directory to save results
-    parent_dir = Path(model_path).parent
-    save_dir = os.path.join(parent_dir, "val_results")
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-
     # save validation results
     val_results = {
-        "mean": mean,
-        "std": std,
-        "threshold": threshold,
+        "mean": str(mean),
+        "std": str(std),
+        "threshold": str(threshold),
+        "pixel_max_value": str(np.amax(imgs_val_pred)),
+        "pixel_min_value": str(np.amin(imgs_val_pred)),
     }
 
     with open(os.path.join(save_dir, "val_results.json"), "w") as json_file:
         json.dump(val_results, json_file)
 
     # save images
-    plt.imsave(os.path.join(save_dir, "img_input.png"), imgs_input[0])
-    plt.imsave(os.path.join(save_dir, "img_pred.png"), imgs_pred[0])
-    plt.imsave(os.path.join(save_dir, "img_diff.png"), imgs_diff[0])
+    plt.imsave(os.path.join(save_dir, "img_input.png"), imgs_val_input[0])
+    plt.imsave(os.path.join(save_dir, "img_pred.png"), imgs_val_pred[0])
+    plt.imsave(os.path.join(save_dir, "img_diff.png"), imgs_val_diff[0])
 
 
 # create parser
@@ -142,6 +149,8 @@ args = parser.parse_args()
 if __name__ == "__main__":
     main(args)
 
-model_path = "saved_models/MSE/14-02-2020_15:10:24/CAE_mvtec_b24.h5"
+# model_path = "saved_models/MSE/14-02-2020_15:10:24/CAE_mvtec_b24.h5"
 
 # model, setup, _ = utils.load_SavedModel(model_path)
+
+# python3 validate.py -p saved_models/MSE/17-02-2020_18:14:52/CAE_mvtec_b12.h5
