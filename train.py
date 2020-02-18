@@ -36,7 +36,7 @@ def main(args):
     train_data_dir = os.path.join(directory, "train")
     nb_training_images_aug = args.images
     batch_size = args.batch
-    validation_split = 0.1  # incorporate to args
+    validation_split = 0.1
 
     architecture = args.architecture
     comment = args.comment
@@ -75,45 +75,25 @@ def main(args):
         # set loss function, optimizer, metric and callbacks
         if loss == "SSIM":
             loss_function = custom_loss_functions.ssim
-            optimizer = keras.optimizers.Adam(
-                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
-            )
-            model.compile(
-                loss=loss_function,
-                optimizer=optimizer,
-                metrics=[loss_function, "mean_squared_error"],
-            )
 
         elif loss == "MSSIM":
             loss_function = custom_loss_functions.mssim
-            optimizer = keras.optimizers.Adam(
-                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
-            )
-            model.compile(
-                loss=loss_function,
-                optimizer=optimizer,
-                metrics=[loss_function, "mean_squared_error"],
-            )
 
         elif loss == "L2":
             loss_function = custom_loss_functions.l2
-            optimizer = keras.optimizers.Adam(
-                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
-            )
-            model.compile(
-                loss=loss_function, optimizer=optimizer, metrics=[
-                    "mean_squared_error"]
-            )
 
         elif loss == "MSE":
             loss_function = "mean_squared_error"
-            optimizer = keras.optimizers.Adam(
-                learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
-            )
-            model.compile(
-                loss=loss_function, optimizer=optimizer, metrics=[
-                    "mean_squared_error"]
-            )
+
+        optimizer = keras.optimizers.Adam(
+            learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
+        )
+
+        model.compile(
+            loss=loss_function,
+            optimizer=optimizer,
+            metrics=[loss_function, "mean_squared_error"],
+        )
 
         # callbacks
         early_stopping_cb = keras.callbacks.EarlyStopping(
@@ -230,6 +210,7 @@ def main(args):
         # callbacks=[checkpoint_cb],
     )
 
+    # Save model
     tf.keras.models.save_model(
         model, model_path, include_optimizer=True, save_format="h5"
     )
