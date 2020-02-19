@@ -1,3 +1,5 @@
+## NOTE: The work on this project is still in progress.
+
 # Anomaly Datection
 
 This project aims at developping a model to detect anomalies using the MVTec dataset.
