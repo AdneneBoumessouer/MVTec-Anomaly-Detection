@@ -22,7 +22,7 @@ pip install -r requirements.txt
 ```
 
 ### Download the Dataset
-1. Download the mvtec dataset [here](https://www.mvtec.com/company/research/datasets/mvtec-ad/) and save them to a directory of your choice (e.g in /Downloads)
+1. Download the mvtec dataset [here](https://www.mvtec.com/company/research/datasets/mvtec-ad/) and save it to a directory of your choice (e.g in /Downloads)
 2. Extract the compressed files.
 3. Create a folder named **mvtec** in the project directory.
 4. Move the extracted files (contaied in folders) to the **mvtec** folder.
@@ -31,66 +31,73 @@ pip install -r requirements.txt
 ### Directory Structure
 For the scripts to work propoerly, it is required to have a specific directory structure. 
 In the case of using the *mvtec* dataset, here is an example of how the directory stucture should look like:
+------------
 
-├── bottle
-│   ├── ground_truth
-│   │   ├── broken_large
-│   │   ├── broken_small
-│   │   └── contamination
-│   ├── test
-│   │   ├── broken_large
-│   │   ├── broken_small
-│   │   ├── contamination
-│   │   └── good
-│   └── train
-│       └── good
-├── cable
-│   ├── ground_truth
-│   │   ├── bent_wire
-│   │   ├── cable_swap
-│   │   ├── combined
-│   │   ├── cut_inner_insulation
-│   │   ├── cut_outer_insulation
-│   │   ├── missing_cable
-│   │   ├── missing_wire
-│   │   └── poke_insulation
-│   ├── test
-│   │   ├── bent_wire
-│   │   ├── cable_swap
-│   │   ├── combined
-│   │   ├── cut_inner_insulation
-│   │   ├── cut_outer_insulation
-│   │   ├── good
-│   │   ├── missing_cable
-│   │   ├── missing_wire
-│   │   └── poke_insulation
-│   └── train
-│       └── good
-...
+    ├── bottle
+    │   ├── ground_truth
+    │   │   ├── broken_large
+    │   │   ├── broken_small
+    │   │   └── contamination
+    │   ├── test
+    │   │   ├── broken_large
+    │   │   ├── broken_small
+    │   │   ├── contamination
+    │   │   └── good
+    │   └── train
+    │       └── good
+    ├── cable
+    │   ├── ground_truth
+    │   │   ├── bent_wire
+    │   │   ├── cable_swap
+    │   │   ├── combined
+    │   │   ├── cut_inner_insulation
+    │   │   ├── cut_outer_insulation
+    │   │   ├── missing_cable
+    │   │   ├── missing_wire
+    │   │   └── poke_insulation
+    │   ├── test
+    │   │   ├── bent_wire
+    │   │   ├── cable_swap
+    │   │   ├── combined
+    │   │   ├── cut_inner_insulation
+    │   │   ├── cut_outer_insulation
+    │   │   ├── good
+    │   │   ├── missing_cable
+    │   │   ├── missing_wire
+    │   │   └── poke_insulation
+    │   └── train
+    │       └── good
+    ...
 
+
+--------
 
 To train with your own dataset, you need to have a comparable directory structure. For example:
+------------
 
-├── class1
-│   ├── test
-│   │   ├── good
-│   │   ├── defect
-│   └── train
-│       └── good
-├── class2
-│   ├── test
-│   │   ├── good
-│   │   ├── defect
-│   └── train
-│       └── good
-...
+    ├── class1
+    │   ├── test
+    │   │   ├── good
+    │   │   ├── defect
+    │   └── train
+    │       └── good
+    ├── class2
+    │   ├── test
+    │   │   ├── good
+    │   │   ├── defect
+    │   └── train
+    │       └── good
+    ...
 
+
+--------
 
 ## Training (train.py)
 
 The method uses a Convolutional Auto-Encoder (CAE). There are two proposed variants:
 * CAE proposed in the paper [MVTec AD — A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf)
-* CAE that uses Keras's inception_resnet_v2 CNN-model pretrained on imagenet as the Encoder. The Decoder is inspired by the paper [Anomaly Detection and Localization in Images using Guided Attention](https://openreview.net/forum?id=B1gikpEtwH)
+* CAE that uses Keras's inception_resnet_v2 CNN-model pretrained on imagenet as the Encoder. 
+The Decoder is inspired by the paper [Anomaly Detection and Localization in Images using Guided Attention](https://openreview.net/forum?id=B1gikpEtwH)
 
 During training, the CAE trains solely on defect-free images and learns to reconstruct defect-free training samples.
 
@@ -134,26 +141,30 @@ python3 test.py -p saved_models/MSE/17-02-2020_18:14:52/CAE_mvtec_b12.h5
 
 ## Project Organization
 
-.
-├── mvtec                       <- folder containing all mvtec classes
-│   ├── bottle                  <- subfolder of a class (contains additional subfolders /train and /test)
-|   |── ...
-├── custom_loss_functions.py    <- implments different loss functions to use in training
-├── fine_tune.py                <- deprecated (to be remooved soon)
-├── inspect_trained_model.ipynb <- notebook to inspect trained model
-├── models.py                   <- contains different CAE architectures for training
-├── readme.md                   <- readme file
-├── requirements.txt            <- requirement text file containing all used packages and libraries
-├── saved_models                <- directory containing saved models
-│   ├── L2                      <- saved models that trained with L2 loss
-│   ├── MSE                     <- saved models that trained with MSE loss
-│   ├── MSSIM                   <- saved models that trained with MSSIM loss
-│   └── SSIM                    <- saved models that trained with SSIM loss
-├── test.py                     <- test script
-├── train.py                    <- training script
-├── utils.py                    <- utilitary and helper functions
-└── validate.py                 <- validation script
+Project Organization
+------------
 
+    ├── mvtec                       <- folder containing all mvtec classes
+    │   ├── bottle                  <- subfolder of a class (contains additional subfolders /train and /test)
+    |   |── ...
+    ├── custom_loss_functions.py    <- implments different loss functions to use in training
+    ├── fine_tune.py                <- deprecated (to be remooved soon)
+    ├── inspect_trained_model.ipynb <- notebook to inspect trained model
+    ├── models.py                   <- contains different CAE architectures for training
+    ├── readme.md                   <- readme file
+    ├── requirements.txt            <- requirement text file containing all used packages and libraries
+    ├── saved_models                <- directory containing saved models
+    │   ├── L2                      <- saved models that trained with L2 loss
+    │   ├── MSE                     <- saved models that trained with MSE loss
+    │   ├── MSSIM                   <- saved models that trained with MSSIM loss
+    │   └── SSIM                    <- saved models that trained with SSIM loss
+    ├── test.py                     <- test script
+    ├── train.py                    <- training script
+    ├── utils.py                    <- utilitary and helper functions
+    └── validate.py                 <- validation script
+
+
+--------
 
 ## Authors
 
