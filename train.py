@@ -333,7 +333,6 @@ parser_resume_training.add_argument(
     "-b", "--batch", type=int, required=True, metavar="", help="batch size"
 )
 
-# args = parser.parse_args(["new", '-d', "mvtec/hazelnut/train",  "-e", "50", "-b", "4", "-l", "mssim"])
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -347,7 +346,10 @@ if __name__ == "__main__":
 
 # Examples to initiate training
 
-# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l mse -c <add optional comment here>
-# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l mse -c <add optional comment here>
+# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l mse
+# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l mssim
+# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l l2
 
-# ssh -i id_rsa adnen.boumessouer@35.247.50.177
+# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l mse
+# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l mssim
+# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l l2
