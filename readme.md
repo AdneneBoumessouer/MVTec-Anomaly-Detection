@@ -28,50 +28,53 @@ pip install -r requirements.txt
 4. Move the extracted files (contaied in folders) to the **mvtec** folder.
 
 
-### Directory Structure
+Directory Structure using mvtec dataset
+------------
 For the scripts to work propoerly, it is required to have a specific directory structure. 
 In the case of using the *mvtec* dataset, here is an example of how the directory stucture should look like:
 
-<pre>
-├── bottle
-│   ├── ground_truth
-│   │   ├── broken_large
-│   │   ├── broken_small
-│   │   └── contamination
-│   ├── test
-│   │   ├── broken_large
-│   │   ├── broken_small
-│   │   ├── contamination
-│   │   └── good
-│   └── train
-│       └── good
-├── cable
-│   ├── ground_truth
-│   │   ├── bent_wire
-│   │   ├── cable_swap
-│   │   ├── combined
-│   │   ├── cut_inner_insulation
-│   │   ├── cut_outer_insulation
-│   │   ├── missing_cable
-│   │   ├── missing_wire
-│   │   └── poke_insulation
-│   ├── test
-│   │   ├── bent_wire
-│   │   ├── cable_swap
-│   │   ├── combined
-│   │   ├── cut_inner_insulation
-│   │   ├── cut_outer_insulation
-│   │   ├── good
-│   │   ├── missing_cable
-│   │   ├── missing_wire
-│   │   └── poke_insulation
-│   └── train
-│       └── good
-...
-<pre>
+    ├── bottle
+    │   ├── ground_truth
+    │   │   ├── broken_large
+    │   │   ├── broken_small
+    │   │   └── contamination
+    │   ├── test
+    │   │   ├── broken_large
+    │   │   ├── broken_small
+    │   │   ├── contamination
+    │   │   └── good
+    │   └── train
+    │       └── good
+    ├── cable
+    │   ├── ground_truth
+    │   │   ├── bent_wire
+    │   │   ├── cable_swap
+    │   │   ├── combined
+    │   │   ├── cut_inner_insulation
+    │   │   ├── cut_outer_insulation
+    │   │   ├── missing_cable
+    │   │   ├── missing_wire
+    │   │   └── poke_insulation
+    │   ├── test
+    │   │   ├── bent_wire
+    │   │   ├── cable_swap
+    │   │   ├── combined
+    │   │   ├── cut_inner_insulation
+    │   │   ├── cut_outer_insulation
+    │   │   ├── good
+    │   │   ├── missing_cable
+    │   │   ├── missing_wire
+    │   │   └── poke_insulation
+    │   └── train
+    │       └── good
+    ...
 
+
+--------
+
+Directory Structure using your own dataset
+------------
 To train with your own dataset, you need to have a comparable directory structure. For example:
-<pre>
 
     ├── class1
     │   ├── test
@@ -86,7 +89,9 @@ To train with your own dataset, you need to have a comparable directory structur
     │   └── train
     │       └── good
     ...
-<pre>
+
+
+--------
 
 ## Training (train.py)
 
@@ -134,8 +139,6 @@ Here is an example:
 python3 test.py -p saved_models/MSE/17-02-2020_18:14:52/CAE_mvtec_b12.h5
 ```
 **NOTE:** This script is still in progress and hasn't been tested yet.
-
-## Project Organization
 
 Project Organization
 ------------
