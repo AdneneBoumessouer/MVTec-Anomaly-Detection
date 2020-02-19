@@ -31,8 +31,7 @@ pip install -r requirements.txt
 ### Directory Structure
 For the scripts to work propoerly, it is required to have a specific directory structure. 
 In the case of using the *mvtec* dataset, here is an example of how the directory stucture should look like:
-------------
-
+<pre>
     ├── bottle
     │   ├── ground_truth
     │   │   ├── broken_large
@@ -69,8 +68,7 @@ In the case of using the *mvtec* dataset, here is an example of how the director
     │       └── good
     ...
 
-
---------
+<pre>
 
 To train with your own dataset, you need to have a comparable directory structure. For example:
 ------------
