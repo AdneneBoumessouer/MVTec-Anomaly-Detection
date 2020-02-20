@@ -70,8 +70,6 @@ def main(args):
         if not os.path.isdir(log_dir):
             os.makedirs(log_dir)
 
-        learning_rate = 2e-4  # 0.001 0.002
-
         # set loss function, optimizer, metric and callbacks
         if loss == "SSIM":
             loss_function = custom_loss_functions.ssim
@@ -86,7 +84,7 @@ def main(args):
             loss_function = "mean_squared_error"
 
         optimizer = keras.optimizers.Adam(
-            learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=1e-5
+            learning_rate=2e-4, beta_1=0.9, beta_2=0.999, decay=1e-5
         )
 
         model.compile(
@@ -101,7 +99,7 @@ def main(args):
         )
         checkpoint_cb = keras.callbacks.ModelCheckpoint(
             filepath=model_path,
-            # monitor="val_loss",
+            monitor="val_loss",
             verbose=1,
             save_best_only=False,  # True
             save_weights_only=False,
