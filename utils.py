@@ -101,3 +101,11 @@ def get_total_number_test_images(test_data_dir):
         number = len(filenames)
         total_number = total_number + number
     return total_number
+
+
+def get_image_score(image, factor):
+    image_1d = image.flatten()
+    mean_image = np.mean(image_1d)
+    std_image = np.std(image_1d)
+    score = mean_image + factor*std_image
+    return score, mean_image, std_image
