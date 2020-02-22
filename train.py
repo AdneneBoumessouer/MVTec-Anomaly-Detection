@@ -70,6 +70,9 @@ def main(args):
         if not os.path.isdir(log_dir):
             os.makedirs(log_dir)
 
+        learning_rate = 2e-4
+        decay = 1e-5
+
         # set loss function, optimizer, metric and callbacks
         if loss == "SSIM":
             loss_function = custom_loss_functions.ssim
@@ -84,7 +87,7 @@ def main(args):
             loss_function = "mean_squared_error"
 
         optimizer = keras.optimizers.Adam(
-            learning_rate=2e-4, beta_1=0.9, beta_2=0.999, decay=1e-5
+            learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=decay
         )
 
         model.compile(
@@ -186,7 +189,7 @@ def main(args):
         directory=train_data_dir,
         target_size=shape,
         color_mode=color_mode,
-        batch_size=batch_size,  # 1
+        batch_size=batch_size,
         class_mode="input",
         subset="validation",
         shuffle=True,
@@ -241,6 +244,7 @@ def main(args):
                 "nb_training_images_aug": nb_training_images_aug,
                 "epochs": epochs,
                 "learning_rate": learning_rate,
+                "decay": decay,
                 "batch_size": batch_size,
                 "loss": loss,
                 "color_mode": color_mode,
@@ -286,7 +290,7 @@ parser_new_training.add_argument(
     type=str,
     required=True,
     metavar="",
-    choices=["mvtec", "resnet", "nasnet"],
+    choices=["mvtec", "mvtec2", "resnet", "nasnet"],
     help="model to use in training",
 )
 
@@ -344,10 +348,10 @@ if __name__ == "__main__":
 
 # Examples to initiate training
 
-# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l mse
-# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l mssim
-# python3 train.py new -d mvtec/capsule -a mvtec -b 24 -l l2
+# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mse
+# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mssim
+# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l l2
 
-# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l mse
-# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l mssim
-# python3 train.py new -d mvtec/capsule -a resnet -b 24 -l l2
+# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mse
+# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mssim
+# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l l2
