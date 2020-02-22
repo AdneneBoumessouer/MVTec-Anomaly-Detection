@@ -102,15 +102,21 @@ def main(args):
         subset="validation",
     )
     imgs_val_input = validation_generator.next()[0]
+    np.save(file=os.path.join(save_dir, "imgs_val_input.npy"),
+            arr=imgs_val_input, allow_pickle=True)
 
     # retrieve image_names
     filenames = validation_generator.filenames
 
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
+    np.save(file=os.path.join(save_dir, "imgs_val_pred.npy"),
+            arr=imgs_val_pred, allow_pickle=True)
 
     # compute residual maps on validation dataset
     imgs_val_diff = imgs_val_input - imgs_val_pred
+    np.save(file=os.path.join(save_dir, "imgs_val_diff.npy"),
+            arr=imgs_val_diff, allow_pickle=True)
 
     # determine threshold on validation dataset
     imgs_val_diff_1d = imgs_val_diff.flatten()

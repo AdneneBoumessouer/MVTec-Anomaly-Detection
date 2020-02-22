@@ -98,12 +98,16 @@ def main(args):
         class_mode="input",
     )
     imgs_test_input = test_generator.next()[0]
+    np.save(file=os.path.join(save_dir, "imgs_test_input.npy"),
+            arr=imgs_test_input, allow_pickle=True)
 
     # retrieve image_names
     filenames = test_generator.filenames
 
     # predict on test images
     imgs_test_pred = model.predict(imgs_test_input)
+    np.save(file=os.path.join(save_dir, "imgs_test_pred.npy"),
+            arr=imgs_test_pred, allow_pickle=True)
     print("TYPE imgs_test_pred:{}".format(type(imgs_test_pred)))
 
     # ===============================================================
@@ -111,6 +115,8 @@ def main(args):
 
     # compute residual maps
     imgs_test_diff = imgs_test_input - imgs_test_pred
+    np.save(file=os.path.join(save_dir, "imgs_test_diff.npy"),
+            arr=imgs_test_diff, allow_pickle=True)
 
     # determine threshold test
     imgs_test_diff_1d = imgs_test_diff.flatten()
