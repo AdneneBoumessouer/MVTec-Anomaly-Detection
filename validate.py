@@ -176,15 +176,24 @@ def main(args):
     plt.title("Validation ResMap pixel value distribution")
     plt.xlabel("pixel intensity")
     plt.ylabel("probability")
-    plt.savefig(os.path.join(save_dir, "histogram.png"))
+    plt.savefig(os.path.join(save_dir, "histogram_val.png"))
 
     # save three images
     fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
-    axarr[0].imshow(imgs_val_input[0])
+    try:
+        axarr[0].imshow(imgs_val_input[0])
+    except TypeError:
+        axarr[0].imshow(imgs_val_input[0, :, :, 0], cmap=plt.cm.gray)
     axarr[0].set_title("original defect-free val image")
-    axarr[1].imshow(imgs_val_pred[0])
+    try:
+        axarr[1].imshow(imgs_val_pred[0])
+    except TypeError:
+        axarr[1].imshow(imgs_val_pred[0, :, :, 0], cmap=plt.cm.gray)
     axarr[1].set_title("reconstruction defect-free val image")
-    axarr[2].imshow(imgs_val_diff[0])
+    try:
+        axarr[2].imshow(imgs_val_diff[0])
+    except TypeError:
+        axarr[2].imshow(imgs_val_diff[0, :, :, 0], cmap=plt.cm.gray)
     axarr[2].set_title("ResMap defect-free val image")
     fig.savefig(os.path.join(save_dir, "3_val_musketeers.png"))
 
