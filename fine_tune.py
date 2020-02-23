@@ -1,381 +1,128 @@
-import tensorflow as tf
-from tensorflow import keras
-import matplotlib.pyplot as plt
-import numpy as np
-import keras.backend as K
-import utils
-import importlib
-import custom_loss_functions
 import os
-from keras.preprocessing.image import ImageDataGenerator
+import sys
+
+# import tensorflow as tf
+# from tensorflow import keras
+# import keras.backend as K
+import custom_loss_functions
+import utils
+
+# from keras.preprocessing.image import ImageDataGenerator
+import numpy as np
+from numpy import expand_dims
+
+# import requests
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+
+# import datetime
 import csv
 import pandas as pd
 import json
 
-"""THIS SCRIPT IS MESSY AND NOT YET COMPLETE"""
+# import argparse
+from pathlib import Path
 
-mytuple = ("apple", "banana", "cherry")
-myit = iter(mytuple)
+# set paths
+model_path = "saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5"
+parent_dir = str(Path(model_path).parent)
+val_dir = os.path.join(parent_dir, "val_results")
+test_dir = os.path.join(parent_dir, "test_results")
 
-for i in range(3):
-    print(next(myit))
+# load arrays
+imgs_val_input = np.load(os.path.join(val_dir, "imgs_val_input.npy"))
+imgs_val_pred = np.load(os.path.join(val_dir, "imgs_val_pred.npy"))
+imgs_val_diff = np.load(os.path.join(val_dir, "imgs_val_diff.npy"))
 
-for i in range(3):
-    print(next(myit))
+imgs_test_input = np.load(os.path.join(test_dir, "imgs_test_input.npy"))
+imgs_test_pred = np.load(os.path.join(test_dir, "imgs_test_pred.npy"))
+imgs_test_diff = np.load(os.path.join(test_dir, "imgs_test_diff.npy"))
 
-# ========================== TRAIN ====================================
-train_datagen = ImageDataGenerator(
-    rescale=1. / 255,
-    shear_range=0.2,
-    zoom_range=0.2,
-    horizontal_flip=True,
-    validation_split=0.1)
-
-# this is the augmentation configuration we will use for testing:
-# only rescaling
-test_datagen = ImageDataGenerator(rescale=1. / 255,
-    validation_split=0.1)
-
-train_data_dir = 'mvtec/cable/train'
-
-train_generator = train_datagen.flow_from_directory(
-    train_data_dir, #SAME
-    target_size=(256, 256),
-    batch_size=4,
-    class_mode='input',
-    shuffle=True, ######
-    subset='training')
-
-filenames_train = train_generator.filenames
-
-validation_generator = test_datagen.flow_from_directory(
-    train_data_dir, #SAME
-    target_size=(256, 256),
-    batch_size=1,
-    class_mode='input',
-    subset='validation')
-
-filenames_valid = validation_generator.filenames
-
-model.fit_generator(
-    train_generator,
-    steps_per_epoch=nb_train_samples // batch_size,
-    epochs=epochs,
-    validation_data=validation_generator,
-    validation_steps=nb_validation_samples // batch_size)
-
-# ========================== TEST ====================================
+# load DataFrames
+df_val = pd.read_pickle(os.path.join(val_dir, "df_val.pkl"))
+df_test = pd.read_pickle(os.path.join(test_dir, "df_test.pkl"))
 
 
-# this is the augmentation configuration we will use for testing:
-# only rescaling
-test_datagen = ImageDataGenerator(
-    rescale=1. / 255)
+# flatten
+imgs_val_diff_1d = imgs_val_diff.flatten()
+imgs_test_diff_1d = imgs_test_diff.flatten()
 
-test_data_dir = 'mvtec/cable/test'
-
-test_generator = test_datagen.flow_from_directory(
-    test_data_dir, #SAME
-    target_size=(256, 256),
-    batch_size=1,
-    class_mode='input',
-    shuffle=False)
-
-filenames_test = test_generator.filenames
-
-
-
-
-# ================= LOAD TRAINED MODEL AND CORRESPONDING SETUP ===================
-model_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5"
-model, train_setup, history = utils.load_model_HDF5(model_path)
-
-
-# X_train, X_valid, X_test, y_test = utils.load_mvtec_data_as_tensor(
-#     dir_path="datasets/tensors", validation_split=0.1, numpy=False
-# )
-
-validation_datagen = ImageDataGenerator(rescale=1.0 / 255)
-
-validation_generator = validation_datagen.flow_from_directory(
-                directory="datasets/data/validation",
-                target_size=(256, 256),
-                color_mode=train_setup["color_mode"],
-                batch_size=train_setup["batch_size"],
-                class_mode="input",
-            )
-
-# =======================================================================
-model_path = "saved_models/MSSIM/11-01-2020_14:18:20/CAE_e50_b4_0.h5"
-model, train_setup, history = utils.load_model_HDF5(model_path)
-
-!mkdir -p saved_model
-model.save('saved_model/my_model')
-new_model = tf.keras.models.load_model('saved_model/my_model')
-
-
-
-# =======================================================================
-
-img = validation_generator.next()[0] 
-# img_pred = model.predict(img)
-# plt.imshow(img_pred[0])
-utils.compare_images(img[0], model=model)
-
-# ====================== SEE RESULTS OF TRAINED AE =======================
-
-
-model_path=  "saved_models/SSIM/CAE_150_datagen.h5"
-model = keras.models.load_model(
-    filepath=model_path,
-    custom_objects={
-        "LeakyReLU": keras.layers.LeakyReLU,
-        "ssim_loss": custom_loss_functions.ssim_loss,
-    },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
+# ===================== WITHOUT POST PROCESSING ============================
+# plot
+plt.hist(imgs_val_diff_1d, bins=100, density=True, stacked=True, alpha=0.5, label="val")
+plt.hist(
+    imgs_test_diff_1d, bins=100, density=True, stacked=True, alpha=0.5, label="test"
 )
+plt.legend()
+plt.title("pixel value distribution of val and test Resmaps")
+plt.xlabel("pixel intensity")
+plt.ylabel("probability")
+plt.show()
 
-validation_datagen = ImageDataGenerator(rescale=1.0 / 255)
+mean_mean_val = df_val["mean"].mean()
+mean_std_val = df_val["std"].mean()
 
-validation_generator_1 = validation_datagen.flow_from_directory(
-                directory="mvtec/pill/train/good",
-                target_size=(256, 256),
-                color_mode="grayscale",
-                batch_size=1,
-                class_mode="input",
-            )
+mean_mean_test = df_test["mean"].mean()
+mean_std_test = df_test["std"].mean()
 
-validation_generator_2 = validation_datagen.flow_from_directory(
-                directory="mvtec/pill/test/crack",
-                target_size=(256, 256),
-                color_mode="grayscale",
-                batch_size=1,
-                class_mode="input",
-            )
+plt.imshow(imgs_val_diff[0])
+np.amin(imgs_val_diff)
+np.amax(imgs_val_diff)
 
-img = validation_generator_1.next()[0] 
-# img_pred = model.predict(img)
-# plt.imshow(img_pred[0])
-utils.compare_images(img[0], model=model)
-
-# this does not work
-
-img = validation_generator.next()[0] 
-# img_pred = model.predict(img)
-# plt.imshow(img_pred[0])
-utils.compare_images(img[0], model=model)
-
-# ===========================================================================
-# with flow
-importlib.reload(utils)
-
-X_train, X_valid, X_test, y_test = utils.load_mvtec_data_as_tensor('datasets/tensors')
-
-# model_path = 'saved_models/l2_loss/ae_50_datagen.h5'
-model_path = 'saved_models/SSIM/CAE_150_datagen.h5'
-model = keras.models.load_model(
-    filepath=model_path,
-    custom_objects={
-        "LeakyReLU": keras.layers.LeakyReLU,
-        "ssim_loss": custom_loss_functions.ssim_loss,
-    },  # https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
-)
-
-X_train = utils.preprocess_tensor(X_train, 'SSIM')
-img1 = X_train[1501]
-# img1 = tf.image.rgb_to_grayscale(img1)
-img2 =  model.predict(tf.expand_dims(img1, 0))[0]
-utils.compare_images(img1, img2)
+img_test_diff = imgs_test_diff[68]
+plt.imshow(img_test_diff)
+plt.show()
+# np.amin(imgs_test_diff)
+# np.amax(imgs_test_diff)
 
 
-import matplotlib.image as mpimg
-X_test = utils.preprocess_tensor(X_test, 'SSIM')
-img = X_test[720] #mpimg.imread("mvtec/pill/test/crack/003.png") # scaled [0,1]
-# img = tf.image.rgb_to_grayscale(img)
-img3 =  model.predict(tf.expand_dims(img, 0))[0]
-utils.compare_images(img, img3)
+# ===================== WITH THRESHOLDING ============================
+X_val = imgs_val_diff.copy()
+X_test = imgs_test_diff.copy()
+
+threshold = 0.3
+
+# 68
 
 
-
-# plot image, reconstruction and residual map
-np.load()
-img1 = X_train[1200]
-utils.compare_images(img1, model=model)
-img2 = model.predict(tf.expand_dims(img1, 0))[0]
-res_map = utils.residual_map_image(img1, img2)
-plt.imshow(res_map[:, :, 0], cmap=plt.cm.gray, vmin=0, vmax=1)
+def threshold_array(X, threshold):
+    X_th = X.copy()
+    X_th[X_th < threshold] = 0
+    return X_th
 
 
-#--------------------------------------------------------------------------
-
-# show encoder and decoder architecture
-
-# encoder = model(autoencoder.input, autoencoder.layers[-2].output)
-
-# decoder_input = Input(shape=(encoding_dim,))
-# decoder = Model(decoder_input, autoencoder.layers[-1](decoder_input))
-
-# encoder.summary()
-# decoder.summary()
+def create_images_from_array(X, dst_dict, filenames):
+    for i in range(len(X)):
+        image = X[i]
+        plt.imshow(image)
+        filename = "_".join(filenames[i].split("/"))
+        filepath = os.path.join(dst_dict, filename)
+        plt.savefig(filepath)
 
 
-#--------------------------------------------------------------------------
+# threshold val images with 0
+dst_dict_val = "/home/adnene33/Desktop/images_thresholded/val"
+filenames_val = df_val["filenames"]
+X_val_th0 = threshold_array(X_val, 0)
+create_images_from_array(X_val_th0, dst_dict_val, filenames_val)
 
-# OLD MODEL
+# threshold test images with 0
+dst_dict_test = "/home/adnene33/Desktop/images_thresholded/test"
+filenames_test = df_test["filenames"]
+X_test_th0 = threshold_array(X_test, 0)
+create_images_from_array(X_test_th0, dst_dict_test, filenames_test)
 
-# conv_encoder = keras.models.Sequential(
-#     [
-#         keras.layers.Conv2D(
-#             32,
-#             kernel_size=4,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#             input_shape=[256, 256, channels],
-#         ),  # CONV0 (added layer)
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             32,
-#             kernel_size=4,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),  # CONV1
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             32,
-#             kernel_size=4,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),  # CONV2
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             32,
-#             kernel_size=3,
-#             strides=1,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),  # CONV3
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             64,
-#             kernel_size=4,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),  # CONV4
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             64,
-#             kernel_size=3,
-#             strides=1,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),  # CONV5
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             128,
-#             kernel_size=4,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),  # CONV6
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             64,
-#             kernel_size=3,
-#             strides=1,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),  # CONV7
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             32,
-#             kernel_size=3,
-#             strides=1,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),  # CONV8
-#         # keras.layers.MaxPool2D(pool_size=2, padding="same"),
-#         keras.layers.Conv2D(
-#             100, kernel_size=8, strides=1, padding="VALID", activation="relu"
-#         ),  # CONV9
-#     ]
-# )
+X_val_th0_1d = X_val_th0.flatten()
+X_test_th0_1d = X_test_th0.flatten()
 
-# conv_decoder = keras.models.Sequential(
-#     [
-#         keras.layers.Conv2DTranspose(
-#             32,
-#             kernel_size=3,
-#             strides=8,
-#             padding="VALID",
-#             activation="relu",
-#             input_shape=[1, 1, 100],
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             64,
-#             kernel_size=3,
-#             strides=1,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             128,
-#             kernel_size=4,
-#             strides=1,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             64,
-#             kernel_size=3,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             64,
-#             kernel_size=4,
-#             strides=1,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             32,
-#             kernel_size=3,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             32,
-#             kernel_size=4,
-#             strides=1,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             32,
-#             kernel_size=4,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             32,
-#             kernel_size=4,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#         keras.layers.Conv2DTranspose(
-#             channels,
-#             kernel_size=4,
-#             strides=2,
-#             padding="SAME",
-#             activation=keras.layers.LeakyReLU(0.2),
-#         ),
-#     ]
-# )
+# plot
+plt.hist(X_val_th0_1d, bins=100, density=True, stacked=True, alpha=0.5, label="val")
+plt.hist(X_test_th0_1d, bins=100, density=True, stacked=True, alpha=0.5, label="test")
+plt.legend()
+plt.title("pixel value distribution of val and test Resmaps")
+plt.xlabel("pixel intensity")
+plt.ylabel("probability")
+plt.show()
+
+df_test[df_test["filenames"] == "crack/000.png"]
 
