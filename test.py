@@ -29,7 +29,7 @@ def get_image_score(image, factor):
     image_1d = image.flatten()
     mean_image = np.mean(image_1d)
     std_image = np.std(image_1d)
-    score = mean_image + factor*std_image
+    score = mean_image + factor * std_image
     return score, mean_image, std_image
 
 
@@ -98,16 +98,22 @@ def main(args):
         class_mode="input",
     )
     imgs_test_input = test_generator.next()[0]
-    np.save(file=os.path.join(save_dir, "imgs_test_input.npy"),
-            arr=imgs_test_input, allow_pickle=True)
+    np.save(
+        file=os.path.join(save_dir, "imgs_test_input.npy"),
+        arr=imgs_test_input,
+        allow_pickle=True,
+    )
 
     # retrieve image_names
     filenames = test_generator.filenames
 
     # predict on test images
     imgs_test_pred = model.predict(imgs_test_input)
-    np.save(file=os.path.join(save_dir, "imgs_test_pred.npy"),
-            arr=imgs_test_pred, allow_pickle=True)
+    np.save(
+        file=os.path.join(save_dir, "imgs_test_pred.npy"),
+        arr=imgs_test_pred,
+        allow_pickle=True,
+    )
     print("TYPE imgs_test_pred:{}".format(type(imgs_test_pred)))
 
     # ===============================================================
@@ -115,8 +121,11 @@ def main(args):
 
     # compute residual maps
     imgs_test_diff = imgs_test_input - imgs_test_pred
-    np.save(file=os.path.join(save_dir, "imgs_test_diff.npy"),
-            arr=imgs_test_diff, allow_pickle=True)
+    np.save(
+        file=os.path.join(save_dir, "imgs_test_diff.npy"),
+        arr=imgs_test_diff,
+        allow_pickle=True,
+    )
 
     # determine threshold test
     imgs_test_diff_1d = imgs_test_diff.flatten()
@@ -129,7 +138,7 @@ def main(args):
     # k = 3.00 # confidence 99.73%
     # k = 3.30 # confidence 99.90%
 
-    threshold_test = mean_test + factor_test*std_test
+    threshold_test = mean_test + factor_test * std_test
 
     # Histogramm to visualize the ResMap distribution
     fig = plt.figure(figsize=(8, 5))
@@ -157,10 +166,9 @@ def main(args):
     # ===============================================================
 
     # compute scores on test images
-    output_test = {"filenames": filenames,
-                   "scores": [], "mean": [], "std": []}
-    for img_test_pred in imgs_test_pred:
-        score, mean, std = utils.get_image_score(img_test_pred, factor_test)
+    output_test = {"filenames": filenames, "scores": [], "mean": [], "std": []}
+    for img_test_diff in imgs_test_diff:
+        score, mean, std = utils.get_image_score(img_test_diff, factor_test)
         output_test["scores"].append(score)
         output_test["mean"].append(mean)
         output_test["std"].append(std)
@@ -170,7 +178,7 @@ def main(args):
     df_test = pd.DataFrame.from_dict(output_test)
     df_test.to_pickle(os.path.join(save_dir, "df_test.pkl"))
     # display DataFrame
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+    with pd.option_context("display.max_rows", None, "display.max_columns", None):
         print(df_test)
 
     # get path to validation results directory
@@ -191,13 +199,16 @@ def main(args):
     # classification: defective if score exceeds threshold, positive class == defect
     scores = np.array(output_test["scores"])
     y_pred_bool = scores > threshold_val
-    y_pred_class = ["defect" if boolean ==
-                    True else "defect_free" for boolean in y_pred_bool]
+    y_pred_class = [
+        "defect" if boolean == True else "defect_free" for boolean in y_pred_bool
+    ]
 
-    y_true_bool = [True if "good" not in filename.split(
-        "/") else False for filename in filenames]
-    y_true_class = ["defect" if boolean ==
-                    True else "defect_free" for boolean in y_true_bool]
+    y_true_bool = [
+        True if "good" not in filename.split("/") else False for filename in filenames
+    ]
+    y_true_class = [
+        "defect" if boolean == True else "defect_free" for boolean in y_true_bool
+    ]
 
     # detection ratios: https://en.wikipedia.org/wiki/Confusion_matrix
     # condition positive (P)
@@ -207,12 +218,20 @@ def main(args):
     N = y_true_bool.count(False)
 
     # true positive (TP)
-    TP = np.sum([1 if y_pred_bool[i] == y_true_bool[i] ==
-                 True else 0 for i in range(total_number)])
+    TP = np.sum(
+        [
+            1 if y_pred_bool[i] == y_true_bool[i] == True else 0
+            for i in range(total_number)
+        ]
+    )
 
     # true negative (TN)
-    TN = np.sum([1 if y_pred_bool[i] == y_true_bool[i] ==
-                 False else 0 for i in range(total_number)])
+    TN = np.sum(
+        [
+            1 if y_pred_bool[i] == y_true_bool[i] == False else 0
+            for i in range(total_number)
+        ]
+    )
 
     # sensitivity, recall, hit rate, or true positive rate (TPR)
     TPR = TP / P
@@ -222,7 +241,8 @@ def main(args):
 
     # confusion matrix
     conf_matrix = confusion_matrix(
-        y_true_class, y_pred_class, labels=["defect", "defect_free"])  # normalize="true"
+        y_true_class, y_pred_class, labels=["defect", "defect_free"]
+    )  # normalize="true"
 
     # save test results
     test_results = {
@@ -260,4 +280,4 @@ args = parser.parse_args()
 if __name__ == "__main__":
     main(args)
 
-# python3 test.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5 -i "poke/001.png"
+# python3 test.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5 -i "poke/000.png"
