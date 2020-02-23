@@ -102,21 +102,30 @@ def main(args):
         subset="validation",
     )
     imgs_val_input = validation_generator.next()[0]
-    np.save(file=os.path.join(save_dir, "imgs_val_input.npy"),
-            arr=imgs_val_input, allow_pickle=True)
+    np.save(
+        file=os.path.join(save_dir, "imgs_val_input.npy"),
+        arr=imgs_val_input,
+        allow_pickle=True,
+    )
 
     # retrieve image_names
     filenames = validation_generator.filenames
 
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
-    np.save(file=os.path.join(save_dir, "imgs_val_pred.npy"),
-            arr=imgs_val_pred, allow_pickle=True)
+    np.save(
+        file=os.path.join(save_dir, "imgs_val_pred.npy"),
+        arr=imgs_val_pred,
+        allow_pickle=True,
+    )
 
     # compute residual maps on validation dataset
     imgs_val_diff = imgs_val_input - imgs_val_pred
-    np.save(file=os.path.join(save_dir, "imgs_val_diff.npy"),
-            arr=imgs_val_diff, allow_pickle=True)
+    np.save(
+        file=os.path.join(save_dir, "imgs_val_diff.npy"),
+        arr=imgs_val_diff,
+        allow_pickle=True,
+    )
 
     # determine threshold on validation dataset
     imgs_val_diff_1d = imgs_val_diff.flatten()
@@ -129,7 +138,7 @@ def main(args):
     # k = 3.00 # confidence 99.73%
     # k = 3.30 # confidence 99.90%
 
-    threshold_val = mean_val + factor_val*std_val
+    threshold_val = mean_val + factor_val * std_val
 
     # save validation results
     val_results = {
@@ -145,10 +154,9 @@ def main(args):
 
     # ===================================================================
     # compute scores on validation images
-    output_test = {"filenames": filenames,
-                   "scores": [], "mean": [], "std": []}
-    for img_val_pred in imgs_val_pred:
-        score, mean, std = utils.get_image_score(img_val_pred, factor_val)
+    output_test = {"filenames": filenames, "scores": [], "mean": [], "std": []}
+    for img_val_diff in imgs_val_diff:
+        score, mean, std = utils.get_image_score(img_val_diff, factor_val)
         output_test["scores"].append(score)
         output_test["mean"].append(mean)
         output_test["std"].append(std)
@@ -158,7 +166,7 @@ def main(args):
     df_test = pd.DataFrame.from_dict(output_test)
     df_test.to_pickle(os.path.join(save_dir, "df_val.pkl"))
     # display DataFrame
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+    with pd.option_context("display.max_rows", None, "display.max_columns", None):
         print(df_test)
     # ===================================================================
 
