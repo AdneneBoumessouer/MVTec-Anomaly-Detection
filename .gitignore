@@ -7,6 +7,7 @@ y_test.npy
 my_first_key.pem
 datasets/tensors/load_mvtec_train.py
 datasets/tensors/load_mvtec_test.py
+inspect_trained_model.ipynb
 
 
 
@@ -17,6 +18,9 @@ __pycache__/
 
 # C extensions
 *.so
+
+# numpy arrays
+saved_models/**/*.npy
 
 # Distribution / packaging
 .Python

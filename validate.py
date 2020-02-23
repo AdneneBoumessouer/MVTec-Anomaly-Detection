@@ -52,6 +52,7 @@ def main(args):
     # train_setup
     color_mode = setup["train_setup"]["color_mode"]
     learning_rate = setup["train_setup"]["learning_rate"]
+    decay = setup["train_setup"]["decay"]
     epochs_trained = setup["train_setup"]["epochs_trained"]
     nb_training_images_aug = setup["train_setup"]["nb_training_images_aug"]
     epochs = setup["train_setup"]["epochs"]
@@ -72,7 +73,7 @@ def main(args):
     # Plot and save loss and val_loss
     plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
     fig = plot.get_figure()
-    fig.savefig(os.path.join(save_dir, "losses.png"))
+    fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
 
     # This will do preprocessing
     if architecture == "mvtec":
@@ -90,7 +91,7 @@ def main(args):
         preprocessing_function=preprocessing_function,
     )
 
-    # retrieve preprocessed input images as a numpy array
+    # retrieve preprocessed validation images as a numpy array
     validation_generator = validation_datagen.flow_from_directory(
         directory=val_data_dir,
         target_size=shape,
@@ -101,31 +102,49 @@ def main(args):
         subset="validation",
     )
     imgs_val_input = validation_generator.next()[0]
+    np.save(
+        file=os.path.join(save_dir, "imgs_val_input.npy"),
+        arr=imgs_val_input,
+        allow_pickle=True,
+    )
 
-    # get reconstructed images (predictions)
+    # retrieve image_names
+    filenames = validation_generator.filenames
+
+    # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
+    np.save(
+        file=os.path.join(save_dir, "imgs_val_pred.npy"),
+        arr=imgs_val_pred,
+        allow_pickle=True,
+    )
 
-    # compute residual maps
+    # compute residual maps on validation dataset
     imgs_val_diff = imgs_val_input - imgs_val_pred
+    np.save(
+        file=os.path.join(save_dir, "imgs_val_diff.npy"),
+        arr=imgs_val_diff,
+        allow_pickle=True,
+    )
 
-    # determine threshold
+    # determine threshold on validation dataset
     imgs_val_diff_1d = imgs_val_diff.flatten()
-    mean = np.mean(imgs_val_diff_1d)
-    std = np.std(imgs_val_diff_1d)
+    mean_val = np.mean(imgs_val_diff_1d)
+    std_val = np.std(imgs_val_diff_1d)
 
     # k = 1.65 # confidence 90%
     # k = 1.96 # confidence 95%
-    k = 2.58  # confidence 99%
+    factor_val = 2.58  # confidence 99%
     # k = 3.00 # confidence 99.73%
     # k = 3.30 # confidence 99.90%
 
-    threshold = mean + k*std
+    threshold_val = mean_val + factor_val * std_val
 
     # save validation results
     val_results = {
-        "mean": str(mean),
-        "std": str(std),
-        "threshold": str(threshold),
+        "mean_val": str(mean_val),
+        "std_val": str(std_val),
+        "threshold_val": str(threshold_val),
         "pixel_max_value": str(np.amax(imgs_val_pred)),
         "pixel_min_value": str(np.amin(imgs_val_pred)),
     }
@@ -133,10 +152,41 @@ def main(args):
     with open(os.path.join(save_dir, "val_results.json"), "w") as json_file:
         json.dump(val_results, json_file)
 
-    # save images
-    plt.imsave(os.path.join(save_dir, "img_input.png"), imgs_val_input[0])
-    plt.imsave(os.path.join(save_dir, "img_pred.png"), imgs_val_pred[0])
-    plt.imsave(os.path.join(save_dir, "img_diff.png"), imgs_val_diff[0])
+    # ===================================================================
+    # compute scores on validation images
+    output_test = {"filenames": filenames, "scores": [], "mean": [], "std": []}
+    for img_val_diff in imgs_val_diff:
+        score, mean, std = utils.get_image_score(img_val_diff, factor_val)
+        output_test["scores"].append(score)
+        output_test["mean"].append(mean)
+        output_test["std"].append(std)
+        # assert length compatibility
+
+    # format test results in a pd DataFrame
+    df_test = pd.DataFrame.from_dict(output_test)
+    df_test.to_pickle(os.path.join(save_dir, "df_val.pkl"))
+    # display DataFrame
+    with pd.option_context("display.max_rows", None, "display.max_columns", None):
+        print(df_test)
+    # ===================================================================
+
+    # Histogramm to visualize the ResMap distribution
+    fig = plt.figure(figsize=(8, 5))
+    plt.hist(imgs_val_diff_1d, bins=100, density=True, stacked=True)
+    plt.title("Validation ResMap pixel value distribution")
+    plt.xlabel("pixel intensity")
+    plt.ylabel("probability")
+    plt.savefig(os.path.join(save_dir, "histogram.png"))
+
+    # save three images
+    fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
+    axarr[0].imshow(imgs_val_input[0])
+    axarr[0].set_title("original defect-free val image")
+    axarr[1].imshow(imgs_val_pred[0])
+    axarr[1].set_title("reconstruction defect-free val image")
+    axarr[2].imshow(imgs_val_diff[0])
+    axarr[2].set_title("ResMap defect-free val image")
+    fig.savefig(os.path.join(save_dir, "3_val_musketeers.png"))
 
 
 # create parser
@@ -149,8 +199,4 @@ args = parser.parse_args()
 if __name__ == "__main__":
     main(args)
 
-# model_path = "saved_models/MSE/14-02-2020_15:10:24/CAE_mvtec_b24.h5"
-
-# model, setup, _ = utils.load_SavedModel(model_path)
-
-# python3 validate.py -p saved_models/MSE/17-02-2020_18:14:52/CAE_mvtec_b12.h5
+# python3 validate.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5

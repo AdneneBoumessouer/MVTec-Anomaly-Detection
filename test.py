@@ -25,12 +25,12 @@ import json
 import argparse
 
 
-def get_image_score(image, k):
+def get_image_score(image, factor):
     image_1d = image.flatten()
     mean_image = np.mean(image_1d)
     std_image = np.std(image_1d)
-    score = mean_image + k*std_image
-    return score
+    score = mean_image + factor * std_image
+    return score, mean_image, std_image
 
 
 def main(args):
@@ -53,6 +53,7 @@ def main(args):
     # train_setup
     color_mode = setup["train_setup"]["color_mode"]
     learning_rate = setup["train_setup"]["learning_rate"]
+    decay = setup["train_setup"]["decay"]
     epochs_trained = setup["train_setup"]["epochs_trained"]
     nb_training_images_aug = setup["train_setup"]["nb_training_images_aug"]
     epochs = setup["train_setup"]["epochs"]
@@ -62,8 +63,13 @@ def main(args):
     architecture = setup["train_setup"]["architecture"]
     loss = setup["train_setup"]["loss"]
 
-    # comment
     comment = setup["comment"]
+
+    # create directory to save test results
+    parent_dir = str(Path(model_path).parent)
+    save_dir = os.path.join(parent_dir, "test_results")
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
 
     # This will do preprocessing
     if architecture == "mvtec":
@@ -82,7 +88,7 @@ def main(args):
     test_data_dir = os.path.join(directory, "test")
     total_number = utils.get_total_number_test_images(test_data_dir)
 
-    # retrieve preprocessed input images as a numpy array
+    # retrieve preprocessed test images as a numpy array
     test_generator = test_datagen.flow_from_directory(
         directory=test_data_dir,
         target_size=shape,
@@ -92,19 +98,91 @@ def main(args):
         class_mode="input",
     )
     imgs_test_input = test_generator.next()[0]
+    np.save(
+        file=os.path.join(save_dir, "imgs_test_input.npy"),
+        arr=imgs_test_input,
+        allow_pickle=True,
+    )
 
     # retrieve image_names
     filenames = test_generator.filenames
 
     # predict on test images
     imgs_test_pred = model.predict(imgs_test_input)
+    np.save(
+        file=os.path.join(save_dir, "imgs_test_pred.npy"),
+        arr=imgs_test_pred,
+        allow_pickle=True,
+    )
+    print("TYPE imgs_test_pred:{}".format(type(imgs_test_pred)))
+
+    # ===============================================================
+    # ===============================================================
+
+    # compute residual maps
+    imgs_test_diff = imgs_test_input - imgs_test_pred
+    np.save(
+        file=os.path.join(save_dir, "imgs_test_diff.npy"),
+        arr=imgs_test_diff,
+        allow_pickle=True,
+    )
+
+    # determine threshold test
+    imgs_test_diff_1d = imgs_test_diff.flatten()
+    mean_test = np.mean(imgs_test_diff_1d)
+    std_test = np.std(imgs_test_diff_1d)
+
+    # k = 1.65 # confidence 90%
+    # k = 1.96 # confidence 95%
+    factor_test = 2.58  # confidence 99%
+    # k = 3.00 # confidence 99.73%
+    # k = 3.30 # confidence 99.90%
+
+    threshold_test = mean_test + factor_test * std_test
+
+    # Histogramm to visualize the ResMap distribution
+    fig = plt.figure(figsize=(8, 5))
+    plt.hist(imgs_test_diff_1d, bins=100, density=True, stacked=True)
+    plt.title("Test ResMap pixel value distribution")
+    plt.xlabel("pixel intensity")
+    plt.ylabel("probability")
+    plt.savefig(os.path.join(save_dir, "histogram.png"))
+
+    # show reconstruction for one particular image
+    test_image_name = args.image  # change name in the future
+    index = filenames.index(test_image_name)
+    print(filenames[index])
+
+    fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
+    axarr[0].imshow(imgs_test_input[index])
+    axarr[0].set_title("original defect test image")
+    axarr[1].imshow(imgs_test_pred[index])
+    axarr[1].set_title("reconstruction defect test image")
+    axarr[2].imshow(imgs_test_diff[index])
+    axarr[2].set_title("ResMap defect test image")
+    fig.savefig(os.path.join(save_dir, "3_test_musketeers.png"))
+
+    # ===============================================================
+    # ===============================================================
 
     # compute scores on test images
-    scores = np.array([get_image_score(img_test_pred)
-                       for img_test_pred in imgs_test_pred])
+    output_test = {"filenames": filenames, "scores": [], "mean": [], "std": []}
+    for img_test_diff in imgs_test_diff:
+        score, mean, std = utils.get_image_score(img_test_diff, factor_test)
+        output_test["scores"].append(score)
+        output_test["mean"].append(mean)
+        output_test["std"].append(std)
+        # assert length compatibility
+
+    # format test results in a pd DataFrame
+    df_test = pd.DataFrame.from_dict(output_test)
+    df_test.to_pickle(os.path.join(save_dir, "df_test.pkl"))
+    # display DataFrame
+    with pd.option_context("display.max_rows", None, "display.max_columns", None):
+        print(df_test)
 
     # get path to validation results directory
-    parent_dir = Path(model_path).parent
+    parent_dir = str(Path(model_path).parent)
     val_result_dir = os.path.join(parent_dir, "val_results")
     if not os.path.isdir(val_result_dir):
         raise Exception
@@ -113,17 +191,24 @@ def main(args):
     with open(os.path.join(val_result_dir, "val_results.json"), "r") as read_file:
         val_results = json.load(read_file)
 
-    threshold = val_results["threshold"]
+    threshold_val = float(val_results["threshold_val"])
+    mean_val = float(val_results["mean_val"])
+    std_val = float(val_results["std_val"])
 
+    # ======================= CLASSIFICATION ===========================
     # classification: defective if score exceeds threshold, positive class == defect
-    y_pred_bool = scores > threshold
-    y_pred_class = ["defect" if boolean ==
-                    True else "defect_free" for boolean in y_pred_bool]
+    scores = np.array(output_test["scores"])
+    y_pred_bool = scores > threshold_val
+    y_pred_class = [
+        "defect" if boolean == True else "defect_free" for boolean in y_pred_bool
+    ]
 
-    y_true_bool = [True if "good" not in filename.split(
-        "/") else False for filename in filenames]
-    y_true_class = ["defect" if boolean ==
-                    True else "defect_free" for boolean in y_true_bool]
+    y_true_bool = [
+        True if "good" not in filename.split("/") else False for filename in filenames
+    ]
+    y_true_class = [
+        "defect" if boolean == True else "defect_free" for boolean in y_true_bool
+    ]
 
     # detection ratios: https://en.wikipedia.org/wiki/Confusion_matrix
     # condition positive (P)
@@ -133,12 +218,20 @@ def main(args):
     N = y_true_bool.count(False)
 
     # true positive (TP)
-    TP = np.sum([1 if y_pred_bool[i] == y_true_bool[i] ==
-                 True else 0 for i in range(total_number)])
+    TP = np.sum(
+        [
+            1 if y_pred_bool[i] == y_true_bool[i] == True else 0
+            for i in range(total_number)
+        ]
+    )
 
     # true negative (TN)
-    TN = np.sum([1 if y_pred_bool[i] == y_true_bool[i] ==
-                 False else 0 for i in range(total_number)])
+    TN = np.sum(
+        [
+            1 if y_pred_bool[i] == y_true_bool[i] == False else 0
+            for i in range(total_number)
+        ]
+    )
 
     # sensitivity, recall, hit rate, or true positive rate (TPR)
     TPR = TP / P
@@ -148,16 +241,17 @@ def main(args):
 
     # confusion matrix
     conf_matrix = confusion_matrix(
-        y_true_class, y_pred_class, labels=["defect", "defect_free"], normalize="true")
-
-    # create directory to save test_results
-    parent_dir = Path(model_path).parent
-    save_dir = os.path.join(parent_dir, "test_results")
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
+        y_true_class, y_pred_class, labels=["defect", "defect_free"]
+    )  # normalize="true"
 
     # save test results
     test_results = {
+        "mean_val": str(mean_val),
+        "mean_test": str(mean_test),
+        "std_val": str(std_val),
+        "std_test": str(std_test),
+        "threshold_val": str(threshold_val),
+        "threshold_test": str(threshold_test),
         "TPR": TPR,
         "TNR": TNR,
     }
@@ -175,9 +269,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
 )
+parser.add_argument(
+    "-i", "--image", type=str, required=True, metavar="", help="path to test image"
+)
+
+# parser_new_training.add_argument(
+#     "-c", "--comment", type=str, help="write comment regarding training")
 args = parser.parse_args()
 
 if __name__ == "__main__":
     main(args)
 
-model_path = "saved_models/MSE/02-02-2020_16:32:49/CAE_e150_b12_0"
+# python3 test.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5 -i "poke/000.png"

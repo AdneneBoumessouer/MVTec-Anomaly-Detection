@@ -104,11 +104,11 @@ During training, the CAE trains solely on defect-free images and learns to recon
 
 To initiate training, go to the project directory and run the following command in your terminal:
 ```
-python3 train.py new -d <direcroty containing training images> -i <number of training instances> -a <architecture of the model to use> -b <batch size> -l <loss function> 
+python3 train.py new -d <direcroty containing training images> -i <number of training instances> -a <architecture of the model to use> -b <batch size> -l <loss function> -c <comment>
 ```
 Here is an example:
 ```
-python3 train.py new -d mvtec/capsule -i 10000 -a mvtec -b 24 -l mse 
+python3 train.py new -d mvtec/capsule -i 10000 -a mvtec -b 24 -l mse -c "first try"
 ```
 **NOTE:** The number of training epochs will be determined by the given number of training images specified during the initiation of the training, devided by the actual number of images contained in the train folder of the chosen class.
 
