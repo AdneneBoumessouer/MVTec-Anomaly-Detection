@@ -62,7 +62,7 @@ def main(args):
     architecture = setup["train_setup"]["architecture"]
     loss = setup["train_setup"]["loss"]
 
-    comment = setup["comment"]
+    tag = setup["tag"]
 
     # create directory to save results
     parent_dir = str(Path(model_path).parent)
