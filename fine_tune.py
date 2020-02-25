@@ -16,7 +16,7 @@ from numpy import expand_dims
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-plt.style.use("seaborn-darkgrid")
+# plt.style.use("seaborn-darkgrid")
 
 # import datetime
 import csv
@@ -26,8 +26,10 @@ import json
 # import argparse
 from pathlib import Path
 
+import cv2 as cv
+
 # set paths
-model_path = "saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5"
+model_path = "saved_models/MSE/24-02-2020_19:16:32/CAE_mvtec_b12.h5"
 parent_dir = str(Path(model_path).parent)
 val_dir = os.path.join(parent_dir, "val_results")
 test_dir = os.path.join(parent_dir, "test_results")
@@ -46,17 +48,20 @@ df_val = pd.read_pickle(os.path.join(val_dir, "df_val.pkl"))
 df_test = pd.read_pickle(os.path.join(test_dir, "df_test.pkl"))
 
 
+img_val = imgs_val_diff[0]
+img_val_th = img_val.copy()
+img_val_th[img_val_th<=0] = 0
+plt.imshow(img_val_th[:,:,0])
+plt.show()
+
+img_val = imgs_val_diff[0]*255
+plt.imshow(img_val[:,:,0])
+plt.show()
 
 
-
-
-
-
-
-
-
-
-
+ret, thresh_val = cv.threshold(img_val,40,255,cv.THRESH_BINARY)
+plt.imshow(thresh_val)
+plt.show()
 
 
 
