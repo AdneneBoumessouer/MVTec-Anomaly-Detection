@@ -12,6 +12,7 @@ import numpy as np
 import scipy.stats
 from numpy import expand_dims
 
+
 # import requests
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -23,164 +24,148 @@ import csv
 import pandas as pd
 import json
 
-# import argparse
+import argparse
 from pathlib import Path
 
+# import computer vision functions
 import cv2 as cv
-
-# set paths
-model_path = "saved_models/MSE/24-02-2020_19:16:32/CAE_mvtec_b12.h5"
-parent_dir = str(Path(model_path).parent)
-val_dir = os.path.join(parent_dir, "val_results")
-test_dir = os.path.join(parent_dir, "test_results")
-
-# load arrays
-imgs_val_input = np.load(os.path.join(val_dir, "imgs_val_input.npy"))
-imgs_val_pred = np.load(os.path.join(val_dir, "imgs_val_pred.npy"))
-imgs_val_diff = np.load(os.path.join(val_dir, "imgs_val_diff.npy"))
-
-imgs_test_input = np.load(os.path.join(test_dir, "imgs_test_input.npy"))
-imgs_test_pred = np.load(os.path.join(test_dir, "imgs_test_pred.npy"))
-imgs_test_diff = np.load(os.path.join(test_dir, "imgs_test_diff.npy"))
-
-# load DataFrames
-df_val = pd.read_pickle(os.path.join(val_dir, "df_val.pkl"))
-df_test = pd.read_pickle(os.path.join(test_dir, "df_test.pkl"))
+from skimage.util import img_as_ubyte
+from skimage.filters import threshold_otsu
+from skimage.segmentation import clear_border
+from skimage.measure import label, regionprops
+from skimage.morphology import closing, square
+from skimage.color import label2rgb
 
 
-img_val = imgs_val_diff[0]
-img_val_th = img_val.copy()
-img_val_th[img_val_th<=0] = 0
-plt.imshow(img_val_th[:,:,0])
-plt.show()
-
-img_val = imgs_val_diff[0]*255
-plt.imshow(img_val[:,:,0])
-plt.show()
-
-
-ret, thresh_val = cv.threshold(img_val,40,255,cv.THRESH_BINARY)
-plt.imshow(thresh_val)
-plt.show()
+def plot_img_at_index(X, index):
+    _, _, _, channels = X.shape
+    plt.figure()
+    if channels == 1:
+        plt.imshow(X[index, :, :, 0], cmap=plt.cm.gray)
+    elif channels == 3:
+        plt.imshow(X[index, :, :, 0])
+    plt.show()
 
 
+def plot_img(img):
+    ndims = len(img.shape)
+    plt.figure()
+    if ndims == 2:
+        plt.imshow(img, cmap=plt.cm.gray)
+    elif ndims == 3:
+        _, _, channels = img.shape
+        if channels == 3:
+            plt.imshow(img)
+        else:
+            plt.imshow(img[:, :, 0], cmap=plt.cm.gray)
+    plt.show()
 
 
+def hist_image(img):
+    img_1d = img.flatten()
+    plt.figure()
+    plt.hist(img_1d, bins=200, density=True, stacked=True, label="image histogram")
+    # plot pdf
+    mu = img_1d.mean()
+    sigma = img_1d.std()
+    minimum = np.amin(img_1d)
+    maximum = np.amax(img_1d)
+    X = np.linspace(start=minimum, stop=maximum, num=400, endpoint=True)
+    pdf_x = [scipy.stats.norm(mu, sigma).pdf(x) for x in X]
+    plt.plot(X, pdf_x, label="pixel distribution")
+    plt.legend()
+    plt.show()
 
 
+def threshold_images(images, threshold):
+    """
+    All pixel values < threshold  ==> 0, else ==> 255
+    """
+    images_th = np.zeros(shape=images.shape)
+    for i, image in enumerate(images):
+        image_th = cv.threshold(image, threshold, 255, cv.THRESH_BINARY)
+        images_th[i] = image_th
+    return images_th
 
 
+def label_images(images):
+    """
+    Segments images into connected components (regions).
+    Returns segmented images and a list containing information about the regions.
+    """
+    images_labeled = np.zeros(shape=images.shape)
+    regions_all = []
+    for i, image in enumerate(images):
+        image_labeled = label(image)
+        images_labeled[i] = image_labeled
+        regions_all.append(regionprops(image_labeled))
+    return images_labeled, regions_all
 
-# ============================================================================
+
+def check_regions(regions_all, min_area):
+    """Checks if there is at least one connected component (region) that is 
+    larger than the user defined min_area"""
+    for regions in regions_all:
+        for region in regions:
+            if region.area > min_area:
+                return True
+    return False
 
 
-# =============================================================================
-# # flatten
-# imgs_val_diff_1d = imgs_val_diff.flatten()
-# imgs_test_diff_1d = imgs_test_diff.flatten()
-# 
-# # ===================== WITHOUT POST PROCESSING ============================
-# # plot histogram val
-# plt.hist(imgs_val_diff_1d, bins=500, density=True, stacked=True, alpha=0.5, label="val")
-# 
-# # plot histogram test
-# plt.hist(
-#     imgs_test_diff_1d, bins=500, density=True, stacked=True, alpha=0.5, label="test"
-# )
-# 
-# # plot pdf val
-# mu_val = imgs_val_diff_1d.mean()
-# sigma_val = imgs_val_diff_1d.std()
-# min_val = np.amin(imgs_val_diff_1d)
-# max_val = np.amax(imgs_val_diff_1d)
-# 
-# X_val = np.linspace(start=min_val, stop=max_val, num=1000, endpoint=True)
-# pdf_x_val = [scipy.stats.norm(mu_val, sigma_val).pdf(x) for x in X_val]
-# plt.plot(X_val, pdf_x_val, label="pdf_x_val")
-# 
-# # plot pdf test
-# mu_test = imgs_test_diff_1d.mean()
-# sigma_test = imgs_test_diff_1d.std()
-# min_test = np.amin(imgs_test_diff_1d)
-# max_test = np.amax(imgs_test_diff_1d)
-# 
-# X_test = np.linspace(start=min_test, stop=max_test, num=1000, endpoint=True)
-# pdf_x_test = [scipy.stats.norm(mu_test, sigma_test).pdf(x) for x in X_test]
-# plt.plot(X_test, pdf_x_test, label="pdf_x_test")
-# 
-# plt.title("pixel value distribution of val and test Resmaps")
-# plt.xlabel("pixel intensity")
-# plt.ylabel("probability")
-# plt.legend()
-# plt.show()
-# 
-# # ====================================================================
-# 
-# mean_mean_val = df_val["mean"].mean()
-# mean_std_val = df_val["std"].mean()
-# 
-# mean_mean_test = df_test["mean"].mean()
-# mean_std_test = df_test["std"].mean()
-# 
-# plt.imshow(imgs_val_diff[0])
-# np.amin(imgs_val_diff)
-# np.amax(imgs_val_diff)
-# 
-# img_test_diff = imgs_test_diff[68]
-# plt.imshow(img_test_diff)
-# plt.show()
-# # np.amin(imgs_test_diff)
-# # np.amax(imgs_test_diff)
-# 
-# 
-# # ===================== WITH THRESHOLDING ============================
-# X_val = imgs_val_diff.copy()
-# X_test = imgs_test_diff.copy()
-# 
-# threshold = 0.3
-# 
-# # 68
-# 
-# 
-# def threshold_array(X, threshold):
-#     X_th = X.copy()
-#     X_th[X_th < threshold] = 0
-#     return X_th
-# 
-# 
-# def create_images_from_array(X, dst_dict, filenames):
-#     for i in range(len(X)):
-#         image = X[i]
-#         plt.imshow(image)
-#         filename = "_".join(filenames[i].split("/"))
-#         filepath = os.path.join(dst_dict, filename)
-#         plt.savefig(filepath)
-# 
-# 
-# # threshold val images with 0
-# dst_dict_val = "/home/adnene33/Desktop/images_thresholded/val"
-# filenames_val = df_val["filenames"]
-# X_val_th0 = threshold_array(X_val, 0)
-# create_images_from_array(X_val_th0, dst_dict_val, filenames_val)
-# 
-# # threshold test images with 0
-# dst_dict_test = "/home/adnene33/Desktop/images_thresholded/test"
-# filenames_test = df_test["filenames"]
-# X_test_th0 = threshold_array(X_test, 0)
-# create_images_from_array(X_test_th0, dst_dict_test, filenames_test)
-# 
-# X_val_th0_1d = X_val_th0.flatten()
-# X_test_th0_1d = X_test_th0.flatten()
-# 
-# # plot
-# plt.hist(X_val_th0_1d, bins=100, density=True, stacked=True, alpha=0.5, label="val")
-# plt.hist(X_test_th0_1d, bins=100, density=True, stacked=True, alpha=0.5, label="test")
-# plt.legend()
-# plt.title("pixel value distribution of val and test Resmaps")
-# plt.xlabel("pixel intensity")
-# plt.ylabel("probability")
-# plt.show()
-# 
-# df_test[df_test["filenames"] == "crack/000.png"]
-# =============================================================================
+def main(args):
+    # set paths
+    model_path = args.path
+    parent_dir = str(Path(model_path).parent)
+    val_dir = os.path.join(parent_dir, "val_results")
+
+    # create a directory to save fine-tuning results (threshold)
+    save_dir = os.path.join(parent_dir, "fine_tune")
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    # load arrays
+    resmap_val = np.load(os.path.join(val_dir, "imgs_val_diff.npy"))
+    # resmap_test = np.load(os.path.join(test_dir, "imgs_test_diff.npy"))
+
+    min_area = 20
+    threshold = 0
+
+    while True:
+        # threshold residual maps
+        resmaps_th = threshold_images(resmap_val, threshold)
+
+        # compute connected components
+        resmaps_labeled, regions_all = label_images(resmaps_th)
+
+        # check if connected componennts exceed minimum defect area
+        if check_regions(regions_all, min_area) == False:
+            # save threshold value
+            fine_tune = {
+                "threshold": str(threshold),
+            }
+            with open(os.path.join(save_dir, "fine_tune.json"), "w") as json_file:
+                json.dump(fine_tune, json_file)
+            # stop
+            break
+
+        threshold = threshold + 1
+
+
+# create parser
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
+)
+parser.add_argument(
+    "-a",
+    "--area",
+    type=int,
+    required=True,
+    metavar="",
+    help="minimum area for a connected component",
+)
+args = parser.parse_args()
+
+if __name__ == "__main__":
+    main(args)
 
