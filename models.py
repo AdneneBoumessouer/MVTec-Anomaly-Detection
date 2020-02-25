@@ -186,6 +186,7 @@ def build_model(architecture, channels=3):
         print(model.summary())
 
         return model
+
     elif architecture == "mvtec2":
         """Another implementation of mvtec architecture inspired by:
         https://github.com/cheapthrillandwine/Improving_Unsupervised_Defect_Segmentation/blob/master/Improving_AutoEncoder_Samples.ipynb"""
@@ -244,6 +245,8 @@ def build_model(architecture, channels=3):
 
         model = keras.models.Model(input_img, decoded)
         print(model.summary())
+
+        return model
 
     elif architecture == "resnet":
         """The Model is composed of a pretrained encoder (InceptionResNetV2) and a decoder.

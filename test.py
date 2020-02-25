@@ -72,7 +72,7 @@ def main(args):
         os.makedirs(save_dir)
 
     # This will do preprocessing
-    if architecture == "mvtec":
+    if architecture in ["mvtec", "mvtec2"]:
         preprocessing_function = None
     elif architecture == "resnet":
         preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input

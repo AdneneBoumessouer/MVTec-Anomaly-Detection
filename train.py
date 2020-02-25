@@ -126,7 +126,7 @@ def main(args):
 
     # =============================== TRAINING =================================
 
-    if architecture == "mvtec":
+    if architecture in ["mvtec", "mvtec2"]:
         rescale = 1.0 / 255
         shape = (256, 256)
         preprocessing_function = None

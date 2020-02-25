@@ -76,7 +76,7 @@ def main(args):
     fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
 
     # This will do preprocessing
-    if architecture == "mvtec":
+    if architecture in ["mvtec", "mvtec2"]:
         preprocessing_function = None
     elif architecture == "resnet":
         preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
