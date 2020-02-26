@@ -177,6 +177,8 @@ def main(args):
     classification = {"filenames": filenames, "predictions": y_pred, "truth": y_true}
     df_clf = pd.DataFrame.from_dict(classification)
     df_clf.to_pickle(os.path.join(save_dir, "df_clf.pkl"))
+    with open(os.path.join(save_dir, "classification.txt"), "a") as f:
+        f.write(df_clf.to_string(header=True, index=True))
 
     # print DataFrame to console
     with pd.option_context("display.max_rows", None, "display.max_columns", None):
@@ -249,4 +251,5 @@ if __name__ == "__main__":
 
     main(args)
 
-# python3 test.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5 -i "poke/000.png"
+# python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5
+# python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -t 35 -a 300
