@@ -1,16 +1,9 @@
-datasets/
 mvtec/
 .vscode/
-X_test.npy
-X_train.npy
-y_test.npy
 my_first_key.pem
-datasets/tensors/load_mvtec_train.py
-datasets/tensors/load_mvtec_test.py
 inspect_trained_model.ipynb
 blob.py
 old_test.py
-
 
 
 # Byte-compiled / optimized / DLL files
@@ -23,6 +16,8 @@ __pycache__/
 
 # numpy arrays
 saved_models/**/*.npy
+
+# png images
 saved_models/**/*.png
 
 # Distribution / packaging
