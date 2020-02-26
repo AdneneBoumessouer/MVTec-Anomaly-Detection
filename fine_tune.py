@@ -170,4 +170,4 @@ if __name__ == "__main__":
     main(args)
 
 model_path = "saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5"
-min_area = 400
+min_area = 200
