@@ -22,18 +22,55 @@ import json
 
 import argparse
 
+# import visualization functions
+from visualize import plot_img_at_index as plot_img_at_index
+from visualize import plot_img as plot_img
+from visualize import hist_image as hist_image
 
-def plot_img(imgs, index, save=False):
-    """Takes an image tensor and plots one image according to index"""
-    if imgs.shape[-1] == 3:
-        plt.imshow(imgs[index])
-    else:
-        plt.imshow(imgs[index, :, :, 0], cmap=plt.cm.gray)
-    plt.show()
+# import computer vision functions
+import cv2 as cv
+from skimage.util import img_as_ubyte
+from skimage.filters import threshold_otsu
+from skimage.segmentation import clear_border
+from skimage.measure import label, regionprops
+from skimage.morphology import closing, square
+from skimage.color import label2rgb
+
+
+def threshold_images(images, threshold):
+    """
+    All pixel values < threshold  ==> 0, else ==> 255
+    """
+    images_th = np.zeros(shape=images.shape[:-1])
+    for i, image in enumerate(images):
+        image_th = cv.threshold(image, threshold, 255, cv.THRESH_BINARY)[1]
+        images_th[i] = image_th
+    return images_th
+
+
+def label_images(images):
+    """
+    Segments images into images of connected components (anomalous regions).
+    Returns segmented images and a list containing their areas sorted 
+    in descending order. 
+    """
+    images_labeled = np.zeros(shape=images.shape)
+    areas_all = []
+    for i, image in enumerate(images):
+        # segment current image in connected components
+        image_labeled = label(image)
+        images_labeled[i] = image_labeled
+        # compute areas of anomalous regions in the current image
+        regions = regionprops(image_labeled)
+        areas = [region.area for region in regions]
+        # areas_all.extend(areas)
+        areas_all.append(areas)
+    return images_labeled, areas_all
 
 
 def main(args):
     model_path = args.path
+    min_area = args.area
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -120,92 +157,61 @@ def main(args):
     )
 
     # compute residual maps on validation dataset
-    imgs_val_diff = imgs_val_input - imgs_val_pred
+    resmaps_val = imgs_val_input - imgs_val_pred
     np.save(
-        file=os.path.join(save_dir, "imgs_val_diff.npy"),
-        arr=imgs_val_diff,
+        file=os.path.join(save_dir, "resmaps_val.npy"),
+        arr=resmaps_val,
         allow_pickle=True,
     )
 
-    # determine threshold on validation dataset
-    imgs_val_diff_1d = imgs_val_diff.flatten()
-    mean_val = np.mean(imgs_val_diff_1d)
-    std_val = np.std(imgs_val_diff_1d)
+    # Convert to 8-bit unsigned int
+    # (unnecessary if working exclusively with scikit image, see .img_as_float())
+    resmaps_val = img_as_ubyte(resmaps_val)
 
-    # k = 1.65 # confidence 90%
-    # k = 1.96 # confidence 95%
-    factor_val = 2.58  # confidence 99%
-    # k = 3.00 # confidence 99.73%
-    # k = 3.30 # confidence 99.90%
+    threshold = 0
 
-    threshold_val = mean_val + factor_val * std_val
+    while True:
+        # threshold residual maps
+        resmaps_th = threshold_images(resmaps_val, threshold)
 
-    # save validation results
+        # compute connected components
+        resmaps_labeled, areas_all = label_images(resmaps_th)
+
+        # check if area of largest anomalous region is below the minimum area
+        areas_all_flat = [item for sublist in areas_all for item in sublist]
+        areas_all_flat.sort(reverse=True)
+        if min_area > areas_all_flat[0]:
+            break
+
+        threshold = threshold + 1
+        print("current threshold = {}".format(threshold))
+
+    # save threshold value and min_area
     val_results = {
-        "mean_val": str(mean_val),
-        "std_val": str(std_val),
-        "threshold_val": str(threshold_val),
-        "pixel_max_value": str(np.amax(imgs_val_pred)),
-        "pixel_min_value": str(np.amin(imgs_val_pred)),
+        "threshold": str(threshold),
+        "area": str(min_area),
     }
-
     with open(os.path.join(save_dir, "val_results.json"), "w") as json_file:
         json.dump(val_results, json_file)
 
-    # ===================================================================
-    # compute scores on validation images
-    output_test = {"filenames": filenames, "scores": [], "mean": [], "std": []}
-    for img_val_diff in imgs_val_diff:
-        score, mean, std = utils.get_image_score(img_val_diff, factor_val)
-        output_test["scores"].append(score)
-        output_test["mean"].append(mean)
-        output_test["std"].append(std)
-        # assert length compatibility
-
-    # format test results in a pd DataFrame
-    df_test = pd.DataFrame.from_dict(output_test)
-    df_test.to_pickle(os.path.join(save_dir, "df_val.pkl"))
-    # display DataFrame
-    with pd.option_context("display.max_rows", None, "display.max_columns", None):
-        print(df_test)
-    # ===================================================================
-
-    # Histogramm to visualize the ResMap distribution
-    fig = plt.figure(figsize=(8, 5))
-    plt.hist(imgs_val_diff_1d, bins=100, density=True, stacked=True)
-    plt.title("Validation ResMap pixel value distribution")
-    plt.xlabel("pixel intensity")
-    plt.ylabel("probability")
-    plt.savefig(os.path.join(save_dir, "histogram_val.png"))
-
-    # save three images
-    fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
-    try:
-        axarr[0].imshow(imgs_val_input[0])
-    except TypeError:
-        axarr[0].imshow(imgs_val_input[0, :, :, 0], cmap=plt.cm.gray)
-    axarr[0].set_title("original defect-free val image")
-    try:
-        axarr[1].imshow(imgs_val_pred[0])
-    except TypeError:
-        axarr[1].imshow(imgs_val_pred[0, :, :, 0], cmap=plt.cm.gray)
-    axarr[1].set_title("reconstruction defect-free val image")
-    try:
-        axarr[2].imshow(imgs_val_diff[0])
-    except TypeError:
-        axarr[2].imshow(imgs_val_diff[0, :, :, 0], cmap=plt.cm.gray)
-    axarr[2].set_title("ResMap defect-free val image")
-    fig.savefig(os.path.join(save_dir, "3_val_musketeers.png"))
-
-
-# create parser
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
-)
-args = parser.parse_args()
 
 if __name__ == "__main__":
+
+    # create parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
+    )
+    parser.add_argument(
+        "-a",
+        "--area",
+        type=int,
+        required=True,
+        metavar="",
+        help="minimum area for a connected component",
+    )
+    args = parser.parse_args()
+
     main(args)
 
-# python3 validate.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5
+# python3 validate.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -a 200
