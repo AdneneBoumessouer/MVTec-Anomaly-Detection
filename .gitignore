@@ -9,6 +9,7 @@ datasets/tensors/load_mvtec_train.py
 datasets/tensors/load_mvtec_test.py
 inspect_trained_model.ipynb
 blob.py
+old_test.py
 
 
 
@@ -22,6 +23,7 @@ __pycache__/
 
 # numpy arrays
 saved_models/**/*.npy
+saved_models/**/*.png
 
 # Distribution / packaging
 .Python
