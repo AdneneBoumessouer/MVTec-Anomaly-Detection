@@ -36,21 +36,24 @@ def main(args):
     train_data_dir = os.path.join(directory, "train")
     nb_training_images_aug = args.images
     batch_size = args.batch
+    color_mode = args.color  # new
+    loss = args.loss.upper()
     validation_split = 0.1
-
     architecture = args.architecture
-    comment = args.comment
+    tag = args.tag
+
+    if loss == "MSSIM" and color_mode == "grayscale":
+        raise ValueError("MSSIM works only with rgb images")
+    if loss == "SSIM" and color_mode == "rgb":
+        raise ValueError("SSIM works only with grayscale images")
 
     # NEW TRAINING
     if args.command == "new":
-        loss = args.loss.upper()
-
-        if loss == "SSIM":
+        # check input arguments
+        if color_mode == "grayscale":
             channels = 1
-            color_mode = "grayscale"
-        else:
+        elif color_mode == "rgb":
             channels = 3
-            color_mode = "rgb"
 
         # Build model
         model = models.build_model(architecture, channels)
@@ -123,7 +126,7 @@ def main(args):
 
     # =============================== TRAINING =================================
 
-    if architecture == "mvtec":
+    if architecture in ["mvtec", "mvtec2"]:
         rescale = 1.0 / 255
         shape = (256, 256)
         preprocessing_function = None
@@ -252,7 +255,7 @@ def main(args):
                 "validation_split": validation_split,
                 "epochs_trained": epochs_trained,
             },
-            "comment": comment,
+            "tag": tag,
         }
 
     # elif args.command == "resume":
@@ -316,7 +319,11 @@ parser_new_training.add_argument(
 )
 
 parser_new_training.add_argument(
-    "-c", "--comment", type=str, help="write comment regarding training")
+    "-c", "--color", type=str, required=True, metavar="", choices=["rgb", "grayscale"], help="color mode"
+)  # new
+
+parser_new_training.add_argument(
+    "-t", "--tag", type=str, help="give a tag to the model to be trained")  # modofied (previously comment)
 
 # create the subparser to resume the training of an existing model
 parser_resume_training = subparsers.add_parser("resume")
@@ -348,9 +355,9 @@ if __name__ == "__main__":
 
 # Examples to initiate training
 
-# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mse
-# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mssim
-# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l l2
+# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mse -c grayscale
+# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mssim -c rgb
+# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l l2 -c grayscale
 
 # python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mse
 # python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mssim

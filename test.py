@@ -63,7 +63,7 @@ def main(args):
     architecture = setup["train_setup"]["architecture"]
     loss = setup["train_setup"]["loss"]
 
-    comment = setup["comment"]
+    tag = setup["tag"]
 
     # create directory to save test results
     parent_dir = str(Path(model_path).parent)
@@ -72,7 +72,7 @@ def main(args):
         os.makedirs(save_dir)
 
     # This will do preprocessing
-    if architecture == "mvtec":
+    if architecture in ["mvtec", "mvtec2"]:
         preprocessing_function = None
     elif architecture == "resnet":
         preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
@@ -146,7 +146,7 @@ def main(args):
     plt.title("Test ResMap pixel value distribution")
     plt.xlabel("pixel intensity")
     plt.ylabel("probability")
-    plt.savefig(os.path.join(save_dir, "histogram.png"))
+    plt.savefig(os.path.join(save_dir, "histogram_test.png"))
 
     # show reconstruction for one particular image
     test_image_name = args.image  # change name in the future
@@ -154,11 +154,20 @@ def main(args):
     print(filenames[index])
 
     fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
-    axarr[0].imshow(imgs_test_input[index])
+    try:
+        axarr[0].imshow(imgs_test_input[index])
+    except TypeError:
+        axarr[0].imshow(imgs_test_input[index, :, :, 0], cmap=plt.cm.gray)
     axarr[0].set_title("original defect test image")
-    axarr[1].imshow(imgs_test_pred[index])
+    try:
+        axarr[1].imshow(imgs_test_pred[index])
+    except:
+        axarr[1].imshow(imgs_test_pred[index, :, :, 0], cmap=plt.cm.gray)
     axarr[1].set_title("reconstruction defect test image")
-    axarr[2].imshow(imgs_test_diff[index])
+    try:
+        axarr[2].imshow(imgs_test_diff[index])
+    except:
+        axarr[2].imshow(imgs_test_diff[index, :, :, 0], cmap=plt.cm.gray)
     axarr[2].set_title("ResMap defect test image")
     fig.savefig(os.path.join(save_dir, "3_test_musketeers.png"))
 
