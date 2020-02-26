@@ -23,18 +23,33 @@ import pandas as pd
 import json
 
 import argparse
+from skimage.util import img_as_ubyte
+
+# import validation functions
+from validate import threshold_images as threshold_images
+from validate import label_images as label_images
 
 
-def get_image_score(image, factor):
-    image_1d = image.flatten()
-    mean_image = np.mean(image_1d)
-    std_image = np.std(image_1d)
-    score = mean_image + factor * std_image
-    return score, mean_image, std_image
+def is_defective(areas, min_area):
+    """Decides if image is defective given the areas of its connected components"""
+    areas = np.array(areas)
+    if areas[areas >= min_area].shape[0] > 0:
+        return 1
+    return 0
+
+
+def classify(areas_all, min_area):
+    """Decides if images are defective given the areas of their connected components"""
+    y_pred = []
+    for areas in areas_all:
+        y_pred.append(is_defective(areas, min_area))
+    return y_pred
 
 
 def main(args):
     model_path = args.path
+    threshold = args.threshold
+    min_area = args.area
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -64,6 +79,24 @@ def main(args):
     loss = setup["train_setup"]["loss"]
 
     tag = setup["tag"]
+
+    if threshold == None or min_area == None:
+        # get path to validation results directory
+        parent_dir = str(Path(model_path).parent)
+        val_result_dir = os.path.join(parent_dir, "val_results")
+        if not os.path.isdir(val_result_dir):
+            raise Exception
+
+        # get threshold from validation results
+        with open(os.path.join(val_result_dir, "val_results.json"), "r") as read_file:
+            val_results = json.load(read_file)
+
+        if threshold == None:
+            threshold = float(val_results["threshold"])  # should be parsed ARGUMENT
+            print("using validation threshold")
+        if min_area == None:
+            min_area = float(val_results["area"])  # should be parsed ARGUMENT
+            print("using validation area")
 
     # create directory to save test results
     parent_dir = str(Path(model_path).parent)
@@ -114,132 +147,54 @@ def main(args):
         arr=imgs_test_pred,
         allow_pickle=True,
     )
-    print("TYPE imgs_test_pred:{}".format(type(imgs_test_pred)))
 
-    # ===============================================================
-    # ===============================================================
-
-    # compute residual maps
-    imgs_test_diff = imgs_test_input - imgs_test_pred
+    # compute residual maps on test set
+    resmaps_test = imgs_test_input - imgs_test_pred
     np.save(
         file=os.path.join(save_dir, "imgs_test_diff.npy"),
-        arr=imgs_test_diff,
+        arr=resmaps_test,
         allow_pickle=True,
     )
 
-    # determine threshold test
-    imgs_test_diff_1d = imgs_test_diff.flatten()
-    mean_test = np.mean(imgs_test_diff_1d)
-    std_test = np.std(imgs_test_diff_1d)
+    # Convert to 8-bit unsigned int
+    # (unnecessary if working exclusively with scikit image, see .img_as_float())
+    # must be consistent with validation
+    resmaps_test = img_as_ubyte(resmaps_test)
 
-    # k = 1.65 # confidence 90%
-    # k = 1.96 # confidence 95%
-    factor_test = 2.58  # confidence 99%
-    # k = 3.00 # confidence 99.73%
-    # k = 3.30 # confidence 99.90%
+    # threshold residual maps with the given threshold
+    resmaps_th = threshold_images(resmaps_test, threshold)
 
-    threshold_test = mean_test + factor_test * std_test
+    # compute connected components
+    resmaps_labeled, areas_all = label_images(resmaps_th)
 
-    # Histogramm to visualize the ResMap distribution
-    fig = plt.figure(figsize=(8, 5))
-    plt.hist(imgs_test_diff_1d, bins=100, density=True, stacked=True)
-    plt.title("Test ResMap pixel value distribution")
-    plt.xlabel("pixel intensity")
-    plt.ylabel("probability")
-    plt.savefig(os.path.join(save_dir, "histogram_test.png"))
+    # classify images
+    y_pred = classify(areas_all, min_area)
 
-    # show reconstruction for one particular image
-    test_image_name = args.image  # change name in the future
-    index = filenames.index(test_image_name)
-    print(filenames[index])
-
-    fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
-    try:
-        axarr[0].imshow(imgs_test_input[index])
-    except TypeError:
-        axarr[0].imshow(imgs_test_input[index, :, :, 0], cmap=plt.cm.gray)
-    axarr[0].set_title("original defect test image")
-    try:
-        axarr[1].imshow(imgs_test_pred[index])
-    except:
-        axarr[1].imshow(imgs_test_pred[index, :, :, 0], cmap=plt.cm.gray)
-    axarr[1].set_title("reconstruction defect test image")
-    try:
-        axarr[2].imshow(imgs_test_diff[index])
-    except:
-        axarr[2].imshow(imgs_test_diff[index, :, :, 0], cmap=plt.cm.gray)
-    axarr[2].set_title("ResMap defect test image")
-    fig.savefig(os.path.join(save_dir, "3_test_musketeers.png"))
-
-    # ===============================================================
-    # ===============================================================
-
-    # compute scores on test images
-    output_test = {"filenames": filenames, "scores": [], "mean": [], "std": []}
-    for img_test_diff in imgs_test_diff:
-        score, mean, std = utils.get_image_score(img_test_diff, factor_test)
-        output_test["scores"].append(score)
-        output_test["mean"].append(mean)
-        output_test["std"].append(std)
-        # assert length compatibility
+    # retrieve ground truth
+    y_true = [1 if "good" not in filename.split("/") else 0 for filename in filenames]
 
     # format test results in a pd DataFrame
-    df_test = pd.DataFrame.from_dict(output_test)
-    df_test.to_pickle(os.path.join(save_dir, "df_test.pkl"))
-    # display DataFrame
+    classification = {"filenames": filenames, "predictions": y_pred, "truth": y_true}
+    df_clf = pd.DataFrame.from_dict(classification)
+    df_clf.to_pickle(os.path.join(save_dir, "df_clf.pkl"))
+
+    # print DataFrame to console
     with pd.option_context("display.max_rows", None, "display.max_columns", None):
-        print(df_test)
-
-    # get path to validation results directory
-    parent_dir = str(Path(model_path).parent)
-    val_result_dir = os.path.join(parent_dir, "val_results")
-    if not os.path.isdir(val_result_dir):
-        raise Exception
-
-    # get threshold from validation results
-    with open(os.path.join(val_result_dir, "val_results.json"), "r") as read_file:
-        val_results = json.load(read_file)
-
-    threshold_val = float(val_results["threshold_val"])
-    mean_val = float(val_results["mean_val"])
-    std_val = float(val_results["std_val"])
-
-    # ======================= CLASSIFICATION ===========================
-    # classification: defective if score exceeds threshold, positive class == defect
-    scores = np.array(output_test["scores"])
-    y_pred_bool = scores > threshold_val
-    y_pred_class = [
-        "defect" if boolean == True else "defect_free" for boolean in y_pred_bool
-    ]
-
-    y_true_bool = [
-        True if "good" not in filename.split("/") else False for filename in filenames
-    ]
-    y_true_class = [
-        "defect" if boolean == True else "defect_free" for boolean in y_true_bool
-    ]
+        print(df_clf)
 
     # detection ratios: https://en.wikipedia.org/wiki/Confusion_matrix
     # condition positive (P)
-    P = y_true_bool.count(True)
+    P = y_true.count(1)
 
     # condition negative (N)
-    N = y_true_bool.count(False)
+    N = y_true.count(0)
 
     # true positive (TP)
-    TP = np.sum(
-        [
-            1 if y_pred_bool[i] == y_true_bool[i] == True else 0
-            for i in range(total_number)
-        ]
-    )
+    TP = np.sum([1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(total_number)])
 
     # true negative (TN)
     TN = np.sum(
-        [
-            1 if y_pred_bool[i] == y_true_bool[i] == False else 0
-            for i in range(total_number)
-        ]
+        [1 if y_pred[i] == y_true[i] == False else 0 for i in range(total_number)]
     )
 
     # sensitivity, recall, hit rate, or true positive rate (TPR)
@@ -249,20 +204,15 @@ def main(args):
     TNR = TN / N
 
     # confusion matrix
-    conf_matrix = confusion_matrix(
-        y_true_class, y_pred_class, labels=["defect", "defect_free"]
-    )  # normalize="true"
+    conf_matrix = confusion_matrix(y_true, y_pred, normalize="true")
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, normalize="true").ravel()
 
     # save test results
     test_results = {
-        "mean_val": str(mean_val),
-        "mean_test": str(mean_test),
-        "std_val": str(std_val),
-        "std_test": str(std_test),
-        "threshold_val": str(threshold_val),
-        "threshold_test": str(threshold_test),
         "TPR": TPR,
         "TNR": TNR,
+        "threshold": threshold,
+        "min_area": min_area,
     }
 
     with open(os.path.join(save_dir, "test_results.json"), "w") as json_file:
@@ -273,20 +223,30 @@ def main(args):
     print("confusion matrix: \n{}".format(conf_matrix))
 
 
-# create parser
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
-)
-parser.add_argument(
-    "-i", "--image", type=str, required=True, metavar="", help="path to test image"
-)
-
-# parser_new_training.add_argument(
-#     "-c", "--comment", type=str, help="write comment regarding training")
-args = parser.parse_args()
-
 if __name__ == "__main__":
+    # create parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
+    )
+    parser.add_argument(
+        "-t",
+        "--threshold",
+        type=int,
+        default=None,
+        metavar="",
+        help="number of training images",
+    )
+    parser.add_argument(
+        "-a",
+        "--area",
+        type=int,
+        default=None,
+        metavar="",
+        help="number of training images",
+    )
+    args = parser.parse_args()
+
     main(args)
 
 # python3 test.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5 -i "poke/000.png"
