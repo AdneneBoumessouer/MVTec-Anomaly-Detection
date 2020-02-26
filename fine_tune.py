@@ -81,40 +81,37 @@ def threshold_images(images, threshold):
     """
     All pixel values < threshold  ==> 0, else ==> 255
     """
-    images_th = np.zeros(shape=images.shape)
+    images_th = np.zeros(shape=images.shape[:-1])
     for i, image in enumerate(images):
-        image_th = cv.threshold(image, threshold, 255, cv.THRESH_BINARY)
+        image_th = cv.threshold(image, threshold, 255, cv.THRESH_BINARY)[1]
         images_th[i] = image_th
     return images_th
 
 
 def label_images(images):
     """
-    Segments images into connected components (regions).
-    Returns segmented images and a list containing information about the regions.
+    Segments images into images of connected components (anomalous regions).
+    Returns segmented images and a list containing their areas sorted 
+    in descending order. 
     """
     images_labeled = np.zeros(shape=images.shape)
-    regions_all = []
+    areas_all = []
     for i, image in enumerate(images):
+        # segment current image in connected components
         image_labeled = label(image)
         images_labeled[i] = image_labeled
-        regions_all.append(regionprops(image_labeled))
-    return images_labeled, regions_all
-
-
-def check_regions(regions_all, min_area):
-    """Checks if there is at least one connected component (region) that is 
-    larger than the user defined min_area"""
-    for regions in regions_all:
-        for region in regions:
-            if region.area > min_area:
-                return True
-    return False
+        # compute areas of anomalous regions in the current image
+        regions = regionprops(image_labeled)
+        areas = [region.area for region in regions]
+        areas_all.extend(areas)
+    areas_all.sort(reverse=True)
+    return images_labeled, areas_all
 
 
 def main(args):
     # set paths
     model_path = args.path
+    min_area = args.area
     parent_dir = str(Path(model_path).parent)
     val_dir = os.path.join(parent_dir, "val_results")
 
@@ -124,21 +121,23 @@ def main(args):
         os.makedirs(save_dir)
 
     # load arrays
-    resmap_val = np.load(os.path.join(val_dir, "imgs_val_diff.npy"))
-    # resmap_test = np.load(os.path.join(test_dir, "imgs_test_diff.npy"))
+    resmaps_val = np.load(os.path.join(val_dir, "imgs_val_diff.npy"))
 
-    min_area = 20
+    # Convert to 8-bit unsigned int
+    # (unnecessary if working exclusively with scikit image, see .img_as_float())
+    resmaps_val = img_as_ubyte(resmaps_val)
+
     threshold = 0
 
     while True:
         # threshold residual maps
-        resmaps_th = threshold_images(resmap_val, threshold)
+        resmaps_th = threshold_images(resmaps_val, threshold)
 
         # compute connected components
-        resmaps_labeled, regions_all = label_images(resmaps_th)
+        resmaps_labeled, areas_all = label_images(resmaps_th)
 
-        # check if connected componennts exceed minimum defect area
-        if check_regions(regions_all, min_area) == False:
+        # check if area of largest anomalous region is below the minimum area
+        if min_area > areas_all[0]:
             # save threshold value
             fine_tune = {
                 "threshold": str(threshold),
@@ -149,6 +148,7 @@ def main(args):
             break
 
         threshold = threshold + 1
+        print(threshold)
 
 
 # create parser
@@ -169,3 +169,5 @@ args = parser.parse_args()
 if __name__ == "__main__":
     main(args)
 
+model_path = "saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5"
+min_area = 400
