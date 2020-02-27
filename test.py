@@ -87,7 +87,7 @@ def main(args):
         if not os.path.isdir(val_result_dir):
             raise Exception
 
-        # get threshold from validation results
+        # get threshold and area from validation results
         with open(os.path.join(val_result_dir, "val_results.json"), "r") as read_file:
             val_results = json.load(read_file)
 
@@ -251,5 +251,10 @@ if __name__ == "__main__":
 
     main(args)
 
+# Examples of command to initiate testing
+
+# using threshold and area from validation results:
 # python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5
-# python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -t 35 -a 300
+
+# using passed arguments for threshold and area
+# python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -t 28 -a 50

@@ -369,11 +369,14 @@ if __name__ == "__main__":
     print("Keras version: {}".format(keras.__version__))
     main(args)
 
-# Examples to initiate training
+# Examples of commands to initiate training
 
 # python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mse -c grayscale
+# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l ssim -c grayscale
 # python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mssim -c rgb
 # python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l l2 -c grayscale
+
+# RESNET not yet supported
 
 # python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mse
 # python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mssim
