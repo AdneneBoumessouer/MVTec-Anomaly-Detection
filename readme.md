@@ -104,41 +104,44 @@ During training, the CAE trains solely on defect-free images and learns to recon
 
 To initiate training, go to the project directory and run the following command in your terminal:
 ```
-python3 train.py new -d <direcroty containing training images> -i <number of training instances> -a <architecture of the model to use> -b <batch size> -l <loss function> -c <comment>
+python3 train.py new -d <direcroty containing training images> -i <number of training instances> -a <architecture of the model to use> -b <batch size> -l <loss function> -c <color mode> -t <tag>
 ```
 Here is an example:
 ```
-python3 train.py new -d mvtec/capsule -i 10000 -a mvtec -b 24 -l mse -c "first try"
+python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l ssim -c grayscale -t "first try"
 ```
-**NOTE:** The number of training epochs will be determined by the given number of training images specified during the initiation of the training, devided by the actual number of images contained in the train folder of the chosen class.
+**NOTE:** The number of training epochs will be determined by the given argument `<number of training instances>` specified during the initiation of the training, devided by the actual number of images contained in the train folder of the chosen class.
+Example: if you passed `-i 10000` and the training directory contains `1000` images, then the number of epochs will be equal to `10`.
 
 ## Validation (validate.py)
 
-In this step, the threshold that will decide the classification in defect or defect-free images during testing will be determined using only a small portion of defect-free training images.
+This script computes the threshold that will be used the classification in defect or defect-free images during testing using a small portion (10%) of defect-free training images. To determine a threshold, a minimum defect area that an anomalous region must have to be classified as a defective region must be given.
 
 To initiate validation, go to the project directory and run the following command in your terminal:
 ```
-python3 validate.py -p <path to trained model>
+python3 validate.py -p <path to trained model> -a <minimum defective area>
 ```
 Here is an example:
 ```
-python3 validate.py -p saved_models/MSE/17-02-2020_18:14:52/CAE_mvtec_b12.h5
+python3 validate.py -p saved_models/MSE/17-02-2020_18:14:52/CAE_mvtec_b12.h5 -a 50
 ```
-**NOTE:** The method to determine the threshold is not yet finished. This script is still in progress.
 
 ## Testing (test.py)
 
-During testing, the classification on the test images takes place using the threshold that was determined during validation. 
+During testing, the classification on the test images takes place either using the threshold that was determined during validation or by giving the threshold and the minimum defect area.
 
 To initiate testing, go to the project directory and run the following command in your terminal:
 ```
-python3 test.py -p <path to trained model>
+python3 test.py -p <path to trained model> -t <threshold> -a <area>
 ```
-Here is an example:
+Here is an example using threshold and area from validation results:
 ```
-python3 test.py -p saved_models/MSE/17-02-2020_18:14:52/CAE_mvtec_b12.h5
+python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5
 ```
-**NOTE:** This script is still in progress and hasn't been tested yet.
+Here is an example using passed arguments for threshold and area:
+```
+python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -t 28 -a 50
+```
 
 Project Organization
 ------------
