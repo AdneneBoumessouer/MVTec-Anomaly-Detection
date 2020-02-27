@@ -4,7 +4,7 @@
 Created on Tue Dec 10 19:46:17 2019
 
 @author: adnene33
-This Script is meant to train on a single object category of MVTec, unlike train_mvtec.py
+This Script is meant to train on a single object category of MVTec.
 """
 import os
 import sys
@@ -240,7 +240,7 @@ def main(args):
             "preprocessing_setup": {
                 "rescale": rescale,
                 "shape": shape,
-                "preprocessing": preprocessing
+                "preprocessing": preprocessing,
             },
             "train_setup": {
                 "architecture": architecture,
@@ -274,77 +274,93 @@ def main(args):
         json.dump(setup, json_file)
 
 
-# create top level parser
-parser = argparse.ArgumentParser()
-subparsers = parser.add_subparsers(
-    help="help for subcommand", title="commands", dest="command"
-)
-
-# create the subparser to begin training a new model
-parser_new_training = subparsers.add_parser("new")
-
-parser_new_training.add_argument(
-    "-d", "--directory", type=str, required=True, metavar="", help="training directory"
-)
-
-parser_new_training.add_argument(
-    "-a",
-    "--architecture",
-    type=str,
-    required=True,
-    metavar="",
-    choices=["mvtec", "mvtec2", "resnet", "nasnet"],
-    help="model to use in training",
-)
-
-parser_new_training.add_argument(
-    "-i",
-    "--images",
-    type=int,
-    default=10000,
-    metavar="",
-    help="number of training images",
-)
-parser_new_training.add_argument(
-    "-b", "--batch", type=int, required=True, metavar="", help="batch size"
-)
-parser_new_training.add_argument(
-    "-l",
-    "--loss",
-    type=str,
-    required=True,
-    metavar="",
-    choices=["mssim", "ssim", "l2", "mse"],
-    help="loss function used during training",
-)
-
-parser_new_training.add_argument(
-    "-c", "--color", type=str, required=True, metavar="", choices=["rgb", "grayscale"], help="color mode"
-)  # new
-
-parser_new_training.add_argument(
-    "-t", "--tag", type=str, help="give a tag to the model to be trained")  # modofied (previously comment)
-
-# create the subparser to resume the training of an existing model
-parser_resume_training = subparsers.add_parser("resume")
-parser_resume_training.add_argument(
-    "-p", "--path", type=str, required=True, metavar="", help="path to existing model"
-)
-parser_resume_training.add_argument(
-    "-e",
-    "--epochs",
-    type=int,
-    required=True,
-    metavar="",
-    help="number of training epochs",
-)
-parser_resume_training.add_argument(
-    "-b", "--batch", type=int, required=True, metavar="", help="batch size"
-)
-
-args = parser.parse_args()
-
 if __name__ == "__main__":
+    # create top level parser
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(
+        help="help for subcommand", title="commands", dest="command"
+    )
+
+    # create the subparser to begin training a new model
+    parser_new_training = subparsers.add_parser("new")
+
+    parser_new_training.add_argument(
+        "-d",
+        "--directory",
+        type=str,
+        required=True,
+        metavar="",
+        help="training directory",
+    )
+
+    parser_new_training.add_argument(
+        "-a",
+        "--architecture",
+        type=str,
+        required=True,
+        metavar="",
+        choices=["mvtec", "mvtec2", "resnet", "nasnet"],
+        help="model to use in training",
+    )
+
+    parser_new_training.add_argument(
+        "-i",
+        "--images",
+        type=int,
+        default=10000,
+        metavar="",
+        help="number of training images",
+    )
+    parser_new_training.add_argument(
+        "-b", "--batch", type=int, required=True, metavar="", help="batch size"
+    )
+    parser_new_training.add_argument(
+        "-l",
+        "--loss",
+        type=str,
+        required=True,
+        metavar="",
+        choices=["mssim", "ssim", "l2", "mse"],
+        help="loss function used during training",
+    )
+
+    parser_new_training.add_argument(
+        "-c",
+        "--color",
+        type=str,
+        required=True,
+        metavar="",
+        choices=["rgb", "grayscale"],
+        help="color mode",
+    )  # new
+
+    parser_new_training.add_argument(
+        "-t", "--tag", type=str, help="give a tag to the model to be trained"
+    )  # modofied (previously comment)
+
+    # create the subparser to resume the training of an existing model
+    parser_resume_training = subparsers.add_parser("resume")
+    parser_resume_training.add_argument(
+        "-p",
+        "--path",
+        type=str,
+        required=True,
+        metavar="",
+        help="path to existing model",
+    )
+    parser_resume_training.add_argument(
+        "-e",
+        "--epochs",
+        type=int,
+        required=True,
+        metavar="",
+        help="number of training epochs",
+    )
+    parser_resume_training.add_argument(
+        "-b", "--batch", type=int, required=True, metavar="", help="batch size"
+    )
+
+    args = parser.parse_args()
     if tf.test.is_gpu_available():
         print("GPU was detected.")
     else:
@@ -353,11 +369,14 @@ if __name__ == "__main__":
     print("Keras version: {}".format(keras.__version__))
     main(args)
 
-# Examples to initiate training
+# Examples of commands to initiate training
 
 # python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mse -c grayscale
+# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l ssim -c grayscale
 # python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l mssim -c rgb
 # python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l l2 -c grayscale
+
+# RESNET not yet supported
 
 # python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mse
 # python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mssim
