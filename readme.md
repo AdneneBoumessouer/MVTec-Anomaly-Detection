@@ -150,12 +150,12 @@ Project Organization
     │   ├── bottle                  <- subfolder of a class (contains additional subfolders /train and /test)
     |   |── ...
     ├── custom_loss_functions.py    <- implments different loss functions to use in training
-    ├── fine_tune.py                <- deprecated (to be remooved soon)
+    ├── fine_tune.py                <- determines best values of threshold and area to use in testing
     ├── inspect_trained_model.ipynb <- notebook to inspect trained model
     ├── models.py                   <- contains different CAE architectures for training
     ├── readme.md                   <- readme file
     ├── requirements.txt            <- requirement text file containing all used packages and libraries
-    ├── saved_models                <- directory containing saved models
+    ├── saved_models                <- directory containing saved models, validation and results
     │   ├── L2                      <- saved models that trained with L2 loss
     │   ├── MSE                     <- saved models that trained with MSE loss
     │   ├── MSSIM                   <- saved models that trained with MSSIM loss
@@ -163,7 +163,8 @@ Project Organization
     ├── test.py                     <- test script
     ├── train.py                    <- training script
     ├── utils.py                    <- utilitary and helper functions
-    └── validate.py                 <- validation script
+    ├── validate.py                 <- validation script
+    └── visualize.py                <- plot and visualize images at different stages (still in progress)
 
 
 --------
