@@ -151,7 +151,6 @@ Project Organization
     |   |── ...
     ├── custom_loss_functions.py    <- implments different loss functions to use in training
     ├── fine_tune.py                <- determines best values of threshold and area to use in testing
-    ├── inspect_trained_model.ipynb <- notebook to inspect trained model
     ├── models.py                   <- contains different CAE architectures for training
     ├── readme.md                   <- readme file
     ├── requirements.txt            <- requirement text file containing all used packages and libraries
