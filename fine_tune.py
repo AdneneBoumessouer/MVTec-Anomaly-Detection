@@ -6,6 +6,7 @@ import sys
 # import keras.backend as K
 import custom_loss_functions
 import utils
+import datetime
 
 # from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
@@ -55,7 +56,9 @@ def main(args):
     val_dir = os.path.join(parent_dir, "val_results")
 
     # create a directory to save fine-tuning results (threshold)
-    save_dir = os.path.join(parent_dir, "fine_tune")
+    model_dir_name = os.path.basename(str(Path(model_path).parent))
+    now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+    save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "finetune", now)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 

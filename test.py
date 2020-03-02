@@ -99,8 +99,9 @@ def main(args):
             print("using validation area")
 
     # create directory to save test results
-    parent_dir = str(Path(model_path).parent)
-    save_dir = os.path.join(parent_dir, "test_results")
+    model_dir_name = os.path.basename(str(Path(model_path).parent))
+    now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+    save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "test", now)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 

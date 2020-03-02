@@ -102,8 +102,8 @@ def main(args):
     tag = setup["tag"]
 
     # create directory to save results
-    parent_dir = str(Path(model_path).parent)
-    save_dir = os.path.join(parent_dir, "val_results")
+    model_dir_name = os.path.basename(str(Path(model_path).parent))
+    save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "vasualize")
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 

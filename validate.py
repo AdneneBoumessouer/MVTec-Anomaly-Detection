@@ -101,9 +101,10 @@ def main(args):
 
     tag = setup["tag"]
 
-    # create directory to save results
-    parent_dir = str(Path(model_path).parent)
-    save_dir = os.path.join(parent_dir, "val_results")
+    # create a results directory if not existent
+    model_dir_name = os.path.basename(str(Path(model_path).parent))
+    now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+    save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "validation", now)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
