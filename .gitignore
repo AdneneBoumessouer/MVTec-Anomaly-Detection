@@ -16,9 +16,11 @@ __pycache__/
 
 # numpy arrays
 saved_models/**/*.npy
+results/**/*.npy
 
 # png images
 saved_models/**/*.png
+results/**/*.png
 
 # Distribution / packaging
 .Python
