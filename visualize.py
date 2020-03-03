@@ -23,6 +23,12 @@ import json
 
 import argparse
 
+# import validation functions
+from validate import threshold_images as threshold_images
+from validate import label_images as label_images
+
+from skimage.util import img_as_ubyte
+
 # =========================================================================
 
 
@@ -157,59 +163,104 @@ def main(args):
     )
 
     # compute residual maps on validation dataset
-    imgs_val_diff = imgs_val_input - imgs_val_pred
+    resmaps_val = imgs_val_input - imgs_val_pred
     np.save(
-        file=os.path.join(save_dir, "imgs_val_diff.npy"),
-        arr=imgs_val_diff,
+        file=os.path.join(save_dir, "resmaps_val.npy"),
+        arr=resmaps_val,
         allow_pickle=True,
     )
 
-    # determine threshold on validation dataset
-    imgs_val_diff_1d = imgs_val_diff.flatten()
-    mean_val = np.mean(imgs_val_diff_1d)
-    std_val = np.std(imgs_val_diff_1d)
+    # COMMENT
+    resmaps_val = np.load(
+        "results/25-02-2020_08:54:06/validation/02-03-2020_11:13:25/resmaps_val.npy",
+        allow_pickle=True,
+    )
 
-    # k = 1.65 # confidence 90%
-    # k = 1.96 # confidence 95%
-    factor_val = 2.58  # confidence 99%
-    # k = 3.00 # confidence 99.73%
-    # k = 3.30 # confidence 99.90%
+    # Convert to 8-bit unsigned int
+    # (unnecessary if working exclusively with scikit image, see .img_as_float())
+    resmaps_val = img_as_ubyte(resmaps_val)
 
-    threshold_val = mean_val + factor_val * std_val
+    nb_regions = []
+    mean_area = []
+    std_area = []
 
-    # save validation results
-    val_results = {
-        "mean_val": str(mean_val),
-        "std_val": str(std_val),
-        "threshold_val": str(threshold_val),
-        "pixel_max_value": str(np.amax(imgs_val_pred)),
-        "pixel_min_value": str(np.amin(imgs_val_pred)),
-    }
+    for threshold in range(np.amax(resmaps_val)):
+        # threshold residual maps
+        resmaps_th = threshold_images(resmaps_val, threshold)
 
-    with open(os.path.join(save_dir, "val_results.json"), "w") as json_file:
-        json.dump(val_results, json_file)
+        # compute connected components
+        resmaps_labeled, areas_all = label_images(resmaps_th)
+
+        # check if area of largest anomalous region is below the minimum area
+        areas_all_flat = [item for sublist in areas_all for item in sublist]
+        nb_regions.append(len(areas_all_flat))
+        mean_area.append(np.mean(areas_all_flat))
+        std_area.append(np.std(areas_all_flat))
+
+        print("current threshold = {}".format(threshold))
+
+    df_out = pd.DataFrame.from_dict(
+        {
+            "threshold": list(range(255)),
+            "nb_regions": nb_regions,
+            "mean_area": mean_area,
+            "std_area": std_area,
+        }
+    )
+    df_out.plot(x="threshold", y=["mean_area", "std_area"])
+
+    df_out.plot(x="threshold", y=["nb_regions"])
 
     # ===================================================================
-    # compute scores on validation images
-    output_test = {"filenames": filenames, "scores": [], "mean": [], "std": []}
-    for img_val_diff in imgs_val_diff:
-        score, mean, std = utils.get_image_score(img_val_diff, factor_val)
-        output_test["scores"].append(score)
-        output_test["mean"].append(mean)
-        output_test["std"].append(std)
-        # assert length compatibility
 
-    # format test results in a pd DataFrame
-    df_test = pd.DataFrame.from_dict(output_test)
-    df_test.to_pickle(os.path.join(save_dir, "df_val.pkl"))
-    # display DataFrame
-    with pd.option_context("display.max_rows", None, "display.max_columns", None):
-        print(df_test)
+    # COMMENT
+    resmaps_val = np.load(
+        "results/25-02-2020_08:54:06/validation/02-03-2020_11:13:25/resmaps_val.npy",
+        allow_pickle=True,
+    )
+
+    # Convert to 8-bit unsigned int
+    # (unnecessary if working exclusively with scikit image, see .img_as_float())
+    resmaps_val = img_as_ubyte(resmaps_val)
+    counts = []
+
+    for threshold in range(np.amax(resmaps_val)):
+        # threshold residual maps
+        resmaps_th = threshold_images(resmaps_val, threshold)
+
+        # compute connected components
+        resmaps_labeled, areas_all = label_images(resmaps_th)
+
+        # flatten area
+        areas_all_flat = [item for sublist in areas_all for item in sublist]
+
+        if threshold == 0:
+            areas_all_flat.sort(reverse=True)
+            min_area = areas_all_flat[-1]
+            max_area = areas_all_flat[0]
+
+        count, bins, ignored = plt.hist(
+            areas_all_flat,
+            range=(min_area, max_area/4),
+            bins=200, # max_area - min_area
+            density=False,
+        )
+        # count, bins, ignored = plt.hist(areas_all_flat, bins="auto", density=False)
+        # counts.append(count)
+        break
+    
+    # just plot histogramm for threshold == 0, pick a good value for area and run validate.py to get best threshold, then run test.py
+
+        plt.plot()
+
+    fig = plt.figure()
+    plt.plot()
+
     # ===================================================================
 
     # Histogramm to visualize the ResMap distribution
     fig = plt.figure(figsize=(8, 5))
-    plt.hist(imgs_val_diff_1d, bins=100, density=True, stacked=True)
+    plt.hist(resmaps_val_1d, bins=100, density=True, stacked=True)
     plt.title("Validation ResMap pixel value distribution")
     plt.xlabel("pixel intensity")
     plt.ylabel("probability")
@@ -228,9 +279,9 @@ def main(args):
         axarr[1].imshow(imgs_val_pred[0, :, :, 0], cmap=plt.cm.gray)
     axarr[1].set_title("reconstruction defect-free val image")
     try:
-        axarr[2].imshow(imgs_val_diff[0])
+        axarr[2].imshow(resmaps_val[0])
     except TypeError:
-        axarr[2].imshow(imgs_val_diff[0, :, :, 0], cmap=plt.cm.gray)
+        axarr[2].imshow(resmaps_val[0, :, :, 0], cmap=plt.cm.gray)
     axarr[2].set_title("ResMap defect-free val image")
     fig.savefig(os.path.join(save_dir, "3_val_musketeers.png"))
 
@@ -244,6 +295,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
+model_path = "saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5"
+resmaps_val = np.load(
+    "results/25-02-2020_08:54:06/validation/02-03-2020_11:13:25/resmaps_val.npy",
+    allow_pickle=True,
+)
 
 # parser.add_argument(
 #     "-i", "--image", type=str, required=True, metavar="", help="path to test image"

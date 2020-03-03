@@ -22,11 +22,6 @@ import json
 
 import argparse
 
-# import visualization functions
-from visualize import plot_img_at_index as plot_img_at_index
-from visualize import plot_img as plot_img
-from visualize import hist_image as hist_image
-
 # import computer vision functions
 import cv2 as cv
 from skimage.util import img_as_ubyte
@@ -140,22 +135,22 @@ def main(args):
         subset="validation",
     )
     imgs_val_input = validation_generator.next()[0]
-    np.save(
-        file=os.path.join(save_dir, "imgs_val_input.npy"),
-        arr=imgs_val_input,
-        allow_pickle=True,
-    )
+    # np.save(
+    #     file=os.path.join(save_dir, "imgs_val_input.npy"),
+    #     arr=imgs_val_input,
+    #     allow_pickle=True,
+    # )
 
     # retrieve image_names
     filenames = validation_generator.filenames
 
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
-    np.save(
-        file=os.path.join(save_dir, "imgs_val_pred.npy"),
-        arr=imgs_val_pred,
-        allow_pickle=True,
-    )
+    # np.save(
+    #     file=os.path.join(save_dir, "imgs_val_pred.npy"),
+    #     arr=imgs_val_pred,
+    #     allow_pickle=True,
+    # )
 
     # compute residual maps on validation dataset
     resmaps_val = imgs_val_input - imgs_val_pred

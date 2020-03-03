@@ -132,30 +132,30 @@ def main(args):
         class_mode="input",
     )
     imgs_test_input = test_generator.next()[0]
-    np.save(
-        file=os.path.join(save_dir, "imgs_test_input.npy"),
-        arr=imgs_test_input,
-        allow_pickle=True,
-    )
+    # np.save(
+    #     file=os.path.join(save_dir, "imgs_test_input.npy"),
+    #     arr=imgs_test_input,
+    #     allow_pickle=True,
+    # )
 
     # retrieve image_names
     filenames = test_generator.filenames
 
     # predict on test images
     imgs_test_pred = model.predict(imgs_test_input)
-    np.save(
-        file=os.path.join(save_dir, "imgs_test_pred.npy"),
-        arr=imgs_test_pred,
-        allow_pickle=True,
-    )
+    # np.save(
+    #     file=os.path.join(save_dir, "imgs_test_pred.npy"),
+    #     arr=imgs_test_pred,
+    #     allow_pickle=True,
+    # )
 
     # compute residual maps on test set
     resmaps_test = imgs_test_input - imgs_test_pred
-    np.save(
-        file=os.path.join(save_dir, "imgs_test_diff.npy"),
-        arr=resmaps_test,
-        allow_pickle=True,
-    )
+    # np.save(
+    #     file=os.path.join(save_dir, "resmaps_test.npy"),
+    #     arr=resmaps_test,
+    #     allow_pickle=True,
+    # )
 
     # Convert to 8-bit unsigned int
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
@@ -177,9 +177,9 @@ def main(args):
     # format test results in a pd DataFrame
     classification = {"filenames": filenames, "predictions": y_pred, "truth": y_true}
     df_clf = pd.DataFrame.from_dict(classification)
-    df_clf.to_pickle(os.path.join(save_dir, "df_clf.pkl"))
-    with open(os.path.join(save_dir, "classification.txt"), "a") as f:
-        f.write(df_clf.to_string(header=True, index=True))
+    # df_clf.to_pickle(os.path.join(save_dir, "df_clf.pkl"))
+    # with open(os.path.join(save_dir, "classification.txt"), "a") as f:
+    #     f.write(df_clf.to_string(header=True, index=True))
 
     # print DataFrame to console
     with pd.option_context("display.max_rows", None, "display.max_columns", None):
