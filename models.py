@@ -195,37 +195,50 @@ def build_mvtec_2(channels=3):
     x = keras.layers.Conv2D(32, (4, 4), strides=2, activation="relu", padding="same")(
         input_img
     )
-    x = keras.layers.Conv2D(32, (4, 4), strides=2, activation="relu", padding="same")(x)
-    x = keras.layers.Conv2D(32, (4, 4), strides=2, activation="relu", padding="same")(x)
-    x = keras.layers.Conv2D(32, (3, 3), strides=1, activation="relu", padding="same")(x)
-    x = keras.layers.Conv2D(64, (4, 4), strides=2, activation="relu", padding="same")(x)
-    x = keras.layers.Conv2D(64, (3, 3), strides=1, activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(32, (4, 4), strides=2,
+                            activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(32, (4, 4), strides=2,
+                            activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(32, (3, 3), strides=1,
+                            activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(64, (4, 4), strides=2,
+                            activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(64, (3, 3), strides=1,
+                            activation="relu", padding="same")(x)
     x = keras.layers.Conv2D(128, (4, 4), strides=2, activation="relu", padding="same")(
         x
     )
-    x = keras.layers.Conv2D(64, (3, 3), strides=1, activation="relu", padding="same")(x)
-    x = keras.layers.Conv2D(32, (3, 3), strides=1, activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(64, (3, 3), strides=1,
+                            activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(32, (3, 3), strides=1,
+                            activation="relu", padding="same")(x)
     encoded = keras.layers.Conv2D(1, (8, 8), strides=1, padding="same")(x)
 
     # Decode---------------------------------------------------------------------
     x = keras.layers.Conv2D(32, (3, 3), strides=1, activation="relu", padding="same")(
         encoded
     )
-    x = keras.layers.Conv2D(64, (3, 3), strides=1, activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(64, (3, 3), strides=1,
+                            activation="relu", padding="same")(x)
     x = keras.layers.UpSampling2D((2, 2))(x)
     x = keras.layers.Conv2D(128, (4, 4), strides=2, activation="relu", padding="same")(
         x
     )
     x = keras.layers.UpSampling2D((2, 2))(x)
-    x = keras.layers.Conv2D(64, (3, 3), strides=1, activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(64, (3, 3), strides=1,
+                            activation="relu", padding="same")(x)
     x = keras.layers.UpSampling2D((2, 2))(x)
-    x = keras.layers.Conv2D(64, (4, 4), strides=2, activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(64, (4, 4), strides=2,
+                            activation="relu", padding="same")(x)
     x = keras.layers.UpSampling2D((2, 2))(x)
-    x = keras.layers.Conv2D(32, (3, 3), strides=1, activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(32, (3, 3), strides=1,
+                            activation="relu", padding="same")(x)
     x = keras.layers.UpSampling2D((2, 2))(x)
-    x = keras.layers.Conv2D(32, (4, 4), strides=2, activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(32, (4, 4), strides=2,
+                            activation="relu", padding="same")(x)
     x = keras.layers.UpSampling2D((4, 4))(x)
-    x = keras.layers.Conv2D(32, (4, 4), strides=2, activation="relu", padding="same")(x)
+    x = keras.layers.Conv2D(32, (4, 4), strides=2,
+                            activation="relu", padding="same")(x)
     x = keras.layers.UpSampling2D((2, 2))(x)
     x = keras.layers.Conv2D(32, (8, 8), activation="relu", padding="same")(x)
 
@@ -253,9 +266,6 @@ def build_resnet():
         input_shape=(299, 299, 3),
         pooling=None,
     )
-    # # freeze layers
-    # for layer in base_encoder.layers:
-    #     layer.trainable = False
 
     encoder = keras.models.Sequential(
         [
@@ -268,7 +278,6 @@ def build_resnet():
             ),
         ]
     )
-    print(encoder.summary())
 
     # decoder
     inputs = keras.layers.Input(shape=tuple(encoder.output.shape[-3:]))
@@ -334,10 +343,9 @@ def build_resnet():
     )(add_4)
 
     decoder = keras.models.Model(inputs=inputs, outputs=layer_25)
-    print(decoder.summary())
+
     model = keras.models.Sequential([encoder, decoder])
     # keras.utils.plot_model(decoder, to_file="decoder_resnet.png")
-    print(model.summary())
 
     return model, base_encoder
 
