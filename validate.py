@@ -46,8 +46,7 @@ def threshold_images(images, threshold):
 def label_images(images):
     """
     Segments images into images of connected components (anomalous regions).
-    Returns segmented images and a list containing their areas sorted 
-    in descending order. 
+    Returns segmented images and a list containing their areas. 
     """
     images_labeled = np.zeros(shape=images.shape)
     areas_all = []
@@ -154,11 +153,11 @@ def main(args):
 
     # compute residual maps on validation dataset
     resmaps_val = imgs_val_input - imgs_val_pred
-    np.save(
-        file=os.path.join(save_dir, "resmaps_val.npy"),
-        arr=resmaps_val,
-        allow_pickle=True,
-    )
+    # np.save(
+    #     file=os.path.join(save_dir, "resmaps_val.npy"),
+    #     arr=resmaps_val,
+    #     allow_pickle=True,
+    # )
 
     # Convert to 8-bit unsigned int
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
