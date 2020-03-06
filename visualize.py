@@ -47,6 +47,51 @@ from visualize import hist_image as hist_image
 from validate import threshold_images as threshold_images
 from validate import label_images as label_images
 
+# =========================================================================
+
+
+def plot_img_at_index(X, index):
+    _, _, _, channels = X.shape
+    plt.figure()
+    if channels == 1:
+        plt.imshow(X[index, :, :, 0], cmap=plt.cm.gray)
+    elif channels == 3:
+        plt.imshow(X[index, :, :, 0])
+    plt.show()
+
+
+def plot_img(img):
+    ndims = len(img.shape)
+    plt.figure()
+    if ndims == 2:
+        plt.imshow(img, cmap=plt.cm.gray)
+    elif ndims == 3:
+        _, _, channels = img.shape
+        if channels == 3:
+            plt.imshow(img)
+        else:
+            plt.imshow(img[:, :, 0], cmap=plt.cm.gray)
+    plt.show()
+
+
+def hist_image(img):
+    img_1d = img.flatten()
+    plt.figure()
+    plt.hist(img_1d, bins=200, density=True, stacked=True, label="image histogram")
+    # plot pdf
+    mu = img_1d.mean()
+    sigma = img_1d.std()
+    minimum = np.amin(img_1d)
+    maximum = np.amax(img_1d)
+    X = np.linspace(start=minimum, stop=maximum, num=400, endpoint=True)
+    pdf_x = [scipy.stats.norm(mu, sigma).pdf(x) for x in X]
+    plt.plot(X, pdf_x, label="pixel distribution")
+    plt.legend()
+    plt.show()
+
+
+# =========================================================================
+
 
 def main(args):
     # set paths
@@ -113,3 +158,39 @@ if __name__ == "__main__":
 
 # model_path = "saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5"
 # min_area = 200
+
+# # Histogramm to visualize the ResMap distribution
+# fig = plt.figure(figsize=(8, 5))
+# plt.hist(resmaps_val_1d, bins=100, density=True, stacked=True)
+# plt.title("Validation ResMap pixel value distribution")
+# plt.xlabel("pixel intensity")
+# plt.ylabel("probability")
+# plt.savefig(os.path.join(save_dir, "histogram_val.png"))
+
+# # save three images
+# fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
+# try:
+#     axarr[0].imshow(imgs_val_input[0])
+# except TypeError:
+#     axarr[0].imshow(imgs_val_input[0, :, :, 0], cmap=plt.cm.gray)
+# axarr[0].set_title("original defect-free val image")
+# try:
+#     axarr[1].imshow(imgs_val_pred[0])
+# except TypeError:
+#     axarr[1].imshow(imgs_val_pred[0, :, :, 0], cmap=plt.cm.gray)
+# axarr[1].set_title("reconstruction defect-free val image")
+# try:
+#     axarr[2].imshow(resmaps_val[0])
+# except TypeError:
+#     axarr[2].imshow(resmaps_val[0, :, :, 0], cmap=plt.cm.gray)
+# axarr[2].set_title("ResMap defect-free val image")
+# fig.savefig(os.path.join(save_dir, "3_val_musketeers.png"))
+
+
+# parser.add_argument(
+#     "-i", "--image", type=str, required=True, metavar="", help="path to test image"
+# )
+
+# python3 validate.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5
+
+# python3 test.py -p saved_models/MSE/21-02-2020_17:47:13/CAE_mvtec_b12.h5 -i "poke/000.png"
