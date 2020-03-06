@@ -87,6 +87,15 @@ def load_model_HDF5(model_path):
     return model, setup, history
 
 
+def extend_dict(dict1, dict2):
+    dict3 = {}
+    for key in list(dict1.keys()):
+        dict3[key] = []
+        dict3[key].extend(dict1[key])
+        dict3[key].extend(dict2[key])
+    return dict3
+
+
 def get_epochs_trained(history_dict):
     key = list(history_dict.keys())[0]
     return len(history_dict[key])
