@@ -1,3 +1,11 @@
+from skimage.util import img_as_ubyte
+from validate import label_images as label_images
+from validate import threshold_images as threshold_images
+import argparse
+import json
+import pandas as pd
+import csv
+import datetime
 import os
 import sys
 from pathlib import Path
@@ -18,22 +26,13 @@ import matplotlib.pyplot as plt
 
 plt.style.use("seaborn-darkgrid")
 
-import datetime
-import csv
-import pandas as pd
-import json
-
-import argparse
 
 # import validation functions
-from validate import threshold_images as threshold_images
-from validate import label_images as label_images
-
-from skimage.util import img_as_ubyte
 
 
 def main(args):
     model_path = args.path
+    save = args.save
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -70,11 +69,6 @@ def main(args):
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    # # Plot and save loss and val_loss
-    # plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
-    # fig = plot.get_figure()
-    # fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
-
     # This will do preprocessing
     if architecture in ["mvtec", "mvtec2"]:
         preprocessing_function = None
@@ -109,13 +103,18 @@ def main(args):
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
 
+    # converts rgb to grayscale
+    if color_mode == "rgb":
+        imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input)
+        imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred)
+
     # compute residual maps on validation dataset
     resmaps_val = imgs_val_input - imgs_val_pred
-    # np.save(
-    #     file=os.path.join(save_dir, "resmaps_val.npy"),
-    #     arr=resmaps_val,
-    #     allow_pickle=True,
-    # )
+
+    if save:
+        utils.save_np(imgs_val_input, save_dir, "imgs_val_input.npy")
+        utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
+        utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
 
     # Convert to 8-bit unsigned int
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
@@ -171,7 +170,7 @@ def main(args):
     # ===================================================================
     # ===================================================================
 
-    ## COMMENT -----------------------------------------------------------
+    # COMMENT -----------------------------------------------------------
     # resmaps_val = np.load(
     #     "results/25-02-2020_08:54:06/validation/02-03-2020_11:13:25/resmaps_val.npy",
     #     allow_pickle=True,
@@ -180,7 +179,7 @@ def main(args):
     # Convert to 8-bit unsigned int
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
     # resmaps_val = img_as_ubyte(resmaps_val)
-    ## -------------------------------------------------------------------
+    # -------------------------------------------------------------------
 
     counts = []
     nb_bins = 200
@@ -262,6 +261,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
+    )
+    parser.add_argument(
+        "-s",
+        "--save",
+        type=bool,
+        required=False,
+        default=False,
+        metavar="",
+        help="save inputs, predictions and reconstructions of validation dataset",
     )
     args = parser.parse_args()
 

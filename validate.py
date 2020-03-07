@@ -65,6 +65,7 @@ def label_images(images):
 def main(args):
     model_path = args.path
     min_area = args.area
+    save = args.save
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -98,7 +99,8 @@ def main(args):
     # create a results directory if not existent
     model_dir_name = os.path.basename(str(Path(model_path).parent))
     now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
-    save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "validation", now)
+    save_dir = os.path.join(os.getcwd(), "results",
+                            model_dir_name, "validation", now)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
@@ -134,30 +136,25 @@ def main(args):
         subset="validation",
     )
     imgs_val_input = validation_generator.next()[0]
-    # np.save(
-    #     file=os.path.join(save_dir, "imgs_val_input.npy"),
-    #     arr=imgs_val_input,
-    #     allow_pickle=True,
-    # )
-
-    # retrieve image_names
-    filenames = validation_generator.filenames
 
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
-    # np.save(
-    #     file=os.path.join(save_dir, "imgs_val_pred.npy"),
-    #     arr=imgs_val_pred,
-    #     allow_pickle=True,
-    # )
+
+    # converts rgb to grayscale
+    if color_mode == "rgb":
+        imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input)
+        imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred)
 
     # compute residual maps on validation dataset
     resmaps_val = imgs_val_input - imgs_val_pred
-    # np.save(
-    #     file=os.path.join(save_dir, "resmaps_val.npy"),
-    #     arr=resmaps_val,
-    #     allow_pickle=True,
-    # )
+
+    if save:
+        utils.save_np(imgs_val_input, save_dir, "imgs_val_input.npy")
+        utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
+        utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
+
+    # retrieve validation image_names
+    filenames = validation_generator.filenames
 
     # Convert to 8-bit unsigned int
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
@@ -204,6 +201,15 @@ if __name__ == "__main__":
         required=True,
         metavar="",
         help="minimum area for a connected component",
+    )
+    parser.add_argument(
+        "-s",
+        "--save",
+        type=bool,
+        required=False,
+        default=False,
+        metavar="",
+        help="save inputs, predictions and reconstructions of validation dataset",
     )
     args = parser.parse_args()
 
