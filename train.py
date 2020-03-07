@@ -38,20 +38,23 @@ def main(args):
     train_data_dir = os.path.join(directory, "train")
     nb_training_images_aug = args.images
     batch_size = args.batch
-    color_mode = args.color  # new
+    color_mode = args.color
     loss = args.loss.upper()
     validation_split = 0.1
     architecture = args.architecture
     tag = args.tag
 
-    # check input arguments
-    if loss == "MSSIM" and color_mode == "grayscale":
-        raise ValueError("MSSIM works only with rgb images")
-    if loss == "SSIM" and color_mode == "rgb":
-        raise ValueError("SSIM works only with grayscale images")
-
     # NEW TRAINING
     if args.command == "new":
+        # check input arguments
+        if architecture == "resnet" and color_mode == "grayscale":
+            raise ValueError("ResNet expects rgb images")
+        if architecture == "nasnet" and color_mode == "grayscale":
+            raise ValueError("NasNet expects rgb images")
+        if loss == "MSSIM" and color_mode == "grayscale":
+            raise ValueError("MSSIM works only with rgb images")
+        if loss == "SSIM" and color_mode == "rgb":
+            raise ValueError("SSIM works only with grayscale images")
 
         if color_mode == "grayscale":
             channels = 1
@@ -66,19 +69,17 @@ def main(args):
         elif architecture == "resnet":
             model, base_encoder = models.build_resnet()
         elif architecture == "nasnet":
+            """NOT YET IMPLEMENTED"""
             # model, base_encoder = models.build_nasnet()
-            pass
+            sys.exit()
 
         # set loss function
         if loss == "SSIM":
             loss_function = custom_loss_functions.ssim
-
         elif loss == "MSSIM":
             loss_function = custom_loss_functions.mssim
-
         elif loss == "L2":
             loss_function = custom_loss_functions.l2
-
         elif loss == "MSE":
             loss_function = "mean_squared_error"
 
@@ -295,6 +296,7 @@ def main(args):
             # callbacks=[checkpoint_cb],
         )
 
+        # wrap training hyper-parameters of both phases
         epochs = [epochs_1, epochs_2]
         learning_rate = [learning_rate_1, learning_rate_2]
         decay = [decay_1, decay_2]
@@ -313,7 +315,7 @@ def main(args):
         hist_df.to_csv(f)
     print("Saved training history at %s " % hist_csv_file)
 
-    # save plot loss and val_loss
+    # save plot of loss and val_loss
     plot = hist_df[["loss", "val_loss"]].plot(figsize=(8, 5))
     fig = plot.get_figure()
     fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
