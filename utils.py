@@ -87,6 +87,14 @@ def load_model_HDF5(model_path):
     return model, setup, history
 
 
+def save_np(arr, save_dir, filename):
+    np.save(
+        file=os.path.join(save_dir, filename),
+        arr=arr,
+        allow_pickle=True,
+    )
+
+
 def extend_dict(dict1, dict2):
     dict3 = {}
     for key in list(dict1.keys()):
@@ -118,3 +126,10 @@ def get_image_score(image, factor):
     std_image = np.std(image_1d)
     score = mean_image + factor*std_image
     return score, mean_image, std_image
+
+# def preprocess_resnet(image):
+#     """
+#     Only to be used when the training parameter color_mode is set to grayscale:
+#     Resnet expects images with 3 channels.
+#     If training with grayscale (channels == 1), triplicate image.
+#     """
