@@ -24,8 +24,55 @@ import requests
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-plt.style.use("seaborn-darkgrid")
+# plt.style.use("seaborn-darkgrid")
 
+# =========================================================================
+# import visualization functions
+
+
+def plot_img_at_index(X, index):
+    _, _, _, channels = X.shape
+    plt.figure()
+    if channels == 1:
+        plt.imshow(X[index, :, :, 0], cmap=plt.cm.gray)
+    elif channels == 3:
+        plt.imshow(X[index, :, :, 0])
+    plt.show()
+
+
+def plot_img(img):
+    ndims = len(img.shape)
+    plt.figure()
+    if ndims == 2:
+        plt.imshow(img, cmap=plt.cm.gray)
+    elif ndims == 3:
+        _, _, channels = img.shape
+        if channels == 3:
+            plt.imshow(img)
+        else:
+            plt.imshow(img[:, :, 0], cmap=plt.cm.gray)
+    # plt.show()
+    return plt
+
+
+def hist_image(img):
+    img_1d = img.flatten()
+    plt.figure()
+    plt.hist(img_1d, bins=200, density=True,
+             stacked=True, label="image histogram")
+    # plot pdf
+    mu = img_1d.mean()
+    sigma = img_1d.std()
+    minimum = np.amin(img_1d)
+    maximum = np.amax(img_1d)
+    X = np.linspace(start=minimum, stop=maximum, num=400, endpoint=True)
+    pdf_x = [scipy.stats.norm(mu, sigma).pdf(x) for x in X]
+    plt.plot(X, pdf_x, label="pixel distribution")
+    plt.legend()
+    plt.show()
+
+
+# =========================================================================
 
 # import validation functions
 
@@ -33,6 +80,8 @@ plt.style.use("seaborn-darkgrid")
 def main(args):
     model_path = args.path
     save = args.save
+    img_val = args.val
+    img_test = args.test
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -40,6 +89,7 @@ def main(args):
     # data setup
     directory = setup["data_setup"]["directory"]
     val_data_dir = os.path.join(directory, "train")
+
     nb_training_images = setup["data_setup"]["nb_training_images"]
     nb_validation_images = setup["data_setup"]["nb_validation_images"]
 
@@ -97,9 +147,6 @@ def main(args):
     )
     imgs_val_input = validation_generator.next()[0]
 
-    # retrieve image_names
-    filenames = validation_generator.filenames
-
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
 
@@ -115,6 +162,18 @@ def main(args):
         utils.save_np(imgs_val_input, save_dir, "imgs_val_input.npy")
         utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
         utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
+
+    # ============== PLOT A SAMPLE VALIDATION IMAGE =======================
+    if img_val != None:
+
+        # compute index of text image
+        index_val = validation_generator.filenames.index(img_val)
+
+        fig = utils.plot_input_pred_resmaps_val(
+            imgs_val_input, imgs_val_pred, resmaps_val, index_val)
+        fig.savefig(os.path.join(save_dir, "val_plots.png"))
+
+    # ===================================================================
 
     # Convert to 8-bit unsigned int
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
@@ -253,6 +312,42 @@ def main(args):
     # plt.show()
     fig4.savefig(os.path.join(save_dir, "distr_area_th_multiple.pdf"))
 
+    # ============== PLOT A SAMPLE TEST IMAGE =======================
+    if img_test != None:
+        test_data_dir = os.path.join(directory, "test")
+        total_number = utils.get_total_number_test_images(test_data_dir)
+
+        test_datagen = ImageDataGenerator(
+            rescale=rescale,
+            data_format="channels_last",
+            preprocessing_function=preprocessing_function,
+        )
+
+        # retrieve preprocessed test images as a numpy array
+        test_generator = test_datagen.flow_from_directory(
+            directory=test_data_dir,
+            target_size=shape,
+            color_mode=color_mode,
+            batch_size=total_number,
+            shuffle=False,
+            class_mode="input",
+        )
+        imgs_test_input = test_generator.next()[0]
+
+        # predict on test images
+        imgs_test_pred = model.predict(imgs_test_input)
+
+        # compute residual maps on test set
+        resmaps_test = imgs_test_input - imgs_test_pred
+
+        # compute index of text image
+        index_test = test_generator.filenames.index(img_test)
+
+        # save three images
+        fig = utils.plot_input_pred_resmaps_test(
+            imgs_test_input, imgs_test_pred, resmaps_test, index_test)
+        fig.savefig(os.path.join(save_dir, "test_plots.png"))
+
     # ===================================================================
 
 
@@ -271,6 +366,22 @@ if __name__ == "__main__":
         metavar="",
         help="save inputs, predictions and reconstructions of validation dataset",
     )
+    parser.add_argument(
+        "-v",
+        "--val",
+        type=str,
+        default=None,
+        metavar="",
+        help="path to sample test image relative to validation directory for visualization"
+    )
+    parser.add_argument(
+        "-t",
+        "--test",
+        type=str,
+        default=None,
+        metavar="",
+        help="path to sample test image relative to test directory for visualization"
+    )
     args = parser.parse_args()
 
     main(args)
@@ -278,9 +389,6 @@ if __name__ == "__main__":
 
 # model_path = "saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5"
 
-# resmaps_val = np.load(
-#     "results/25-02-2020_08:54:06/validation/02-03-2020_11:13:25/resmaps_val.npy",
-#     allow_pickle=True,
-# )
 
-# python3 finetune.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5
+# python3 finetune.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png"
+# python3 finetune.py -p saved_models/MSE/07-03-2020_21:36:53/CAE_resnet_b12.h5 -v "good/000.png" -t "poke/000.png"
