@@ -21,6 +21,7 @@ results/**/*.npy
 # png images
 saved_models/**/*.png
 results/**/*.png
+results/**/*.pdf
 
 # Distribution / packaging
 .Python

@@ -472,6 +472,6 @@ if __name__ == "__main__":
 
 # RESNET not yet supported
 
-# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mse
-# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mssim
-# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l l2
+# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mse -c rgb
+# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mssim -c rgb
+# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l l2 -c rgb

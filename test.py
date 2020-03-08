@@ -57,7 +57,7 @@ def main(args):
 
     # data setup
     directory = setup["data_setup"]["directory"]
-    val_data_dir = os.path.join(directory, "train")
+    test_data_dir = os.path.join(directory, "test")
     nb_training_images = setup["data_setup"]["nb_training_images"]
     nb_validation_images = setup["data_setup"]["nb_validation_images"]
 
@@ -122,7 +122,6 @@ def main(args):
         preprocessing_function=preprocessing_function,
     )
 
-    test_data_dir = os.path.join(directory, "test")
     total_number = utils.get_total_number_test_images(test_data_dir)
 
     # retrieve preprocessed test images as a numpy array

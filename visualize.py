@@ -37,60 +37,10 @@ from skimage.measure import label, regionprops
 from skimage.morphology import closing, square
 from skimage.color import label2rgb
 
-# import visualization functions
-from visualize import plot_img_at_index as plot_img_at_index
-from visualize import plot_img as plot_img
-from visualize import hist_image as hist_image
-
 
 # import validation functions
 from validate import threshold_images as threshold_images
 from validate import label_images as label_images
-
-# =========================================================================
-
-
-def plot_img_at_index(X, index):
-    _, _, _, channels = X.shape
-    plt.figure()
-    if channels == 1:
-        plt.imshow(X[index, :, :, 0], cmap=plt.cm.gray)
-    elif channels == 3:
-        plt.imshow(X[index, :, :, 0])
-    plt.show()
-
-
-def plot_img(img):
-    ndims = len(img.shape)
-    plt.figure()
-    if ndims == 2:
-        plt.imshow(img, cmap=plt.cm.gray)
-    elif ndims == 3:
-        _, _, channels = img.shape
-        if channels == 3:
-            plt.imshow(img)
-        else:
-            plt.imshow(img[:, :, 0], cmap=plt.cm.gray)
-    plt.show()
-
-
-def hist_image(img):
-    img_1d = img.flatten()
-    plt.figure()
-    plt.hist(img_1d, bins=200, density=True, stacked=True, label="image histogram")
-    # plot pdf
-    mu = img_1d.mean()
-    sigma = img_1d.std()
-    minimum = np.amin(img_1d)
-    maximum = np.amax(img_1d)
-    X = np.linspace(start=minimum, stop=maximum, num=400, endpoint=True)
-    pdf_x = [scipy.stats.norm(mu, sigma).pdf(x) for x in X]
-    plt.plot(X, pdf_x, label="pixel distribution")
-    plt.legend()
-    plt.show()
-
-
-# =========================================================================
 
 
 def main(args):
@@ -103,7 +53,8 @@ def main(args):
     # create a directory to save fine-tuning results (threshold)
     model_dir_name = os.path.basename(str(Path(model_path).parent))
     now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
-    save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "finetune", now)
+    save_dir = os.path.join(os.getcwd(), "results",
+                            model_dir_name, "finetune", now)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 

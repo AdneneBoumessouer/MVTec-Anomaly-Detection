@@ -151,12 +151,14 @@ def main(args):
     imgs_val_pred = model.predict(imgs_val_input)
 
     # converts rgb to grayscale
-    if color_mode == "rgb":
-        imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input)
-        imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred)
+    # if color_mode == "rgb":
+    #     imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input)
+    #     imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred)
 
     # compute residual maps on validation dataset
     resmaps_val = imgs_val_input - imgs_val_pred
+    if color_mode == "rgb":
+        resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
 
     if save:
         utils.save_np(imgs_val_input, save_dir, "imgs_val_input.npy")
@@ -166,7 +168,7 @@ def main(args):
     # ============== PLOT A SAMPLE VALIDATION IMAGE =======================
     if img_val != None:
 
-        # compute index of text image
+        # compute image index
         index_val = validation_generator.filenames.index(img_val)
 
         fig = utils.plot_input_pred_resmaps_val(
@@ -340,7 +342,10 @@ def main(args):
         # compute residual maps on test set
         resmaps_test = imgs_test_input - imgs_test_pred
 
-        # compute index of text image
+        if color_mode == "rgb":
+            resmaps_test = tf.image.rgb_to_grayscale(resmaps_test)
+
+        # compute image index
         index_test = test_generator.filenames.index(img_test)
 
         # save three images
