@@ -23,9 +23,9 @@ results/**/*.npy
 saved_models/**/*.h5
 
 # png images
-saved_models/**/*.png
-results/**/*.png
-results/**/*.pdf
+#saved_models/**/*.png
+#results/**/*.png
+#results/**/*.pdf
 
 # Distribution / packaging
 .Python
