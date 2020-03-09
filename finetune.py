@@ -24,8 +24,6 @@ import requests
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-# plt.style.use("seaborn-darkgrid")
-
 # =========================================================================
 # import visualization functions
 
@@ -58,8 +56,7 @@ def plot_img(img):
 def hist_image(img):
     img_1d = img.flatten()
     plt.figure()
-    plt.hist(img_1d, bins=200, density=True,
-             stacked=True, label="image histogram")
+    plt.hist(img_1d, bins=200, density=True, stacked=True, label="image histogram")
     # plot pdf
     mu = img_1d.mean()
     sigma = img_1d.std()
@@ -167,12 +164,13 @@ def main(args):
 
     # ============== PLOT A SAMPLE VALIDATION IMAGE =======================
     if img_val != None:
-
+        plt.style.use("default")
         # compute image index
         index_val = validation_generator.filenames.index(img_val)
 
         fig = utils.plot_input_pred_resmaps_val(
-            imgs_val_input, imgs_val_pred, resmaps_val, index_val)
+            imgs_val_input, imgs_val_pred, resmaps_val, index_val
+        )
         fig.savefig(os.path.join(save_dir, "val_plots.png"))
 
     # ===================================================================
@@ -200,6 +198,8 @@ def main(args):
         std_area_size.append(np.std(areas_all_flat))
 
         print("current threshold = {}".format(threshold))
+
+    plt.style.use("seaborn-darkgrid")
 
     df_out = pd.DataFrame.from_dict(
         {
@@ -245,11 +245,28 @@ def main(args):
     counts = []
     nb_bins = 200
     max_pixel_value = np.amax(resmaps_val)
-    thresholds_to_plot = 9
-    step = max_pixel_value // thresholds_to_plot
-    # areas_per_threshold = np.zeros(shape=(nb_bins, max_pixel_value))
+    thresholds_to_plot = [0, 10, 20, 25, 30, 35, 40]
 
-    for threshold in range(max_pixel_value):
+    # threshold residual maps
+    resmaps_th = threshold_images(resmaps_val, 0)
+
+    # compute connected components
+    resmaps_labeled, areas_all = label_images(resmaps_th)
+
+    # flatten area
+    areas_all_flat = [item for sublist in areas_all for item in sublist]
+
+    fig4 = plt.figure(num=4, figsize=(12, 8))
+    count, bins, ignored = plt.hist(areas_all_flat, bins=nb_bins, density=False,)
+    plt.title(
+        "Distribution of anomaly areas' sizes for validation ResMaps with Threshold = 0"
+    )
+    plt.xlabel("area size in pixel")
+    plt.ylabel("count")
+    # plt.show()
+    fig4.savefig(os.path.join(save_dir, "distr_area_th_0.pdf"))
+
+    for threshold in thresholds_to_plot:
         # threshold residual maps
         resmaps_th = threshold_images(resmaps_val, threshold)
 
@@ -259,63 +276,33 @@ def main(args):
         # flatten area
         areas_all_flat = [item for sublist in areas_all for item in sublist]
 
-        if threshold == 0:
-            areas_all_flat.sort(reverse=True)
-            # min_area = areas_all_flat[-1]
-            max_area = areas_all_flat[0]
+        fig5 = plt.figure(num=5, figsize=(12, 5))
 
-            fig3 = plt.figure(num=3, figsize=(12, 8))
-            count, bins, ignored = plt.hist(
-                areas_all_flat,
-                range=(0, max_area / 4),
-                bins=nb_bins,  # max_area - min_area 200
-                density=False,
-            )
-            plt.xticks(
-                np.arange(start=0, stop=max_area / 10, step=10)
-            )  # stop=max_area / 10
-            # plt.legend()
-            plt.title(
-                "Distribution of anomaly areas' sizes for validation ResMaps with Threshold = 0"
-            )
-            plt.xlim([0, max_area / 10])  # max_area / 10, 100
-            plt.xlabel("area size in pixel")
-            plt.ylabel("count")
-            # plt.show()
-            fig3.savefig(os.path.join(save_dir, "distr_area_th_0.pdf"))
-
-        else:
-            fig4 = plt.figure(num=4, figsize=(12, 5))
-            if divmod(threshold, step)[1] == 0:
-                count, edges = np.histogram(
-                    areas_all_flat,
-                    range=(0, max_area / 4),
-                    bins=nb_bins,  # max_area - min_area 200
-                    density=False,
-                )
-                bins_middle = edges[:-1] + (edges[0] + edges[1]) / 2
-                plt.plot(
-                    bins_middle,
-                    count,
-                    linestyle="-",
-                    linewidth=0.5,
-                    marker="o",
-                    markersize=0.5,
-                    label="threshold = {}".format(threshold),
-                )
+        count, edges = np.histogram(areas_all_flat, bins=nb_bins, density=False,)
+        bins_middle = edges[:-1] + (edges[0] + edges[1]) / 2
+        plt.plot(
+            bins_middle,
+            count,
+            linestyle="-",
+            linewidth=0.5,
+            marker="o",
+            markersize=0.5,
+            label="threshold = {}".format(threshold),
+        )
     plt.title(
         "Distribution of anomaly areas' sizes for validation ResMaps with various Thresholds"
     )
-    plt.xticks(np.arange(start=0, stop=max_area, step=2))  # max_area / 10
+    # plt.xticks(np.arange(start=0, stop=max_area, step=2))  # max_area / 10
     plt.legend()
-    plt.xlim([0, 100])  # 20
+    plt.xlim([0, 200])  # 20
     plt.xlabel("area size in pixel")
     plt.ylabel("count")
     # plt.show()
-    fig4.savefig(os.path.join(save_dir, "distr_area_th_multiple.pdf"))
+    fig5.savefig(os.path.join(save_dir, "distr_area_th_multiple.pdf"))
 
     # ============== PLOT A SAMPLE TEST IMAGE =======================
     if img_test != None:
+        plt.style.use("default")
         test_data_dir = os.path.join(directory, "test")
         total_number = utils.get_total_number_test_images(test_data_dir)
 
@@ -350,7 +337,8 @@ def main(args):
 
         # save three images
         fig = utils.plot_input_pred_resmaps_test(
-            imgs_test_input, imgs_test_pred, resmaps_test, index_test)
+            imgs_test_input, imgs_test_pred, resmaps_test, index_test
+        )
         fig.savefig(os.path.join(save_dir, "test_plots.png"))
 
     # ===================================================================
@@ -377,7 +365,7 @@ if __name__ == "__main__":
         type=str,
         default=None,
         metavar="",
-        help="path to sample test image relative to validation directory for visualization"
+        help="path to sample test image relative to validation directory for visualization",
     )
     parser.add_argument(
         "-t",
@@ -385,7 +373,7 @@ if __name__ == "__main__":
         type=str,
         default=None,
         metavar="",
-        help="path to sample test image relative to test directory for visualization"
+        help="path to sample test image relative to test directory for visualization",
     )
     args = parser.parse_args()
 
