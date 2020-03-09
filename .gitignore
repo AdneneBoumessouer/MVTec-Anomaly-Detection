@@ -4,6 +4,7 @@ my_first_key.pem
 inspect_trained_model.ipynb
 blob.py
 old_test.py
+paths.py
 
 
 # Byte-compiled / optimized / DLL files

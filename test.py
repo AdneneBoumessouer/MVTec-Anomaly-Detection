@@ -102,9 +102,21 @@ def main(args):
 
     # create directory to save test results
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-    now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
-    save_dir = os.path.join(os.getcwd(), "results",
-                            model_dir_name, "test", now)
+    # now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+    # save_dir = os.path.join(os.getcwd(), "results",
+    #                         model_dir_name, "test", now)
+
+    save_dir = os.path.join(
+        os.getcwd(),
+        "results",
+        directory,
+        architecture,
+        loss,
+        model_dir_name,
+        "test",
+        "a_" + str(min_area) + "_th_" + str(threshold),
+    )
+
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
@@ -169,12 +181,10 @@ def main(args):
     y_pred = classify(areas_all, min_area)
 
     # retrieve ground truth
-    y_true = [1 if "good" not in filename.split(
-        "/") else 0 for filename in filenames]
+    y_true = [1 if "good" not in filename.split("/") else 0 for filename in filenames]
 
     # format test results in a pd DataFrame
-    classification = {"filenames": filenames,
-                      "predictions": y_pred, "truth": y_true}
+    classification = {"filenames": filenames, "predictions": y_pred, "truth": y_true}
     df_clf = pd.DataFrame.from_dict(classification)
     # df_clf.to_pickle(os.path.join(save_dir, "df_clf.pkl"))
     # with open(os.path.join(save_dir, "classification.txt"), "a") as f:
@@ -192,13 +202,11 @@ def main(args):
     N = y_true.count(0)
 
     # true positive (TP)
-    TP = np.sum([1 if y_pred[i] == y_true[i] ==
-                 1 else 0 for i in range(total_number)])
+    TP = np.sum([1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(total_number)])
 
     # true negative (TN)
     TN = np.sum(
-        [1 if y_pred[i] == y_true[i] ==
-            False else 0 for i in range(total_number)]
+        [1 if y_pred[i] == y_true[i] == False else 0 for i in range(total_number)]
     )
 
     # sensitivity, recall, hit rate, or true positive rate (TPR)

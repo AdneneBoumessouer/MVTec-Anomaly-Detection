@@ -112,7 +112,18 @@ def main(args):
 
     # create directory to save results
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-    save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "finetune")
+    # save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "finetune")
+
+    save_dir = os.path.join(
+        os.getcwd(),
+        "results",
+        directory,
+        architecture,
+        loss,
+        "finetune",
+        model_dir_name,
+    )
+
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
