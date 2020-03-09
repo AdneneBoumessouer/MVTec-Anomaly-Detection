@@ -114,7 +114,7 @@ def main(args):
         loss,
         model_dir_name,
         "test",
-        "a_" + str(min_area) + "_th_" + str(threshold),
+        "th_" + str(threshold) + "_a_" + str(min_area),
     )
 
     if not os.path.isdir(save_dir):
