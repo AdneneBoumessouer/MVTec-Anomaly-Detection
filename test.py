@@ -50,13 +50,14 @@ def main(args):
     model_path = args.path
     threshold = args.threshold
     min_area = args.area
+    save = args.save
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
 
     # data setup
     directory = setup["data_setup"]["directory"]
-    val_data_dir = os.path.join(directory, "train")
+    test_data_dir = os.path.join(directory, "test")
     nb_training_images = setup["data_setup"]["nb_training_images"]
     nb_validation_images = setup["data_setup"]["nb_validation_images"]
 
@@ -92,15 +93,18 @@ def main(args):
             val_results = json.load(read_file)
 
         if threshold == None:
-            threshold = float(val_results["threshold"])  # should be parsed ARGUMENT
+            # should be parsed ARGUMENT
+            threshold = float(val_results["threshold"])
             print("using validation threshold")
         if min_area == None:
             min_area = float(val_results["area"])  # should be parsed ARGUMENT
             print("using validation area")
 
     # create directory to save test results
-    parent_dir = str(Path(model_path).parent)
-    save_dir = os.path.join(parent_dir, "test_results")
+    model_dir_name = os.path.basename(str(Path(model_path).parent))
+    now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+    save_dir = os.path.join(os.getcwd(), "results",
+                            model_dir_name, "test", now)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
@@ -118,7 +122,6 @@ def main(args):
         preprocessing_function=preprocessing_function,
     )
 
-    test_data_dir = os.path.join(directory, "test")
     total_number = utils.get_total_number_test_images(test_data_dir)
 
     # retrieve preprocessed test images as a numpy array
@@ -131,30 +134,25 @@ def main(args):
         class_mode="input",
     )
     imgs_test_input = test_generator.next()[0]
-    np.save(
-        file=os.path.join(save_dir, "imgs_test_input.npy"),
-        arr=imgs_test_input,
-        allow_pickle=True,
-    )
-
-    # retrieve image_names
-    filenames = test_generator.filenames
 
     # predict on test images
     imgs_test_pred = model.predict(imgs_test_input)
-    np.save(
-        file=os.path.join(save_dir, "imgs_test_pred.npy"),
-        arr=imgs_test_pred,
-        allow_pickle=True,
-    )
+
+    # converts rgb to grayscale
+    if color_mode == "rgb":
+        imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input)
+        imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred)
 
     # compute residual maps on test set
     resmaps_test = imgs_test_input - imgs_test_pred
-    np.save(
-        file=os.path.join(save_dir, "imgs_test_diff.npy"),
-        arr=resmaps_test,
-        allow_pickle=True,
-    )
+
+    if save:
+        utils.save_np(imgs_test_input, save_dir, "imgs_val_input.npy")
+        utils.save_np(imgs_test_pred, save_dir, "imgs_val_pred.npy")
+        utils.save_np(resmaps_test, save_dir, "resmaps_val.npy")
+
+    # retrieve test image_names
+    filenames = test_generator.filenames
 
     # Convert to 8-bit unsigned int
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
@@ -171,14 +169,16 @@ def main(args):
     y_pred = classify(areas_all, min_area)
 
     # retrieve ground truth
-    y_true = [1 if "good" not in filename.split("/") else 0 for filename in filenames]
+    y_true = [1 if "good" not in filename.split(
+        "/") else 0 for filename in filenames]
 
     # format test results in a pd DataFrame
-    classification = {"filenames": filenames, "predictions": y_pred, "truth": y_true}
+    classification = {"filenames": filenames,
+                      "predictions": y_pred, "truth": y_true}
     df_clf = pd.DataFrame.from_dict(classification)
-    df_clf.to_pickle(os.path.join(save_dir, "df_clf.pkl"))
-    with open(os.path.join(save_dir, "classification.txt"), "a") as f:
-        f.write(df_clf.to_string(header=True, index=True))
+    # df_clf.to_pickle(os.path.join(save_dir, "df_clf.pkl"))
+    # with open(os.path.join(save_dir, "classification.txt"), "a") as f:
+    #     f.write(df_clf.to_string(header=True, index=True))
 
     # print DataFrame to console
     with pd.option_context("display.max_rows", None, "display.max_columns", None):
@@ -192,11 +192,13 @@ def main(args):
     N = y_true.count(0)
 
     # true positive (TP)
-    TP = np.sum([1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(total_number)])
+    TP = np.sum([1 if y_pred[i] == y_true[i] ==
+                 1 else 0 for i in range(total_number)])
 
     # true negative (TN)
     TN = np.sum(
-        [1 if y_pred[i] == y_true[i] == False else 0 for i in range(total_number)]
+        [1 if y_pred[i] == y_true[i] ==
+            False else 0 for i in range(total_number)]
     )
 
     # sensitivity, recall, hit rate, or true positive rate (TPR)
@@ -246,6 +248,15 @@ if __name__ == "__main__":
         default=None,
         metavar="",
         help="number of training images",
+    )
+    parser.add_argument(
+        "-s",
+        "--save",
+        type=bool,
+        required=False,
+        default=False,
+        metavar="",
+        help="save inputs, predictions and reconstructions of validation dataset",
     )
     args = parser.parse_args()
 

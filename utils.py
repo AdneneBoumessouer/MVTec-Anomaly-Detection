@@ -87,6 +87,23 @@ def load_model_HDF5(model_path):
     return model, setup, history
 
 
+def save_np(arr, save_dir, filename):
+    np.save(
+        file=os.path.join(save_dir, filename),
+        arr=arr,
+        allow_pickle=True,
+    )
+
+
+def extend_dict(dict1, dict2):
+    dict3 = {}
+    for key in list(dict1.keys()):
+        dict3[key] = []
+        dict3[key].extend(dict1[key])
+        dict3[key].extend(dict2[key])
+    return dict3
+
+
 def get_epochs_trained(history_dict):
     key = list(history_dict.keys())[0]
     return len(history_dict[key])
@@ -103,9 +120,56 @@ def get_total_number_test_images(test_data_dir):
     return total_number
 
 
-def get_image_score(image, factor):
-    image_1d = image.flatten()
-    mean_image = np.mean(image_1d)
-    std_image = np.std(image_1d)
-    score = mean_image + factor*std_image
-    return score, mean_image, std_image
+def plot_input_pred_resmaps_val(inputs, preds, resmaps, index_val):
+    fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
+    try:
+        axarr[0].imshow(inputs[index_val])
+    except TypeError:
+        axarr[0].imshow(inputs[index_val, :, :, 0],
+                        cmap=plt.cm.gray)
+    axarr[0].set_title("original defect-free val image")
+    try:
+        axarr[1].imshow(preds[index_val])
+    except TypeError:
+        axarr[1].imshow(preds[index_val, :, :, 0],
+                        cmap=plt.cm.gray)
+    axarr[1].set_title("reconstruction defect-free val image")
+    try:
+        axarr[2].imshow(resmaps[index_val])
+    except TypeError:
+        axarr[2].imshow(resmaps[index_val, :, :, 0],
+                        cmap=plt.cm.gray)
+    axarr[2].set_title("ResMap defect-free val image")
+
+    return fig
+
+
+def plot_input_pred_resmaps_test(inputs, preds, resmaps, index_test):
+    fig, axarr = plt.subplots(3, 1, figsize=(5, 18))
+    try:
+        axarr[0].imshow(inputs[index_test])
+    except TypeError:
+        axarr[0].imshow(inputs[index_test, :, :, 0],
+                        cmap=plt.cm.gray)
+    axarr[0].set_title("original sample test image")
+    try:
+        axarr[1].imshow(preds[index_test])
+    except TypeError:
+        axarr[1].imshow(preds[index_test, :, :, 0],
+                        cmap=plt.cm.gray)
+    axarr[1].set_title("reconstruction test image")
+    try:
+        axarr[2].imshow(resmaps[index_test])
+    except TypeError:
+        axarr[2].imshow(resmaps[index_test, :, :, 0],
+                        cmap=plt.cm.gray)
+    axarr[2].set_title("ResMap test image")
+
+    return fig
+
+# def preprocess_resnet(image):
+#     """
+#     Only to be used when the training parameter color_mode is set to grayscale:
+#     Resnet expects images with 3 channels.
+#     If training with grayscale (channels == 1), triplicate image.
+#     """
