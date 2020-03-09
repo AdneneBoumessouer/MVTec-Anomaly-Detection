@@ -18,6 +18,9 @@ __pycache__/
 saved_models/**/*.npy
 results/**/*.npy
 
+# saved models
+saved_models/**/*.h5
+
 # png images
 saved_models/**/*.png
 results/**/*.png
