@@ -31,8 +31,7 @@ import argparse
 
 
 def main(args):
-    # ============================= SETUP ==================================
-
+    # ========================= SETUP ==============================
     # Get training data setup
     directory = args.directory
     train_data_dir = os.path.join(directory, "train")
