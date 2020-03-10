@@ -2,7 +2,7 @@
 
 # Anomaly Datection
 
-This project aims at developping a Deep Learning model using an unsupervided method to detect anomalies on images.
+This project aims at developping a Deep Learning model using an unsupervided method to detect surface anomalies on images.
 
 ## Dataset
 
@@ -16,9 +16,9 @@ The method is devided in 3 steps: training, validating and testing.
 ## Prerequisites
 
 ### Dependencies
-Run the following command to install required libraries and packages used in this project: 
+Create a new conda environment, activate it and run the following command in your terminal or anaconda prompt to install required libraries and packages used in this project: 
 ```
-pip install -r requirements.txt
+conda install --file requirements.txt
 ```
 
 ### Download the Dataset
@@ -100,7 +100,7 @@ The method uses a Convolutional Auto-Encoder (CAE). There are two proposed varia
 * CAE that uses Keras's inception_resnet_v2 CNN-model pretrained on imagenet as the Encoder. 
 The Decoder is inspired by the paper [Anomaly Detection and Localization in Images using Guided Attention](https://openreview.net/forum?id=B1gikpEtwH)
 
-During training, the CAE trains solely on defect-free images and learns to reconstruct defect-free training samples.
+During training, the CAE trains exclusively on defect-free images and learns to reconstruct defect-free training samples.
 
 To initiate training, go to the project directory and run the following command in your terminal:
 ```
@@ -113,9 +113,30 @@ python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l ssim -c grayscale -t "fi
 **NOTE:** The number of training epochs will be determined by the given argument `<number of training instances>` specified during the initiation of the training, devided by the actual number of images contained in the train folder of the chosen class.
 Example: if you passed `-i 10000` and the training directory contains `1000` images, then the number of epochs will be equal to `10`.
 
+## Finetuning (finetune.py)
+This script aims at guiding the the user in chosing the right minimum defect area during validation and test.
+It creates the following plots:
+* Number of defective regions with increasing thresholds
+* Mean and standard deviation of area's size with increasing thresholds
+* Distribution of the size of anomaly areas with validation ResMaps for Threshold = 0
+* Distribution of the size of anomaly areas with validation ResMaps for increasing Thresholds
+* Sample validation image alongside its reconstruction and the resulting ResMap
+* Sample test image alongside its reconstruction and the resulting ResMap
+
+To initiate finetuning, go to the project directory and run the following command in your terminal:
+```
+python3 validate.py -p <path to trained model> -v <sample validation image> -t <sample test image> -r <range of area size to plot>
+```
+
+Here is an example:
+```
+python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png" -r 50
+```
+
+
 ## Validation (validate.py)
 
-This script computes the threshold that will be used the classification in defect or defect-free images during testing using a small portion (10%) of defect-free training images. To determine a threshold, a minimum defect area that an anomalous region must have to be classified as a defective region must be given.
+This script computes the best threshold to use in classification of defect or defect-free images during testing using a small portion (10%) of defect-free training images. To determine a threshold, a minimum defect area that an anomalous region must have to be classified as a defective region must be passed as an argument.
 
 To initiate validation, go to the project directory and run the following command in your terminal:
 ```
@@ -123,24 +144,20 @@ python3 validate.py -p <path to trained model> -a <minimum defective area>
 ```
 Here is an example:
 ```
-python3 validate.py -p saved_models/MSE/17-02-2020_18:14:52/CAE_mvtec_b12.h5 -a 50
+python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -a 50
 ```
 
 ## Testing (test.py)
 
-During testing, the classification on the test images takes place either using the threshold that was determined during validation or by giving the threshold and the minimum defect area.
+During testing, the classification on the test images takes place either using a threshold and a minimum defect area. You can use the optimal threshold computed during validation or use a combination of threshold and minimum area on your own.
 
 To initiate testing, go to the project directory and run the following command in your terminal:
 ```
 python3 test.py -p <path to trained model> -t <threshold> -a <area>
 ```
-Here is an example using threshold and area from validation results:
-```
-python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5
-```
 Here is an example using passed arguments for threshold and area:
 ```
-python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -t 28 -a 50
+python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -t 28 -a 50
 ```
 
 Project Organization
@@ -149,20 +166,21 @@ Project Organization
     ├── mvtec                       <- folder containing all mvtec classes
     │   ├── bottle                  <- subfolder of a class (contains additional subfolders /train and /test)
     |   |── ...
-    ├── custom_loss_functions.py    <- implments different loss functions to use in training
-    ├── fine_tune.py                <- determines best values of threshold and area to use in testing
-    ├── models.py                   <- contains different CAE architectures for training
+    ├── custom_loss_functions.py    <- implments different loss functions to use in training    
     ├── readme.md                   <- readme file
     ├── requirements.txt            <- requirement text file containing all used packages and libraries
     ├── saved_models                <- directory containing saved models, validation and results
-    │   ├── L2                      <- saved models that trained with L2 loss
-    │   ├── MSE                     <- saved models that trained with MSE loss
-    │   ├── MSSIM                   <- saved models that trained with MSSIM loss
-    │   └── SSIM                    <- saved models that trained with SSIM loss
-    ├── test.py                     <- test script
+    |   ...
+    │       ├── L2                  <- saved models that trained with L2 loss
+    │       ├── MSE                 <- saved models that trained with MSE loss
+    │       ├── MSSIM               <- saved models that trained with MSSIM loss
+    │       └── SSIM                <- saved models that trained with SSIM loss
+    ├── models.py                   <- contains different CAE architectures for training
     ├── train.py                    <- training script
-    ├── utils.py                    <- utilitary and helper functions
-    ├── validate.py                 <- validation script
+    ├── test.py                     <- test script    
+    ├── finetune.py                 <- creates plots to help pick a good minimum area for validation
+    ├── validate.py                 <- determines best threshold to use when given an area size
+    ├── utils.py                    <- utilitary and helper functions    
     └── visualize.py                <- plot and visualize images at different stages (still in progress)
 
 
