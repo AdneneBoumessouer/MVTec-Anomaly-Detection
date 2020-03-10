@@ -40,8 +40,14 @@ def load_model_HDF5(model_path):
     """Loads model (HDF5 format), training setup and training history.
     This format makes it difficult to load a trained model for further training,
     but works good enough for one training round."""
+
+    # load loss function used in training
+    dir_name = os.path.dirname(model_path)
+    with open(os.path.join(dir_name, "setup.json"), "r") as read_file:
+        setup = json.load(read_file)
+    loss = setup["train_setup"]["loss"]
+
     # load autoencoder
-    loss = model_path.split("/")[1]
     if loss == "MSSIM":
         model = keras.models.load_model(
             filepath=model_path,
@@ -73,16 +79,7 @@ def load_model_HDF5(model_path):
         )
 
     # load training history
-    dir_name = os.path.dirname(model_path)
     history = pd.read_csv(os.path.join(dir_name, "history.csv"))
-
-    # # load model configuration
-    # with open(os.path.join(dir_name, "model_config.json"), "r") as read_file:
-    #     model_config = json.load(read_file)
-
-    # load training setup
-    with open(os.path.join(dir_name, "setup.json"), "r") as read_file:
-        setup = json.load(read_file)
 
     return model, setup, history
 
