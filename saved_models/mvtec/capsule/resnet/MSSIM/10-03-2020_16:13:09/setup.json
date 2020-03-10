@@ -1,0 +1,38 @@
+{
+    "data_setup": {
+        "nb_validation_images": 21,
+        "nb_training_images": 198,
+        "directory": "mvtec/capsule"
+    },
+    "tag": null,
+    "train_setup": {
+        "learning_rate": [
+            0.0002,
+            1e-05
+        ],
+        "batch_size": 12,
+        "color_mode": "rgb",
+        "validation_split": 0.1,
+        "epochs": [
+            30,
+            20
+        ],
+        "loss": "MSSIM",
+        "nb_training_images_aug": 10000,
+        "epochs_trained": 50,
+        "decay": [
+            1e-05,
+            1e-06
+        ],
+        "architecture": "resnet",
+        "channels": 3
+    },
+    "preprocessing_setup": {
+        "preprocessing": "keras.applications.inception_resnet_v2.preprocess_input",
+        "shape": [
+            299,
+            299
+        ],
+        "rescale": null
+    }
+}
