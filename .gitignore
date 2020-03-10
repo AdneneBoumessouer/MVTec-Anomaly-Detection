@@ -1,11 +1,7 @@
-mvtec/
+/mvtec/
+/fraunhofer/
+# !saved_models/mvtec
 .vscode/
-my_first_key.pem
-inspect_trained_model.ipynb
-blob.py
-old_test.py
-paths.py
-
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -23,9 +19,9 @@ results/**/*.npy
 saved_models/**/*.h5
 
 # png images
-#saved_models/**/*.png
-#results/**/*.png
-#results/**/*.pdf
+# saved_models/**/*.png
+# results/**/*.png
+# results/**/*.pdf
 
 # Distribution / packaging
 .Python
