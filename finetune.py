@@ -75,10 +75,12 @@ def hist_image(img):
 
 
 def main(args):
+    # Get finetuning parameters
     model_path = args.path
     save = args.save
     img_val = args.val
     img_test = args.test
+    area_range = args.range
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -86,7 +88,6 @@ def main(args):
     # data setup
     directory = setup["data_setup"]["directory"]
     val_data_dir = os.path.join(directory, "train")
-
     nb_training_images = setup["data_setup"]["nb_training_images"]
     nb_validation_images = setup["data_setup"]["nb_validation_images"]
 
@@ -108,11 +109,18 @@ def main(args):
     architecture = setup["train_setup"]["architecture"]
     loss = setup["train_setup"]["loss"]
 
-    tag = setup["tag"]
-
     # create directory to save results
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-    save_dir = os.path.join(os.getcwd(), "results", model_dir_name, "finetune")
+    save_dir = os.path.join(
+        os.getcwd(),
+        "results",
+        directory,
+        architecture,
+        loss,
+        model_dir_name,
+        "finetune",
+    )
+
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
@@ -145,6 +153,7 @@ def main(args):
     imgs_val_input = validation_generator.next()[0]
 
     # get reconstructed images (i.e predictions) on validation dataset
+    print("computing reconstructions of validation images...")
     imgs_val_pred = model.predict(imgs_val_input)
 
     # converts rgb to grayscale
@@ -162,20 +171,18 @@ def main(args):
         utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
         utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
 
-    # ============== PLOT A SAMPLE VALIDATION IMAGE =======================
+    # plot a sample validation image alongside its corresponding reconstruction and resmap for inspection
     if img_val != None:
         plt.style.use("default")
         # compute image index
         index_val = validation_generator.filenames.index(img_val)
-
         fig = utils.plot_input_pred_resmaps_val(
             imgs_val_input, imgs_val_pred, resmaps_val, index_val
         )
         fig.savefig(os.path.join(save_dir, "val_plots.png"))
+        print("figure saved at {}".format(os.path.join(save_dir, "val_plots.png")))
 
-    # ===================================================================
-
-    # Convert to 8-bit unsigned int
+    # Convert to 8-bit unsigned int for further processing
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
     resmaps_val = img_as_ubyte(resmaps_val)
 
@@ -184,11 +191,13 @@ def main(args):
     std_area_size = []
     threshold_max = np.amax(resmaps_val)
 
+    # compute and plot number of anomalous regions and their area sizes with increasing thresholds
+    print("computing anomalous regions and area sizes with increasing thresholds...")
     for threshold in range(threshold_max):
         # threshold residual maps
         resmaps_th = threshold_images(resmaps_val, threshold)
 
-        # compute connected components
+        # compute anomalous regions
         resmaps_labeled, areas_all = label_images(resmaps_th)
 
         # check if area of largest anomalous region is below the minimum area
@@ -197,7 +206,7 @@ def main(args):
         mean_area_size.append(np.mean(areas_all_flat))
         std_area_size.append(np.std(areas_all_flat))
 
-        print("current threshold = {}".format(threshold))
+        print("current threshold: {}".format(threshold))
 
     plt.style.use("seaborn-darkgrid")
 
@@ -245,17 +254,17 @@ def main(args):
     counts = []
     nb_bins = 200
     max_pixel_value = np.amax(resmaps_val)
-    thresholds_to_plot = [0, 10, 20, 25, 30, 35, 40]
 
-    # threshold residual maps
+    # compute residual maps for threshold = 0
     resmaps_th = threshold_images(resmaps_val, 0)
 
-    # compute connected components
+    # compute anomalous regions
     resmaps_labeled, areas_all = label_images(resmaps_th)
 
     # flatten area
     areas_all_flat = [item for sublist in areas_all for item in sublist]
 
+    # compute and plot distribution of anomaly areas's sizes
     fig4 = plt.figure(num=4, figsize=(12, 8))
     count, bins, ignored = plt.hist(areas_all_flat, bins=nb_bins, density=False,)
     plt.title(
@@ -266,11 +275,13 @@ def main(args):
     # plt.show()
     fig4.savefig(os.path.join(save_dir, "distr_area_th_0.pdf"))
 
+    # compute residual maps for multiple thresholds
+    thresholds_to_plot = [0, 10, 20, 25, 30, 35, 40]
     for threshold in thresholds_to_plot:
         # threshold residual maps
         resmaps_th = threshold_images(resmaps_val, threshold)
 
-        # compute connected components
+        # compute anomalous regions
         resmaps_labeled, areas_all = label_images(resmaps_th)
 
         # flatten area
@@ -292,15 +303,15 @@ def main(args):
     plt.title(
         "Distribution of anomaly areas' sizes for validation ResMaps with various Thresholds"
     )
-    # plt.xticks(np.arange(start=0, stop=max_area, step=2))  # max_area / 10
     plt.legend()
-    plt.xlim([0, 200])  # 20
+
+    plt.xlim([0, area_range])  # 20
     plt.xlabel("area size in pixel")
     plt.ylabel("count")
     # plt.show()
     fig5.savefig(os.path.join(save_dir, "distr_area_th_multiple.pdf"))
 
-    # ============== PLOT A SAMPLE TEST IMAGE =======================
+    # plot a sample test image alongside its corresponding reconstruction and resmap for inspection
     if img_test != None:
         plt.style.use("default")
         test_data_dir = os.path.join(directory, "test")
@@ -324,6 +335,7 @@ def main(args):
         imgs_test_input = test_generator.next()[0]
 
         # predict on test images
+        print("computing reconstructions of validation images...")
         imgs_test_pred = model.predict(imgs_test_input)
 
         # compute residual maps on test set
@@ -340,8 +352,7 @@ def main(args):
             imgs_test_input, imgs_test_pred, resmaps_test, index_test
         )
         fig.savefig(os.path.join(save_dir, "test_plots.png"))
-
-    # ===================================================================
+        print("figure saved at {}".format(os.path.join(save_dir, "test_plots.png")))
 
 
 if __name__ == "__main__":
@@ -375,13 +386,23 @@ if __name__ == "__main__":
         metavar="",
         help="path to sample test image relative to test directory for visualization",
     )
+    parser.add_argument(
+        "-r",
+        "--range",
+        type=int,
+        required=False,
+        default=200,
+        metavar="",
+        help="Range of the area size to plot for multiple thresholds",
+    )
     args = parser.parse_args()
 
     main(args)
 
 
-# model_path = "saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5"
+# model_path = "saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5"
 
 
-# python3 finetune.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png"
-# python3 finetune.py -p saved_models/MSE/07-03-2020_21:36:53/CAE_resnet_b12.h5 -v "good/000.png" -t "poke/000.png"
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png"
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png" -r 50
+

@@ -98,9 +98,20 @@ def main(args):
 
     # create a results directory if not existent
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-    now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
-    save_dir = os.path.join(os.getcwd(), "results",
-                            model_dir_name, "validation", now)
+    # now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+    # save_dir = os.path.join(os.getcwd(), "results",
+    #                         model_dir_name, "validation", now)
+
+    save_dir = os.path.join(
+        os.getcwd(),
+        "results",
+        directory,
+        architecture,
+        loss,
+        model_dir_name,
+        "validation",
+        "a_" + str(min_area),
+    )
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
@@ -217,4 +228,4 @@ if __name__ == "__main__":
 
 # Example of command to initiate validation
 
-# python3 validate.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -a 200
+# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -a 55
