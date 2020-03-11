@@ -254,7 +254,7 @@ def main(args):
     # -------------------------------------------------------------------
 
     counts = []
-    nb_bins = 200
+    nb_bins = 500
     max_pixel_value = np.amax(resmaps_val)
 
     # compute residual maps for threshold = 0
@@ -294,7 +294,7 @@ def main(args):
 
         count, edges = np.histogram(
             areas_all_flat, bins=nb_bins, density=False,)
-        bins_middle = edges[:-1] + ((edges_np[1] - edges_np[0]) / 2)
+        bins_middle = edges[:-1] + ((edges[1] - edges[0]) / 2)
         plt.plot(
             bins_middle,
             count,
@@ -308,11 +308,10 @@ def main(args):
         "Distribution of anomaly areas' sizes for validation ResMaps with various Thresholds"
     )
     plt.legend()
-
     plt.xlim([0, area_range])  # 20
     plt.xlabel("area size in pixel")
     plt.ylabel("count")
-    # plt.show()
+    plt.show(block=True)
     fig5.savefig(os.path.join(save_dir, "distr_area_th_multiple.pdf"))
 
     # plot a sample test image alongside its corresponding reconstruction and resmap for inspection
