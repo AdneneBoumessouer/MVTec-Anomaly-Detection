@@ -23,55 +23,6 @@ import scipy.stats
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-# =========================================================================
-# import visualization functions
-
-
-def plot_img_at_index(X, index):
-    _, _, _, channels = X.shape
-    plt.figure()
-    if channels == 1:
-        plt.imshow(X[index, :, :, 0], cmap=plt.cm.gray)
-    elif channels == 3:
-        plt.imshow(X[index, :, :, 0])
-    plt.show()
-
-
-def plot_img(img):
-    ndims = len(img.shape)
-    plt.figure()
-    if ndims == 2:
-        plt.imshow(img, cmap=plt.cm.gray)
-    elif ndims == 3:
-        _, _, channels = img.shape
-        if channels == 3:
-            plt.imshow(img)
-        else:
-            plt.imshow(img[:, :, 0], cmap=plt.cm.gray)
-    # plt.show()
-    return plt
-
-
-def hist_image(img):
-    img_1d = img.flatten()
-    plt.figure()
-    plt.hist(img_1d, bins=200, density=True, stacked=True, label="image histogram")
-    # plot pdf
-    mu = img_1d.mean()
-    sigma = img_1d.std()
-    minimum = np.amin(img_1d)
-    maximum = np.amax(img_1d)
-    X = np.linspace(start=minimum, stop=maximum, num=400, endpoint=True)
-    pdf_x = [scipy.stats.norm(mu, sigma).pdf(x) for x in X]
-    plt.plot(X, pdf_x, label="pixel distribution")
-    plt.legend()
-    plt.show()
-
-
-# =========================================================================
-
-# import validation functions
-
 
 def main(args):
     # Get finetuning parameters

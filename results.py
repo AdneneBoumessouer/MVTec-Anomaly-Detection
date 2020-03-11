@@ -7,14 +7,14 @@ import json
 import pandas as pd
 
 
-def main(args):
-    model_path = args.path
+def main(model_path, directory, architecture, loss):
+    # model_path = args.path
 
-    # load setup
-    setup = utils.get_model_setup(model_path)
-    directory = setup["data_setup"]["directory"]
-    architecture = setup["train_setup"]["architecture"]
-    loss = setup["train_setup"]["loss"]
+    # # load setup
+    # setup = utils.get_model_setup(model_path)
+    # directory = setup["data_setup"]["directory"]
+    # architecture = setup["train_setup"]["architecture"]
+    # loss = setup["train_setup"]["loss"]
 
     # get test directory
     model_dir_name = os.path.basename(str(Path(model_path).parent))
@@ -59,12 +59,12 @@ if __name__ == "__main__":
 
     model_path = args.path
 
-    # # load setup
-    # setup = utils.get_model_setup(model_path)
-    # directory = setup["data_setup"]["directory"]
-    # architecture = setup["train_setup"]["architecture"]
-    # loss = setup["train_setup"]["loss"]
+    # load setup
+    setup = utils.get_model_setup(model_path)
+    directory = setup["data_setup"]["directory"]
+    architecture = setup["train_setup"]["architecture"]
+    loss = setup["train_setup"]["loss"]
 
-    main(args)
+    main(model_path, directory, architecture, loss)
 
 # python3 results.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5

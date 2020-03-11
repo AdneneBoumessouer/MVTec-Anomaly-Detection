@@ -28,6 +28,7 @@ from skimage.util import img_as_ubyte
 # import validation functions
 from validate import threshold_images as threshold_images
 from validate import label_images as label_images
+import results
 
 
 def is_defective(areas, min_area):
@@ -230,6 +231,13 @@ def main(args):
     print("test_results: \n{}".format(test_results))
     print()
     print("confusion matrix: \n{}".format(conf_matrix))
+
+    print(
+        "\n\nCurrent total test results for dataset {} and model {}:\n".format(
+            directory, model_dir_name
+        )
+    )
+    results.main(model_path, directory, architecture, loss)
 
 
 if __name__ == "__main__":

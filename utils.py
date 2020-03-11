@@ -49,6 +49,7 @@ def load_model_HDF5(model_path):
     but works good enough for one training round."""
 
     # load loss function used in training
+    dir_name = os.path.dirname(model_path)
     setup = get_model_setup(model_path)
     loss = setup["train_setup"]["loss"]
 
