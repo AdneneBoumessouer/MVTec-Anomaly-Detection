@@ -56,7 +56,8 @@ def plot_img(img):
 def hist_image(img):
     img_1d = img.flatten()
     plt.figure()
-    plt.hist(img_1d, bins=200, density=True, stacked=True, label="image histogram")
+    plt.hist(img_1d, bins=200, density=True,
+             stacked=True, label="image histogram")
     # plot pdf
     mu = img_1d.mean()
     sigma = img_1d.std()
@@ -180,7 +181,8 @@ def main(args):
             imgs_val_input, imgs_val_pred, resmaps_val, index_val
         )
         fig.savefig(os.path.join(save_dir, "val_plots.png"))
-        print("figure saved at {}".format(os.path.join(save_dir, "val_plots.png")))
+        print("figure saved at {}".format(
+            os.path.join(save_dir, "val_plots.png")))
 
     # Convert to 8-bit unsigned int for further processing
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
@@ -266,7 +268,8 @@ def main(args):
 
     # compute and plot distribution of anomaly areas's sizes
     fig4 = plt.figure(num=4, figsize=(12, 8))
-    count, bins, ignored = plt.hist(areas_all_flat, bins=nb_bins, density=False,)
+    count, bins, ignored = plt.hist(
+        areas_all_flat, bins=nb_bins, density=False,)
     plt.title(
         "Distribution of anomaly areas' sizes for validation ResMaps with Threshold = 0"
     )
@@ -289,8 +292,9 @@ def main(args):
 
         fig5 = plt.figure(num=5, figsize=(12, 5))
 
-        count, edges = np.histogram(areas_all_flat, bins=nb_bins, density=False,)
-        bins_middle = edges[:-1] + (edges[0] + edges[1]) / 2
+        count, edges = np.histogram(
+            areas_all_flat, bins=nb_bins, density=False,)
+        bins_middle = edges[:-1] + ((edges_np[1] - edges_np[0]) / 2)
         plt.plot(
             bins_middle,
             count,
@@ -352,7 +356,8 @@ def main(args):
             imgs_test_input, imgs_test_pred, resmaps_test, index_test
         )
         fig.savefig(os.path.join(save_dir, "test_plots.png"))
-        print("figure saved at {}".format(os.path.join(save_dir, "test_plots.png")))
+        print("figure saved at {}".format(
+            os.path.join(save_dir, "test_plots.png")))
 
 
 if __name__ == "__main__":
@@ -405,4 +410,3 @@ if __name__ == "__main__":
 
 # python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png"
 # python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png" -r 50
-

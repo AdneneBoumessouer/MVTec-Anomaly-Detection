@@ -315,6 +315,7 @@ def main(args):
     print("Saved training history at %s " % hist_csv_file)
 
     # save plot of loss and val_loss
+    plt.style.use("seaborn-darkgrid")
     plot = hist_df[["loss", "val_loss"]].plot(figsize=(8, 5))
     fig = plot.get_figure()
     fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
