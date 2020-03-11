@@ -232,7 +232,7 @@ def main(args):
     elif architecture in ["resnet", "nasnet"]:
 
         # Phase 1: train the decoder with frozen encoder
-        epochs_1 = int(np.ceil(0.6 * epochs))
+        epochs_1 = int(np.ceil(0.7 * epochs))
 
         for layer in base_encoder.layers:
             layer.trainable = False
@@ -272,12 +272,12 @@ def main(args):
         # print(base_encoder.summary())
         print(model.summary())
 
-        learning_rate_2 = 1e-5
-        decay_2 = 1e-6
+        # learning_rate_2 = 1e-5
+        # decay_2 = 1e-6
 
-        optimizer = keras.optimizers.Adam(
-            learning_rate=learning_rate_2, beta_1=0.9, beta_2=0.999, decay=decay_2
-        )
+        # optimizer = keras.optimizers.Adam(
+        #     learning_rate=learning_rate_2, beta_1=0.9, beta_2=0.999, decay=decay_2
+        # )
 
         model.compile(
             loss=loss_function,
