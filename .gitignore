@@ -1,9 +1,9 @@
 /mvtec/
 /werkstueck/
 /inspection/
-inspect.py
+inspect_images.py
 .vscode/
-results/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/
+# results/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

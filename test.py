@@ -102,9 +102,6 @@ def main(args):
 
     # create directory to save test results
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-    # now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
-    # save_dir = os.path.join(os.getcwd(), "results",
-    #                         model_dir_name, "test", now)
 
     save_dir = os.path.join(
         os.getcwd(),

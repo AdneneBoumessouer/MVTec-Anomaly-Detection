@@ -36,15 +36,20 @@ def load_SavedModel(model_path):
     return model, train_setup, history
 
 
+def get_model_setup(model_path):
+    dir_name = os.path.dirname(model_path)
+    with open(os.path.join(dir_name, "setup.json"), "r") as read_file:
+        setup = json.load(read_file)
+    return setup
+
+
 def load_model_HDF5(model_path):
     """Loads model (HDF5 format), training setup and training history.
     This format makes it difficult to load a trained model for further training,
     but works good enough for one training round."""
 
     # load loss function used in training
-    dir_name = os.path.dirname(model_path)
-    with open(os.path.join(dir_name, "setup.json"), "r") as read_file:
-        setup = json.load(read_file)
+    setup = get_model_setup(model_path)
     loss = setup["train_setup"]["loss"]
 
     # load autoencoder
@@ -86,9 +91,7 @@ def load_model_HDF5(model_path):
 
 def save_np(arr, save_dir, filename):
     np.save(
-        file=os.path.join(save_dir, filename),
-        arr=arr,
-        allow_pickle=True,
+        file=os.path.join(save_dir, filename), arr=arr, allow_pickle=True,
     )
 
 
@@ -122,20 +125,17 @@ def plot_input_pred_resmaps_val(inputs, preds, resmaps, index_val):
     try:
         axarr[0].imshow(inputs[index_val])
     except TypeError:
-        axarr[0].imshow(inputs[index_val, :, :, 0],
-                        cmap=plt.cm.gray)
+        axarr[0].imshow(inputs[index_val, :, :, 0], cmap=plt.cm.gray)
     axarr[0].set_title("original defect-free val image")
     try:
         axarr[1].imshow(preds[index_val])
     except TypeError:
-        axarr[1].imshow(preds[index_val, :, :, 0],
-                        cmap=plt.cm.gray)
+        axarr[1].imshow(preds[index_val, :, :, 0], cmap=plt.cm.gray)
     axarr[1].set_title("reconstruction defect-free val image")
     try:
         axarr[2].imshow(resmaps[index_val])
     except TypeError:
-        axarr[2].imshow(resmaps[index_val, :, :, 0],
-                        cmap=plt.cm.gray)
+        axarr[2].imshow(resmaps[index_val, :, :, 0], cmap=plt.cm.gray)
     axarr[2].set_title("ResMap defect-free val image")
 
     return fig
@@ -146,23 +146,21 @@ def plot_input_pred_resmaps_test(inputs, preds, resmaps, index_test):
     try:
         axarr[0].imshow(inputs[index_test])
     except TypeError:
-        axarr[0].imshow(inputs[index_test, :, :, 0],
-                        cmap=plt.cm.gray)
+        axarr[0].imshow(inputs[index_test, :, :, 0], cmap=plt.cm.gray)
     axarr[0].set_title("original sample test image")
     try:
         axarr[1].imshow(preds[index_test])
     except TypeError:
-        axarr[1].imshow(preds[index_test, :, :, 0],
-                        cmap=plt.cm.gray)
+        axarr[1].imshow(preds[index_test, :, :, 0], cmap=plt.cm.gray)
     axarr[1].set_title("reconstruction test image")
     try:
         axarr[2].imshow(resmaps[index_test])
     except TypeError:
-        axarr[2].imshow(resmaps[index_test, :, :, 0],
-                        cmap=plt.cm.gray)
+        axarr[2].imshow(resmaps[index_test, :, :, 0], cmap=plt.cm.gray)
     axarr[2].set_title("ResMap test image")
 
     return fig
+
 
 # def preprocess_resnet(image):
 #     """

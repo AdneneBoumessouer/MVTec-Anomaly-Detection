@@ -20,7 +20,6 @@ import numpy as np
 from numpy import expand_dims
 import scipy.stats
 
-import requests
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
@@ -56,8 +55,7 @@ def plot_img(img):
 def hist_image(img):
     img_1d = img.flatten()
     plt.figure()
-    plt.hist(img_1d, bins=200, density=True,
-             stacked=True, label="image histogram")
+    plt.hist(img_1d, bins=200, density=True, stacked=True, label="image histogram")
     # plot pdf
     mu = img_1d.mean()
     sigma = img_1d.std()
@@ -81,7 +79,8 @@ def main(args):
     save = args.save
     img_val = args.val
     img_test = args.test
-    area_range = args.range
+    thresholds_to_plot = list(set(args.list))
+    thresholds_to_plot.sort()
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -181,8 +180,7 @@ def main(args):
             imgs_val_input, imgs_val_pred, resmaps_val, index_val
         )
         fig.savefig(os.path.join(save_dir, "val_plots.png"))
-        print("figure saved at {}".format(
-            os.path.join(save_dir, "val_plots.png")))
+        print("figure saved at {}".format(os.path.join(save_dir, "val_plots.png")))
 
     # Convert to 8-bit unsigned int for further processing
     # (unnecessary if working exclusively with scikit image, see .img_as_float())
@@ -258,18 +256,18 @@ def main(args):
     max_pixel_value = np.amax(resmaps_val)
 
     # compute residual maps for threshold = 0
-    resmaps_th = threshold_images(resmaps_val, 0)
+    resmaps_th = threshold_images(images=resmaps_val, threshold=0)
 
     # compute anomalous regions
     resmaps_labeled, areas_all = label_images(resmaps_th)
 
     # flatten area
     areas_all_flat = [item for sublist in areas_all for item in sublist]
+    max_range_hist = np.amax(np.array(areas_all_flat))  # for plotting
 
     # compute and plot distribution of anomaly areas's sizes
     fig4 = plt.figure(num=4, figsize=(12, 8))
-    count, bins, ignored = plt.hist(
-        areas_all_flat, bins=nb_bins, density=False,)
+    count, bins, ignored = plt.hist(areas_all_flat, bins=nb_bins, density=False,)
     plt.title(
         "Distribution of anomaly areas' sizes for validation ResMaps with Threshold = 0"
     )
@@ -279,7 +277,6 @@ def main(args):
     fig4.savefig(os.path.join(save_dir, "distr_area_th_0.pdf"))
 
     # compute residual maps for multiple thresholds
-    thresholds_to_plot = [0, 10, 20, 25, 30, 35, 40]
     for threshold in thresholds_to_plot:
         # threshold residual maps
         resmaps_th = threshold_images(resmaps_val, threshold)
@@ -291,24 +288,34 @@ def main(args):
         areas_all_flat = [item for sublist in areas_all for item in sublist]
 
         fig5 = plt.figure(num=5, figsize=(12, 5))
-
-        count, edges = np.histogram(
-            areas_all_flat, bins=nb_bins, density=False,)
-        bins_middle = edges[:-1] + ((edges[1] - edges[0]) / 2)
-        plt.plot(
-            bins_middle,
-            count,
-            linestyle="-",
-            linewidth=0.5,
-            marker="o",
-            markersize=0.5,
+        count, bins, ignored = plt.hist(
+            areas_all_flat,
+            bins=nb_bins,
+            density=False,
+            range=(0, max_range_hist),
+            histtype="barstacked",
             label="threshold = {}".format(threshold),
         )
+
+        # count, edges = np.histogram(
+        #     areas_all_flat, bins=nb_bins, density=False, range=(0, max_range_hist)
+        # )
+        # bins_middle = edges[:-1] + ((edges[1] - edges[0]) / 2)
+        # plt.plot(
+        #     bins_middle,
+        #     count,
+        #     linestyle="-",
+        #     linewidth=0.5,
+        #     # marker="o",
+        #     # markersize=0.5,
+        #     label="threshold = {}".format(threshold),
+        # )
+        # plt.fill_between(bins_middle, count)
+
     plt.title(
         "Distribution of anomaly areas' sizes for validation ResMaps with various Thresholds"
     )
     plt.legend()
-    plt.xlim([0, area_range])  # 20
     plt.xlabel("area size in pixel")
     plt.ylabel("count")
     plt.show(block=True)
@@ -355,8 +362,7 @@ def main(args):
             imgs_test_input, imgs_test_pred, resmaps_test, index_test
         )
         fig.savefig(os.path.join(save_dir, "test_plots.png"))
-        print("figure saved at {}".format(
-            os.path.join(save_dir, "test_plots.png")))
+        print("figure saved at {}".format(os.path.join(save_dir, "test_plots.png")))
 
 
 if __name__ == "__main__":
@@ -391,13 +397,14 @@ if __name__ == "__main__":
         help="path to sample test image relative to test directory for visualization",
     )
     parser.add_argument(
-        "-r",
-        "--range",
+        "-l",
+        "--list",
+        nargs="+",
         type=int,
         required=False,
-        default=200,
+        default=[20, 30, 40],
         metavar="",
-        help="Range of the area size to plot for multiple thresholds",
+        help="thresholds to plot",
     )
     args = parser.parse_args()
 
@@ -408,4 +415,4 @@ if __name__ == "__main__":
 
 
 # python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png"
-# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png" -r 50
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -l 20 30 40
