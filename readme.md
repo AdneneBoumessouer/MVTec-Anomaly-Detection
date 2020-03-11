@@ -16,10 +16,14 @@ The method is devided in 3 steps: training, validating and testing.
 ## Prerequisites
 
 ### Dependencies
-Create a new conda environment, activate it and run the following command in your terminal or anaconda prompt to install required libraries and packages used in this project: 
-```
-conda install --file requirements.txt
-```
+Libraries and packages used in this project: 
+* `tensorflow-gpu 2.1.0`
+* `Keras 2.3.1`
+* `scikit-image 0.15.0`
+* `pandas 0.25.3`
+* `numpy 1.15.1`
+* `matplotlib 0.15.0`
+
 
 ### Download the Dataset
 1. Download the mvtec dataset [here](https://www.mvtec.com/company/research/datasets/mvtec-ad/) and save it to a directory of your choice (e.g in /Downloads)
@@ -125,7 +129,7 @@ It creates the following plots:
 
 To initiate finetuning, go to the project directory and run the following command in your terminal:
 ```
-python3 validate.py -p <path to trained model> -v <sample validation image> -t <sample test image> -r <range of area size to plot>
+python3 finetune.py -p <path to trained model> -v <sample validation image> -t <sample test image> -r <range of area size to plot>
 ```
 
 Here is an example:
