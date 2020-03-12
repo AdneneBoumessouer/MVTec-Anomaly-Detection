@@ -45,6 +45,7 @@ from validate import label_images as label_images
 # =========================================================================
 # visualization functions
 
+
 def plot_img_at_index(X, index):
     _, _, _, channels = X.shape
     fig = plt.figure()
@@ -85,6 +86,7 @@ def hist_image(img):
     plt.legend()
     plt.show()
 
+
 # =========================================================================
 
 imgs_test_input = np.load(
@@ -119,7 +121,7 @@ threshold = 0
 # threshold residual maps
 resmaps_th = threshold_images(resmaps_test, threshold)
 index = 68
-img = resmaps_th[index] # resmaps_th
+img = resmaps_th[index]  # resmaps_th
 plot_img(img)
 
 # ---------------------------------------------
@@ -127,23 +129,10 @@ plot_img(img)
 # compute anomalous regions
 resmaps_labeled, areas_all = label_images(resmaps_th)
 index = 68
-img = resmaps_labeled[index] # resmaps_th
+img = resmaps_labeled[index]  # resmaps_th
 plot_img(img)
 
 # ---------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 import matplotlib.pyplot as plt
@@ -162,7 +151,7 @@ resmaps_labeled = label(resmaps_th)
 index = 68
 
 label_image = resmaps_labeled[index]
-plt.imshow(label_image, cmap='nipy_spectral')
+plt.imshow(label_image, cmap="nipy_spectral")
 
 fig, ax = plt.subplots(figsize=(10, 6))
 ax.imshow(label_image)
@@ -173,31 +162,16 @@ for region in regionprops(label_image):
     if region.area >= 10:
         # draw rectangle around segmented coins
         minr, minc, maxr, maxc = region.bbox
-        rect = mpatches.Rectangle((minc, minr), maxc - minc, maxr - minr,
-                                  fill=False, edgecolor='red', linewidth=2)
+        rect = mpatches.Rectangle(
+            (minc, minr),
+            maxc - minc,
+            maxr - minr,
+            fill=False,
+            edgecolor="red",
+            linewidth=2,
+        )
         ax.add_patch(rect)
 
 
-
 # https://scikit-image.org/docs/stable/api/skimage.measure.html#skimage.measure.label
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
