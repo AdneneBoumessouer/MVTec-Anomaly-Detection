@@ -1,6 +1,6 @@
 ## NOTE: The work on this project is still in progress.
 
-# Anomaly Datection
+# Anomaly Detection
 
 This project aims at developping a Deep Learning model using an unsupervided method to detect surface anomalies on images.
 
