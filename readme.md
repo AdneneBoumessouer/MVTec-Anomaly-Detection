@@ -134,7 +134,7 @@ python3 finetune.py -p <path to trained model> -v <sample validation image> -t <
 
 Here is an example:
 ```
-python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png" -r 50
+python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -v "good/000.png" -t "poke/000.png" -r 50
 ```
 
 
@@ -148,7 +148,7 @@ python3 validate.py -p <path to trained model> -a <minimum defective area>
 ```
 Here is an example:
 ```
-python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -a 50
+python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -a 50
 ```
 
 ## Testing (test.py)
@@ -161,7 +161,7 @@ python3 test.py -p <path to trained model> -t <threshold> -a <area>
 ```
 Here is an example using passed arguments for threshold and area:
 ```
-python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -t 28 -a 50
+python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -t 28 -a 50
 ```
 
 Project Organization

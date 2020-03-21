@@ -90,17 +90,17 @@ def hist_image(img):
 # =========================================================================
 
 imgs_test_input = np.load(
-    "results/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/test/th_28_a_50/imgs_test_input.npy",
+    "results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_28_a_50/imgs_test_input.npy",
     allow_pickle=True,
 )
 
 imgs_test_pred = np.load(
-    "results/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/test/th_28_a_50/imgs_test_pred.npy",
+    "results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_28_a_50/imgs_test_pred.npy",
     allow_pickle=True,
 )
 
 resmaps_test = np.load(
-    "results/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/test/th_28_a_50/imgs_test_diff.npy",
+    "results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_28_a_50/imgs_test_diff.npy",
     allow_pickle=True,
 )
 
