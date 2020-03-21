@@ -148,18 +148,15 @@ def main(args):
     # predict on test images
     imgs_test_pred = model.predict(imgs_test_input)
 
-    # converts rgb to grayscale
-    if color_mode == "rgb":
-        imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input)
-        imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred)
-
     # compute residual maps on test set
     resmaps_test = imgs_test_input - imgs_test_pred
+    if color_mode == "rgb":
+        resmaps_val = tf.image.rgb_to_grayscale(resmaps_test)
 
     if save:
-        utils.save_np(imgs_test_input, save_dir, "imgs_val_input.npy")
-        utils.save_np(imgs_test_pred, save_dir, "imgs_val_pred.npy")
-        utils.save_np(resmaps_test, save_dir, "resmaps_val.npy")
+        utils.save_np(imgs_test_input, save_dir, "imgs_test_input.npy")
+        utils.save_np(imgs_test_pred, save_dir, "imgs_test_pred.npy")
+        utils.save_np(resmaps_test, save_dir, "resmaps_test.npy")
 
     # retrieve test image_names
     filenames = test_generator.filenames

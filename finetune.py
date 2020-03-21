@@ -107,11 +107,6 @@ def main(args):
     print("computing reconstructions of validation images...")
     imgs_val_pred = model.predict(imgs_val_input)
 
-    # converts rgb to grayscale
-    # if color_mode == "rgb":
-    #     imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input)
-    #     imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred)
-
     # compute residual maps on validation dataset
     resmaps_val = imgs_val_input - imgs_val_pred
     if color_mode == "rgb":
