@@ -83,7 +83,7 @@ def main(args):
             loss_function = "mean_squared_error"
 
         # specify model name and directory to save model
-        now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+        now = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
         save_dir = os.path.join(
             os.getcwd(), "saved_models", directory, architecture, loss, now
         )

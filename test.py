@@ -278,7 +278,7 @@ if __name__ == "__main__":
 # Examples of command to initiate testing
 
 # using threshold and area from validation results:
-# python3 test.py -p saved_models/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5
+# python3 test.py -p saved_models/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
 
 # using passed arguments for threshold and area
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/CAE_mvtec2_b12.h5 -t 28 -a 50
+# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -t 28 -a 50
