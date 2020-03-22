@@ -36,6 +36,8 @@ from skimage.segmentation import clear_border
 from skimage.measure import label, regionprops
 from skimage.morphology import closing, square
 from skimage.color import label2rgb
+from skimage.filters import median
+import cv2
 
 
 # import validation functions
@@ -128,37 +130,39 @@ def hist_image_uint8(img, range_x=None, title=None):
     plt.show()
 
 
+
 # =========================================================================
 
 # VALIDATION
-imgs_val_input = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/imgs_val_input.npy", allow_pickle=True)
-imgs_val_pred = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/imgs_val_pred.npy", allow_pickle=True)
+# imgs_val_input = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/imgs_val_input.npy", allow_pickle=True)
+# imgs_val_pred = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/imgs_val_pred.npy", allow_pickle=True)
 resmaps_val = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/resmaps_val.npy", allow_pickle=True)
 
 index_val = 0
-plot_img(imgs_val_input[index_val])
-plot_img(imgs_val_pred[index_val])
+# plot_img(imgs_val_input[index_val])
+# plot_img(imgs_val_pred[index_val])
 plot_img(resmaps_val[index_val])
 
 
 
 # TEST
-imgs_test_input = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/imgs_test_input.npy", allow_pickle=True)
-imgs_test_pred = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/imgs_test_pred.npy", allow_pickle=True)
+# imgs_test_input = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/imgs_test_input.npy", allow_pickle=True)
+# imgs_test_pred = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/imgs_test_pred.npy", allow_pickle=True)
 resmaps_test = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/resmaps_test.npy", allow_pickle=True)
 
 index_test = 68
-plot_img(imgs_test_input[index_test])
-plot_img(imgs_test_pred[index_test])
+# plot_img(imgs_test_input[index_test])
+# plot_img(imgs_test_pred[index_test])
 plot_img(resmaps_test[index_test])
 
 # ============================= PLAYGROUND ====================================
 
-# investigate pixel value distribution of val and test -----------------------
+# inspect pixel value distribution of val and test -----------------------
 hist_image(resmaps_val, title="resmaps_val")
 hist_image(resmaps_test, title="resmaps_test")
 # hist_image(resmaps_val, range_x=(-0.6, 0.6), title="resmaps_val")
 # hist_image(resmaps_test, range_x=(-0.6, 0.6), title="resmaps_test")
+
 
 # scale pixel values in [0,1] and plot --------------------------------------
 resmaps_val_scaled = (resmaps_val + 1)/2
@@ -187,21 +191,147 @@ plot_img(resmaps_test_uint8[index_test])
 hist_image_uint8(resmaps_test_uint8, title="resmaps_test_uint8")
 hist_image_uint8(resmaps_test_uint8, range_x=(0,255), title="resmaps_test_uint8")
 
+bins_soll = hist_image_uint8(resmaps_test_uint8, range_x=(0,255), title="resmaps_test_uint8") # REMOVE
 
 # threshold residual maps and plot results ----------------------------------
 threshold = 140
 resmaps_val_th_uint8 = threshold_images(resmaps_val_uint8, threshold)
-index_val = 0
+index_val = 5
 plot_img(resmaps_val_th_uint8[index_val], title="resmaps_test_th_uint8[{}]\n threshold = {}".format(index_val, threshold))
 
 
-threshold = 140
-# resmaps_test_th = threshold_images(resmaps_test, threshold)
+threshold = 141
 resmaps_test_th_uint8 = threshold_images(resmaps_test_uint8, threshold)
 index_test = 68
 plot_img(resmaps_test_th_uint8[index_test], title="resmaps_test_th_uint8[{}]\n threshold = {}".format(index_test, threshold))
 
 
+# investigate shrinking down the threshold interval from [pixel_min, pixel_max] to a smaller interval that contains relevant thresholds ------------------
+
+# flatten resmaps
+resmaps_val_uint8_1d = resmaps_val_uint8.flatten()
+
+# compute descriptive values
+mu = resmaps_val_uint8_1d.mean()
+sigma = resmaps_val_uint8_1d.std()
+minimum = np.amin(resmaps_val_uint8_1d) # pixel_min
+maximum = np.amax(resmaps_val_uint8_1d) # pixel_max
+
+# compute pdf and cdf
+X = np.linspace(start=minimum, stop=maximum, num=200, endpoint=True)
+pdf_x = [scipy.stats.norm(mu, sigma).pdf(x) for x in X]
+cdf_x = [scipy.stats.norm(mu, sigma).cdf(x) for x in X]
+
+# plot histogram, pdf and cdf
+hist_image_uint8(resmaps_val_uint8, title="resmaps_val_uint8")
+plt.plot(X, cdf_x, label="cdf")
+
+# define relevant threshold ranges
+cdf_relevant_range = np.arange(start=0.9, stop=1, step=0.0001) # start=0.9, stop=1, step=0.0001
+# start=0.95, stop=1, step=0.00001 => th_min = 125, th_max = 149
+th_relevant_range = [scipy.stats.norm(mu, sigma).ppf(cdf_value) for cdf_value in cdf_relevant_range]
+th_min = int(round(np.amin(np.array(th_relevant_range)), 1)) - 1 # 124
+th_max = int(round(np.amax(np.array(th_relevant_range)), 1)) + 1 # 135
+
+# investigate resulting thresholded images with different values of selected relevant thresholds
+threshold = 124
+resmaps_val_th_uint8 = threshold_images(resmaps_val_uint8, threshold)
+index_val = 5
+plot_img(resmaps_val_th_uint8[index_val], title="resmaps_val_th_uint8[{}]\n threshold = {}".format(index_val, threshold))
+
+# threshold = 124
+resmaps_test_th_uint8 = threshold_images(resmaps_test_uint8, threshold)
+index_test = 68
+plot_img(resmaps_test_th_uint8[index_test], title="resmaps_val_th_uint8[{}]\n threshold = {}".format(index_test, threshold))
+
+
+
+# investigate smoothing image with median filter ------------------------------------------------------------
+
+def median_filter(images, kernel_size=5):
+    """
+    Filter images according to Median Filtering.
+    https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_filtering/py_filtering.html
+
+    Parameters
+    ----------
+    images : array of uint8
+        Thresholded residual maps.
+    kernel_size : int, optional
+        Size of the kernel window. The default is 5.
+
+    Returns
+    -------
+    images_filtered : array of uint8
+        Filtered images.
+
+    """
+    images = images.astype("uint8")
+    images_filtered = np.zeros(shape=images.shape, dtype="uint8")
+    for i, image in enumerate(images):
+        image_filtered = cv2.medianBlur(image, kernel_size)
+        images_filtered[i] = image_filtered
+    return images_filtered
+
+
+# VALIDATION
+threshold = 127
+index_val = 5
+resmaps_val_th_uint8 = threshold_images(resmaps_val_uint8, threshold)
+
+# plot before median filter
+plot_img(resmaps_val_th_uint8[index_val], title="resmaps_test_th_uint8[{}]\n threshold = {}".format(index_val, threshold))
+# plot after median filter
+resmaps_val_th_uint8_fil = median_filter(resmaps_val_th_uint8)
+plot_img(resmaps_val_th_uint8_fil[index_val], title="resmaps_val_th_uint8_fil[{}]\n threshold = {}".format(index_val, threshold))
+
+
+# TEST
+threshold = 124
+index_test = 68
+resmaps_test_th_uint8 = threshold_images(resmaps_test_uint8, threshold)
+
+# plot before median filter
+plot_img(resmaps_test_th_uint8[index_test], title="resmaps_test_th_uint8[{}]\n threshold = {}".format(index_test, threshold))
+# plot after median filter
+resmaps_test_th_uint8_fil = median_filter(resmaps_test_th_uint8)
+plot_img(resmaps_test_th_uint8_fil[index_test], title="resmaps_test_th_uint8_fil[{}]\n threshold = {}".format(index_test, threshold)) 
+
+
+
+
+    
+
+# =============================================================================
+# =============================================================================
+
+
+
+# =============================================================================
+# # investigate applying gaussian filter ----------------------------------
+# threshold = 120
+# resmaps_val_th_uint8 = threshold_images(resmaps_val_uint8, threshold)
+# index_val = 5
+# plot_img(resmaps_val_th_uint8[index_val], title="resmaps_test_th_uint8[{}]\n threshold = {}".format(index_val, threshold))
+# =============================================================================
+
+
+
+# =============================================================================
+# # determine offset to previous method (no rescaling)
+
+# resmaps_test_old_uint8 = img_as_ubyte(resmaps_test)
+# hist_image_uint8(resmaps_test_old_uint8, range_x=(0,255), title="resmaps_test_old_uint8")
+# threshold = 28
+# # resmaps_test_th = threshold_images(resmaps_test, threshold)
+# resmaps_test_old_th_uint8 = threshold_images(resmaps_test_old_uint8, threshold)
+# index_test = 68
+# plot_img(resmaps_test_old_th_uint8[index_test], title="resmaps_test_old_th_uint8[{}]\n threshold = {}".format(index_test, threshold))
+# # OFFSET = 113
+# =============================================================================
+
+
+# =============================================================================
 # =============================================================================
 
 # ---------------------------------------------

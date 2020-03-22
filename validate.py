@@ -36,10 +36,12 @@ def threshold_images(images, threshold):
     """
     All pixel values < threshold  ==> 0, else ==> 255
     """
-    images_th = np.zeros(shape=images.shape[:-1])
+    # images_th = np.zeros(shape=images.shape[:-1]) # UNCOMMENT
+    images_th = np.zeros(shape=images.shape[:-1], dtype="uint8")  # WHY [:-1]?
     for i, image in enumerate(images):
         image_th = cv.threshold(image, threshold, 255, cv.THRESH_BINARY)[1]
-        images_th[i] = image_th
+        # images_th[i] = image_th # UNCOMMENT
+        images_th[i] = image_th.astype("uint8")
     return images_th
 
 
@@ -98,9 +100,6 @@ def main(args):
 
     # create a results directory if not existent
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-    # now = datetime.datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
-    # save_dir = os.path.join(os.getcwd(), "results",
-    #                         model_dir_name, "validation", now)
 
     save_dir = os.path.join(
         os.getcwd(),
@@ -168,14 +167,18 @@ def main(args):
     filenames = validation_generator.filenames
 
     # Convert to 8-bit unsigned int
-    # (unnecessary if working exclusively with scikit image, see .img_as_float())
     resmaps_val = img_as_ubyte(resmaps_val)
 
-    threshold = 0
+    # scale pixel values linearly to [0,1]
+    resmaps_val = utils.scale_pixel_values(architecture, resmaps_val)
 
-    while True:
+    threshold_min = np.amin(resmaps_val)
+    threshold_max = np.amax(resmaps_val)
+
+    for threshold in range(threshold_min, threshold_max):
         # threshold residual maps
         resmaps_th = threshold_images(resmaps_val, threshold)
+        print("current threshold = {}".format(threshold))
 
         # compute connected components
         resmaps_labeled, areas_all = label_images(resmaps_th)
@@ -185,9 +188,6 @@ def main(args):
         areas_all_flat.sort(reverse=True)
         if min_area > areas_all_flat[0]:
             break
-
-        threshold = threshold + 1
-        print("current threshold = {}".format(threshold))
 
     # save threshold value and min_area
     val_results = {

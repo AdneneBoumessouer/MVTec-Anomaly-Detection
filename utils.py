@@ -163,6 +163,26 @@ def plot_input_pred_resmaps_test(inputs, preds, resmaps, index_test):
     return fig
 
 
+def scale_pixel_values(architecture, resmaps):
+    if architecture in ["mvtec", "mvtec2"]:
+        resmaps = resmaps / 2 + 1 / 2
+    elif architecture == "resnet":
+        resmaps = resmaps / 4 + 1 / 2
+    elif architecture == "nasnet":
+        raise Exception("Not yet implemented")
+    return resmaps
+
+
+def get_preprocessing_function(architecture):
+    if architecture in ["mvtec", "mvtec2"]:
+        preprocessing_function = None
+    elif architecture == "resnet":
+        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
+    elif architecture == "nasnet":
+        preprocessing_function = keras.applications.nasnet.preprocess_input
+    return preprocessing_function
+
+
 # def preprocess_resnet(image):
 #     """
 #     Only to be used when the training parameter color_mode is set to grayscale:

@@ -161,9 +161,10 @@ def main(args):
     # retrieve test image_names
     filenames = test_generator.filenames
 
+    # scale pixel values linearly to [0,1]
+    resmaps_test = utils.scale_pixel_values(architecture, resmaps_test)
+
     # Convert to 8-bit unsigned int
-    # (unnecessary if working exclusively with scikit image, see .img_as_float())
-    # must be consistent with validation
     resmaps_test = img_as_ubyte(resmaps_test)
 
     # threshold residual maps with the given threshold
@@ -279,3 +280,4 @@ if __name__ == "__main__":
 
 # using passed arguments for threshold and area
 # python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -t 28 -a 50
+# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -t 141 -a 40
