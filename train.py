@@ -13,7 +13,11 @@ import tensorflow as tf
 from tensorflow import keras
 import keras.backend as K
 from modules import loss_functions as loss_functions
-import models
+
+import modules.models.mvtec as mvtec
+import modules.models.mvtec_2 as mvtec_2
+import modules.models.resnet as resnet
+
 from modules import utils as utils
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
@@ -62,11 +66,11 @@ def main(args):
 
         # build model
         if architecture == "mvtec":
-            model = models.build_mvtec(channels)
+            model = mvtec.build_model(channels)
         elif architecture == "mvtec2":
-            model = models.build_mvtec_2(channels)
+            model = mvtec_2.build_model(channels)
         elif architecture == "resnet":
-            model, base_encoder = models.build_resnet()
+            model, base_encoder = resnet.build_model()
         elif architecture == "nasnet":
             """NOT YET IMPLEMENTED"""
             # model, base_encoder = models.build_nasnet()
