@@ -1,4 +1,3 @@
-from numpy import expand_dims
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
@@ -163,16 +162,6 @@ def plot_input_pred_resmaps_test(inputs, preds, resmaps, index_test):
     return fig
 
 
-def scale_pixel_values(architecture, resmaps):
-    if architecture in ["mvtec", "mvtec2"]:
-        resmaps = resmaps / 2 + 1 / 2
-    elif architecture == "resnet":
-        resmaps = resmaps / 4 + 1 / 2
-    elif architecture == "nasnet":
-        raise Exception("Not yet implemented")
-    return resmaps
-
-
 def get_preprocessing_function(architecture):
     if architecture in ["mvtec", "mvtec2"]:
         preprocessing_function = None
@@ -181,11 +170,3 @@ def get_preprocessing_function(architecture):
     elif architecture == "nasnet":
         preprocessing_function = keras.applications.nasnet.preprocess_input
     return preprocessing_function
-
-
-# def preprocess_resnet(image):
-#     """
-#     Only to be used when the training parameter color_mode is set to grayscale:
-#     Resnet expects images with 3 channels.
-#     If training with grayscale (channels == 1), triplicate image.
-#     """

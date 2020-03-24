@@ -1,28 +1,27 @@
-from skimage.util import img_as_ubyte
-from validate import threshold_images as threshold_images
-from validate import label_images as label_images
-from validate import filter_images as filter_images
-import argparse
-import json
-import pandas as pd
-import csv
-import datetime
 import os
 import sys
 from pathlib import Path
 
+import argparse
+import json
+import pandas as pd
+
 import tensorflow as tf
 from tensorflow import keras
-import keras.backend as K
-import custom_loss_functions
+
 import utils
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
-from numpy import expand_dims
 import scipy.stats
 
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
+
+from skimage.util import img_as_ubyte
+from modules.cv import scale_pixel_values as scale_pixel_values
+from modules.cv import filter_gauss_images as filter_gauss_images
+from modules.cv import filter_median_images as filter_median_images
+from modules.cv import threshold_images as threshold_images
+from modules.cv import label_images as label_images
 
 
 def main(args):
@@ -132,7 +131,7 @@ def main(args):
         print("figure saved at {}".format(os.path.join(save_dir, "val_plots.png")))
 
     # scale pixel values linearly to [0,1]
-    resmaps_val = utils.scale_pixel_values(architecture, resmaps_val)
+    resmaps_val = scale_pixel_values(architecture, resmaps_val)
 
     # Convert to 8-bit unsigned int for further processing
     resmaps_val = img_as_ubyte(resmaps_val)
@@ -164,7 +163,7 @@ def main(args):
         resmaps_th = threshold_images(resmaps_val, threshold)
 
         # filter images to remove salt noise
-        resmaps_fil = filter_images(resmaps_th, kernel_size=3)
+        resmaps_fil = filter_median_images(resmaps_th, kernel_size=3)
 
         # compute anomalous regions for current threshold
         resmaps_labeled, areas_all = label_images(resmaps_fil)

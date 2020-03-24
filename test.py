@@ -4,31 +4,23 @@ from pathlib import Path
 
 import tensorflow as tf
 from tensorflow import keras
-import keras.backend as K
-import custom_loss_functions
+
 import utils
 from keras.preprocessing.image import ImageDataGenerator
-import numpy as np
-from numpy import expand_dims
-
 from sklearn.metrics import confusion_matrix
-
-import requests
-import matplotlib.image as mpimg
+import numpy as np
 import matplotlib.pyplot as plt
-
-import datetime
-import csv
 import pandas as pd
 import json
 
-import argparse
 from skimage.util import img_as_ubyte
+from modules.cv import scale_pixel_values as scale_pixel_values
+from modules.cv import filter_gauss_images as filter_gauss_images
+from modules.cv import filter_median_images as filter_median_images
+from modules.cv import threshold_images as threshold_images
+from modules.cv import label_images as label_images
 
-# import validation functions
-from validate import threshold_images as threshold_images
-from validate import label_images as label_images
-from validate import filter_images as filter_images
+import argparse
 import results
 
 
@@ -163,7 +155,7 @@ def main(args):
     filenames = test_generator.filenames
 
     # scale pixel values linearly to [0,1]
-    resmaps_test = utils.scale_pixel_values(architecture, resmaps_test)
+    resmaps_test = scale_pixel_values(architecture, resmaps_test)
 
     # Convert to 8-bit unsigned int
     resmaps_test = img_as_ubyte(resmaps_test)
@@ -172,7 +164,7 @@ def main(args):
     resmaps_th = threshold_images(resmaps_test, threshold)
 
     # filter images to remove salt noise
-    resmaps_fil = filter_images(resmaps_th, kernel_size=3)
+    resmaps_fil = filter_median_images(resmaps_th, kernel_size=3)
 
     # compute connected components
     resmaps_labeled, areas_all = label_images(resmaps_fil)

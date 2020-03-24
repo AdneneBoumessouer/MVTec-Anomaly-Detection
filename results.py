@@ -8,13 +8,6 @@ import pandas as pd
 
 
 def main(model_path, directory, architecture, loss):
-    # model_path = args.path
-
-    # # load setup
-    # setup = utils.get_model_setup(model_path)
-    # directory = setup["data_setup"]["directory"]
-    # architecture = setup["train_setup"]["architecture"]
-    # loss = setup["train_setup"]["loss"]
 
     # get test directory
     model_dir_name = os.path.basename(str(Path(model_path).parent))
