@@ -1,6 +1,7 @@
 from skimage.util import img_as_ubyte
-from validate import label_images as label_images
 from validate import threshold_images as threshold_images
+from validate import label_images as label_images
+from validate import filter_images as filter_images
 import argparse
 import json
 import pandas as pd
@@ -110,6 +111,7 @@ def main(args):
 
     # compute residual maps on validation dataset
     resmaps_val = imgs_val_input - imgs_val_pred
+
     if color_mode == "rgb":
         resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
 
@@ -144,8 +146,16 @@ def main(args):
         "std_areas_size": [],
         "sum_areas_size": [],
     }
-    threshold_min = np.amin(resmaps_val)
-    threshold_max = np.amax(resmaps_val)
+
+    # compute descriptive values
+    min_pixel_value = np.amin(resmaps_val)
+    max_pixel_value = np.amax(resmaps_val)
+    mu = resmaps_val.flatten().mean()
+    sigma = resmaps_val.flatten().std()
+
+    # set relevant threshold interval
+    threshold_min = int(round(scipy.stats.norm(mu, sigma).ppf(0.97), 1)) - 1
+    threshold_max = max_pixel_value
 
     # compute and plot number of anomalous regions and their area sizes with increasing thresholds
     print("computing anomalous regions and area sizes with increasing thresholds...")
@@ -153,19 +163,30 @@ def main(args):
         # threshold residual maps
         resmaps_th = threshold_images(resmaps_val, threshold)
 
+        # filter images to remove salt noise
+        resmaps_fil = filter_images(resmaps_th, kernel_size=3)
+
         # compute anomalous regions for current threshold
-        resmaps_labeled, areas_all = label_images(resmaps_th)
+        resmaps_labeled, areas_all = label_images(resmaps_fil)
+
+        # compute characteristics
         areas_all_1d = [item for sublist in areas_all for item in sublist]
-        # flatten = np.array([]).flatten()
-        # print("areas_all_1d = {} \nflatten = {}".format(areas_all_1d, flatten))
+
+        nb_regions = len(areas_all_1d)
+        if nb_regions == 0:
+            break
+
+        mean_areas_size = np.mean(areas_all_1d)
+        std_areas_size = np.std(areas_all_1d)
+        sum_areas_size = np.sum(areas_all_1d)
 
         # append values to dictionnary
         dict_out["threshold"].append(threshold)
-        dict_out["nb_regions"].append(len(areas_all_1d))
-        dict_out["mean_areas_size"].append(np.mean(areas_all_1d))
-        dict_out["std_areas_size"].append(np.std(areas_all_1d))
-        dict_out["sum_areas_size"].append(np.sum(areas_all_1d))
-        print("current threshold: {}".format(threshold))
+        dict_out["nb_regions"].append(nb_regions)
+        dict_out["mean_areas_size"].append(mean_areas_size)
+        dict_out["std_areas_size"].append(std_areas_size)
+        dict_out["sum_areas_size"].append(sum_areas_size)
+        print("threshold: {}".format(threshold))
 
     plt.style.use("seaborn-darkgrid")
 
@@ -175,7 +196,8 @@ def main(args):
         print(df_out)
 
     # save DataFrame (as text AND as pkl)
-    with open(os.path.join(test_dir, "test_results_all.txt"), "a") as f:
+    with open(os.path.join(save_dir, "test_results_all.txt"), "a") as f:
+        f.truncate(0)
         f.write(df_out.to_string(header=True, index=True))
 
     fig = plt.figure()

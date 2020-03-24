@@ -28,6 +28,7 @@ from skimage.util import img_as_ubyte
 # import validation functions
 from validate import threshold_images as threshold_images
 from validate import label_images as label_images
+from validate import filter_images as filter_images
 import results
 
 
@@ -170,8 +171,11 @@ def main(args):
     # threshold residual maps with the given threshold
     resmaps_th = threshold_images(resmaps_test, threshold)
 
+    # filter images to remove salt noise
+    resmaps_fil = filter_images(resmaps_th, kernel_size=3)
+
     # compute connected components
-    resmaps_labeled, areas_all = label_images(resmaps_th)
+    resmaps_labeled, areas_all = label_images(resmaps_fil)
 
     # classify images
     y_pred = classify(areas_all, min_area)

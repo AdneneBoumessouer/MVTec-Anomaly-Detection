@@ -32,15 +32,61 @@ from skimage.morphology import closing, square
 from skimage.color import label2rgb
 
 
+# def threshold_images(images, threshold):
+#     """
+#     All pixel values < threshold  ==> 0, else ==> 255
+#     """
+#     images_th = np.zeros(shape=images.shape[:-1])
+#     for i, image in enumerate(images):
+#         image_th = cv.threshold(image, threshold, 255, cv.THRESH_BINARY)[1]
+#         images_th[i] = image_th
+#     return images_th
+
+
+def filter_gauss_images(images, kernel_size=5):
+    images_filtered = np.zeros(shape=images.shape, dtype="uint8")
+    kernel = (kernel_size, kernel_size)
+    for i, image in enumerate(images):
+        image_filtered = cv.GaussianBlur(image, kernel, 0)
+        image_filtered = np.expand_dims(image_filtered, axis=-1)
+        images_filtered[i] = image_filtered
+    return images_filtered
+
+
+def filter_images(images, kernel_size=3):
+    """
+    Filter images according to Median Filtering.
+    https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_filtering/py_filtering.html
+
+    Parameters
+    ----------
+    images : array of uint8
+        Thresholded residual maps.
+    kernel_size : int, optional
+        Size of the kernel window. The default is 3.
+
+    Returns
+    -------
+    images_filtered : array of uint8
+        Filtered images.
+
+    """
+    images_filtered = np.zeros(shape=images.shape, dtype="uint8")
+    for i, image in enumerate(images):
+        image_filtered = cv.medianBlur(image, kernel_size)
+        image_filtered = np.expand_dims(image_filtered, axis=-1)
+        images_filtered[i] = image_filtered
+    return images_filtered
+
+
 def threshold_images(images, threshold):
     """
     All pixel values < threshold  ==> 0, else ==> 255
     """
-    # images_th = np.zeros(shape=images.shape[:-1]) # UNCOMMENT
-    images_th = np.zeros(shape=images.shape[:-1], dtype="uint8")  # WHY [:-1]?
+    images_th = np.zeros(shape=images.shape, dtype="uint8")
     for i, image in enumerate(images):
         image_th = cv.threshold(image, threshold, 255, cv.THRESH_BINARY)[1]
-        # images_th[i] = image_th # UNCOMMENT
+        image_th = np.expand_dims(image_th, axis=-1)
         images_th[i] = image_th.astype("uint8")
     return images_th
 
@@ -59,7 +105,6 @@ def label_images(images):
         # compute areas of anomalous regions in the current image
         regions = regionprops(image_labeled)
         areas = [region.area for region in regions]
-        # areas_all.extend(areas)
         areas_all.append(areas)
     return images_labeled, areas_all
 
@@ -147,30 +192,28 @@ def main(args):
     )
     imgs_val_input = validation_generator.next()[0]
 
+    # retrieve validation image_names
+    filenames = validation_generator.filenames
+
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
 
-    # converts rgb to grayscale
-    if color_mode == "rgb":
-        imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input)
-        imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred)
-
     # compute residual maps on validation dataset
     resmaps_val = imgs_val_input - imgs_val_pred
+
+    if color_mode == "rgb":
+        resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
 
     if save:
         utils.save_np(imgs_val_input, save_dir, "imgs_val_input.npy")
         utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
         utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
 
-    # retrieve validation image_names
-    filenames = validation_generator.filenames
+    # scale pixel values linearly to [0,1]
+    resmaps_val = utils.scale_pixel_values(architecture, resmaps_val)
 
     # Convert to 8-bit unsigned int
     resmaps_val = img_as_ubyte(resmaps_val)
-
-    # scale pixel values linearly to [0,1]
-    resmaps_val = utils.scale_pixel_values(architecture, resmaps_val)
 
     threshold_min = np.amin(resmaps_val)
     threshold_max = np.amax(resmaps_val)
@@ -180,8 +223,11 @@ def main(args):
         resmaps_th = threshold_images(resmaps_val, threshold)
         print("current threshold = {}".format(threshold))
 
+        # filter images to remove salt noise
+        resmaps_fil = filter_images(resmaps_th, kernel_size=3)
+
         # compute connected components
-        resmaps_labeled, areas_all = label_images(resmaps_th)
+        resmaps_labeled, areas_all = label_images(resmaps_fil)
 
         # check if area of largest anomalous region is below the minimum area
         areas_all_flat = [item for sublist in areas_all for item in sublist]
@@ -194,6 +240,8 @@ def main(args):
         "threshold": str(threshold),
         "area": str(min_area),
     }
+    print(val_results)
+
     with open(os.path.join(save_dir, "val_results.json"), "w") as json_file:
         json.dump(val_results, json_file)
 
