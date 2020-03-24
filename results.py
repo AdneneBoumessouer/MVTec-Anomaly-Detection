@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 from pathlib import Path
-import utils
+from modules import utils as utils
 import json
 import pandas as pd
 

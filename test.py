@@ -5,7 +5,7 @@ from pathlib import Path
 import tensorflow as tf
 from tensorflow import keras
 
-import utils
+from modules import utils as utils
 from keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import confusion_matrix
 import numpy as np

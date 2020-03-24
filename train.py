@@ -12,9 +12,9 @@ import sys
 import tensorflow as tf
 from tensorflow import keras
 import keras.backend as K
-import custom_loss_functions
+from modules import loss_functions as loss_functions
 import models
-import utils
+from modules import utils as utils
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 
@@ -74,11 +74,11 @@ def main(args):
 
         # set loss function
         if loss == "SSIM":
-            loss_function = custom_loss_functions.ssim
+            loss_function = loss_functions.ssim
         elif loss == "MSSIM":
-            loss_function = custom_loss_functions.mssim
+            loss_function = loss_functions.mssim
         elif loss == "L2":
-            loss_function = custom_loss_functions.l2
+            loss_function = loss_functions.l2
         elif loss == "MSE":
             loss_function = "mean_squared_error"
 

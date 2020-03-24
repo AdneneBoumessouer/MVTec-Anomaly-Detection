@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
-import custom_loss_functions
+from modules import loss_functions as loss_functions
 import os
 import csv
 import pandas as pd
@@ -58,7 +58,7 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "mssim": custom_loss_functions.mssim,
+                "mssim": loss_functions.mssim,
             },
             compile=True,
         )
@@ -68,7 +68,7 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "ssim": custom_loss_functions.ssim,
+                "ssim": loss_functions.ssim,
             },
             compile=True,
         )
@@ -78,7 +78,7 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "l2": custom_loss_functions.l2,
+                "l2": loss_functions.l2,
             },
             compile=True,
         )

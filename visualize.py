@@ -3,24 +3,17 @@ import sys
 
 import tensorflow as tf
 from tensorflow import keras
-import keras.backend as K
-import custom_loss_functions
-import utils
-import datetime
+
+from modules import utils as utils
 
 # from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import scipy.stats
-from numpy import expand_dims
-
 
 # import requests
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
 # plt.style.use("seaborn-darkgrid")
-
-# import datetime
 import csv
 import pandas as pd
 import json
@@ -28,23 +21,16 @@ import json
 import argparse
 from pathlib import Path
 
+
 # import computer vision functions
-import cv2 as cv
-from skimage.util import img_as_ubyte
-from skimage.filters import threshold_otsu
-from skimage.segmentation import clear_border
-from skimage.measure import label, regionprops
-from skimage.morphology import closing, square
-from skimage.color import label2rgb
-from skimage.filters import median
 import cv2
+from skimage.util import img_as_ubyte
+from modules.cv import scale_pixel_values as scale_pixel_values
+from modules.cv import filter_gauss_images as filter_gauss_images
+from modules.cv import filter_median_images as filter_median_images
+from modules.cv import threshold_images as threshold_images
+from modules.cv import label_images as label_images
 
-
-# import validation functions
-from validate import threshold_images as threshold_images
-from validate import label_images as label_images
-from validate import filter_images as filter_images
-from validate import filter_gauss_images as filter_gauss_images
 
 # =========================================================================
 # visualization functions
@@ -193,7 +179,7 @@ plot_img(resmaps_test_uint8[index_test])
 hist_image_uint8(resmaps_test_uint8, title="resmaps_test_uint8")
 hist_image_uint8(resmaps_test_uint8, range_x=(0,255), title="resmaps_test_uint8")
 
-# investigate blurring with gaussian filter ---------------------------------
+# investigate blurring with gaussian filter ---------------------------------XXXXXX
 resmaps_val_uint8_gauss = filter_gauss_images(resmaps_val_uint8)
 hist_image_uint8(resmaps_val_uint8, range_x=(0,255), title="resmaps_val_uint8")
 hist_image_uint8(resmaps_val_uint8_gauss, range_x=(0,255), title="resmaps_val_uint8_gauss")
@@ -284,7 +270,7 @@ resmaps_val_uint8_th = threshold_images(resmaps_val_uint8, threshold)
 # plot before median filter
 plot_img(resmaps_val_uint8_th[index_val], title="resmaps_val_uint8_th[{}]\n threshold = {}".format(index_val, threshold))
 # plot after median filter
-resmaps_val_uint8_th_fil = filter_images(resmaps_val_uint8_th)
+resmaps_val_uint8_th_fil = filter_median_images(resmaps_val_uint8_th)
 plot_img(resmaps_val_uint8_th_fil[index_val], title="resmaps_val_uint8_th_fil[{}]\n threshold = {}".format(index_val, threshold))
 
 
@@ -296,7 +282,7 @@ resmaps_test_uint8_th = threshold_images(resmaps_test_uint8, threshold)
 # plot before median filter
 plot_img(resmaps_test_uint8_th[index_test], title="resmaps_test_uint8_th[{}]\n threshold = {}".format(index_test, threshold))
 # plot after median filter
-resmaps_test_uint8_th_fil = filter_images(resmaps_test_uint8_th)
+resmaps_test_uint8_th_fil = filter_median_images(resmaps_test_uint8_th)
 plot_img(resmaps_test_uint8_th_fil[index_test], title="resmaps_test_uint8_th_fil[{}]\n threshold = {}".format(index_test, threshold)) 
 
 
@@ -307,7 +293,7 @@ plot_img(resmaps_test_uint8_th_fil[index_test], title="resmaps_test_uint8_th_fil
 threshold = 137
 index_val = 5
 resmaps_val_uint8_th = threshold_images(resmaps_val_uint8, threshold)
-resmaps_val_uint8_th_fil = filter_images(resmaps_val_uint8_th)
+resmaps_val_uint8_th_fil = filter_median_images(resmaps_val_uint8_th)
 resmaps_val_labeled, areas_all_val = label_images(resmaps_val_uint8_th_fil)
 areas_all_1d_val = [item for sublist in areas_all_val for item in sublist]
 plot_img(resmaps_val_labeled[index_val], title="resmaps_labeled[{}]\n threshold = {}".format(index_test, threshold))
@@ -317,7 +303,7 @@ plot_img(resmaps_val_labeled[index_val], title="resmaps_labeled[{}]\n threshold 
 threshold = 137
 index_val = 5
 resmaps_test_uint8_th = threshold_images(resmaps_test_uint8, threshold)
-resmaps_test_uint8_th_fil = filter_images(resmaps_test_uint8_th)
+resmaps_test_uint8_th_fil = filter_median_images(resmaps_test_uint8_th)
 resmaps_test_labeled, areas_all_test = label_images(resmaps_test_uint8_th_fil)
 areas_all_1d_test = [item for sublist in areas_all_test for item in sublist]
 plot_img(resmaps_val_labeled[index_val], title="resmaps_labeled[{}]\n threshold = {}".format(index_test, threshold))
@@ -350,7 +336,7 @@ def label_images(images):
 
 def get_max_area(resmaps, threshold):
     resmaps_th = threshold_images(resmaps, threshold)
-    resmaps_fil = filter_images(resmaps_th)
+    resmaps_fil = filter_median_images(resmaps_th)
     resmaps_labeled, areas_all = label_images(resmaps_fil)
     areas_all_1d = [item for sublist in areas_all for item in sublist]
     max_area = np.amax(np.array(areas_all_1d))    
@@ -379,7 +365,7 @@ counts = np.zeros(shape=(len(thresholds), max_area))
 # loop over all thresholds and calculate area counts
 for i, threshold in enumerate(thresholds):
     resmaps_val_uint8_th = threshold_images(resmaps_val_uint8, threshold)
-    resmaps_val_uint8_th_fil = filter_images(resmaps_val_uint8_th)
+    resmaps_val_uint8_th_fil = filter_median_images(resmaps_val_uint8_th)
     resmaps_val_labeled, areas_all_val = label_images(resmaps_val_uint8_th_fil)
     areas_all_val_1d = [item for sublist in areas_all_val for item in sublist]
     counts[i] = np.array([areas_all_val_1d.count(area) for area in areas])
@@ -444,7 +430,7 @@ counts = np.zeros(shape=(len(thresholds), nbins))
 # loop over all thresholds and calculate area counts (with binning)
 for i, threshold in enumerate(thresholds):
     resmaps_val_uint8_th = threshold_images(resmaps_val_uint8, threshold)
-    resmaps_val_uint8_th_fil = filter_images(resmaps_val_uint8_th)
+    resmaps_val_uint8_th_fil = filter_median_images(resmaps_val_uint8_th)
     resmaps_val_labeled, areas_all_val = label_images(resmaps_val_uint8_th_fil)
     areas_all_val_1d = [item for sublist in areas_all_val for item in sublist]
     # counts[i] = np.array([areas_all_val_1d.count(area) for area in areas])
@@ -500,7 +486,7 @@ def plot_area_distro_for_multiple_thresholds(resmaps, thresholds_to_plot, thresh
     fig = plt.figure(figsize=(12, 5))
     for threshold in thresholds_to_plot:
         resmaps_th = threshold_images(resmaps, threshold)
-        resmaps_fil = filter_images(resmaps_th, kernel_size=3)
+        resmaps_fil = filter_median_images(resmaps_th, kernel_size=3)
         resmaps_labeled, areas_all_val = label_images(resmaps_fil)
         areas_all_1d = [item for sublist in areas_all_val for item in sublist]       
         

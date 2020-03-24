@@ -9,7 +9,7 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 
-import utils
+from modules import utils as utils
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import scipy.stats
