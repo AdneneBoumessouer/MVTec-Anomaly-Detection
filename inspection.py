@@ -69,7 +69,7 @@ def hist_image(img, bins=400, range_x=None, title=None):
     plt.style.use("seaborn-darkgrid")
     img_1d = img.flatten()
     plt.figure()
-    plt.hist(img_1d, bins=bins, density=True, stacked=True, label="image histogram")
+    plt.hist(img_1d, bins=bins, range=range_x, density=True, stacked=True, label="image histogram")
     
     # print descriptive values
     mu = img_1d.mean()
@@ -117,7 +117,14 @@ def hist_image_uint8(img, range_x=None, title=None):
     plt.legend()
     plt.show()
 
+df = pd.DataFrame({'col1': [1, 2],
+                   'col2': [0.5, 0.75]})
 
+dico = df.to_dict(orient='list')
+lista = list(zip(dico['col1'], dico['col2']))
+
+for i, x in enumerate(lista):
+    print(i, x)
 
 # =========================================================================
 
@@ -146,8 +153,8 @@ plot_img(resmaps_test[index_test])
 # ============================= PLAYGROUND ====================================
 
 # inspect pixel value distribution of val and test -----------------------
-hist_image(resmaps_val, title="resmaps_val")
-hist_image(resmaps_test, title="resmaps_test")
+hist_image(resmaps_val, range_x=(-1,1), title="resmaps_val")
+hist_image(resmaps_test, range_x=(-1,1), title="resmaps_test")
 # hist_image(resmaps_val, range_x=(-0.6, 0.6), title="resmaps_val")
 # hist_image(resmaps_test, range_x=(-0.6, 0.6), title="resmaps_test")
 
@@ -157,13 +164,13 @@ resmaps_val_scaled = (resmaps_val + 1)/2
 index_val = 0
 plot_img(resmaps_val[index_val])
 plot_img(resmaps_val_scaled[index_val])
-hist_image(resmaps_val_scaled, title="resmaps_val_scaled")
+hist_image(resmaps_val_scaled, range_x=(0,1), title="resmaps_val_scaled")
 
 resmaps_test_scaled = (resmaps_test + 1)/2
 index_test = 68
 plot_img(resmaps_test[index_test])
 plot_img(resmaps_test_scaled[index_test])
-hist_image(resmaps_test_scaled, title="resmaps_test_scaled")
+hist_image(resmaps_test_scaled, range_x=(0,1), title="resmaps_test_scaled")
 
 
 # Convert to 8-bit unsigned int for further processing -----------------------
@@ -179,10 +186,36 @@ plot_img(resmaps_test_uint8[index_test])
 hist_image_uint8(resmaps_test_uint8, title="resmaps_test_uint8")
 hist_image_uint8(resmaps_test_uint8, range_x=(0,255), title="resmaps_test_uint8")
 
+# investigate Histogram Equalization ------------------------------ NOT SUITED
+from skimage.exposure import equalize_hist as equalize_hist
+img = resmaps_test_uint8[index_test]
+plot_img(img, title="img")
+# hist_image_uint8(img, title="img")
+
+img_equal = equalize_hist(img)
+plot_img(img_equal, title="img_equal")
+equ = cv2.equalizeHist(img)
+plot_img(equ, title="equ")
+
+from modules.cv import equalize_images as equalize_images
+resmaps_test_uint8_eq = equalize_images(resmaps_test_uint8)
+plot_img(resmaps_test_uint8_eq[index_test], title="resmaps_test_uint8_eq[{}]".format(index_test))
+
+
+threshold = 253
+resmaps_test_uint8_eq_th = threshold_images(resmaps_test_uint8_eq, threshold)
+index_test = 68
+plot_img(resmaps_test_uint8_eq_th[index_test], title="resmaps_test_uint8_eq_th[{}]".format(index_test))
+
+index_test = 0
+plot_img(resmaps_test_uint8_eq_th[index_test], title="resmaps_test_uint8_eq_th[{}]".format(index_test))
+
+
 # investigate blurring with gaussian filter ---------------------------------XXXXXX
-resmaps_val_uint8_gauss = filter_gauss_images(resmaps_val_uint8)
+resmaps_val_uint8_blur = filter_gauss_images(resmaps_val_uint8)
+
 hist_image_uint8(resmaps_val_uint8, range_x=(0,255), title="resmaps_val_uint8")
-hist_image_uint8(resmaps_val_uint8_gauss, range_x=(0,255), title="resmaps_val_uint8_gauss")
+hist_image_uint8(resmaps_val_uint8_blur, range_x=(0,255), title="resmaps_val_uint8_gauss")
 
 
 
@@ -191,7 +224,8 @@ img = resmaps_test_uint8[index_test]
 plot_img(img, title="img")
 hist_image_uint8(img, title="img")
 
-blur = cv2.GaussianBlur(img,(3,3),0)
+resmaps_test_uint8_blur = filter_gauss_images(resmaps_test_uint8)
+blur = resmaps_test_uint8_blur[index_test]
 plot_img(blur, title="blur")
 hist_image_uint8(blur, title="blur")
 
@@ -208,22 +242,23 @@ index_val = 5
 plot_img(resmaps_val_uint8_th[index_val], title="resmaps_val_uint8_th[{}]\n threshold = {}".format(index_val, threshold))
 
 
-threshold = 141
+threshold = 131
 resmaps_test_uint8_th = threshold_images(resmaps_test_uint8, threshold)
 index_test = 68
 plot_img(resmaps_test_uint8_th[index_test], title="resmaps_test_uint8_th[{}]\n threshold = {}".format(index_test, threshold))
 
+# threshold = 141
+resmaps_test_uint8_blur_th = threshold_images(resmaps_test_uint8, threshold)
+# index_test = 68
+plot_img(resmaps_test_uint8_blur_th[index_test], title="resmaps_test_uint8_blur_th[{}]\n threshold = {}".format(index_test, threshold))
 
 # investigate shrinking down the threshold interval from [pixel_min, pixel_max] to a smaller interval that contains relevant thresholds ------------------
 
-# flatten resmaps
-resmaps_val_uint8_1d = resmaps_val_uint8.flatten()
-
 # compute descriptive values
-mu = resmaps_val_uint8_1d.mean()
-sigma = resmaps_val_uint8_1d.std()
-minimum = np.amin(resmaps_val_uint8_1d) # pixel_min
-maximum = np.amax(resmaps_val_uint8_1d) # pixel_max
+mu = resmaps_val_uint8.flatten().mean()
+sigma = resmaps_val_uint8.flatten().std()
+minimum = np.amin(resmaps_val_uint8.flatten()) # pixel_min
+maximum = np.amax(resmaps_val_uint8.flatten()) # pixel_max
 
 # compute pdf and cdf
 X = np.linspace(start=minimum, stop=maximum, num=200, endpoint=True)
@@ -370,6 +405,19 @@ for i, threshold in enumerate(thresholds):
     areas_all_val_1d = [item for sublist in areas_all_val for item in sublist]
     counts[i] = np.array([areas_all_val_1d.count(area) for area in areas])
 
+# calculate sum of area counts (without binning) over all thresholds and plot
+counts_sum = np.sum(counts, axis=0)
+plt.figure()
+plt.plot(areas, counts_sum)
+# plt.bar(areas, counts_sum) # TRY !!!
+plt.xlabel("areas_size")
+plt.ylabel("counts_sum")
+plt.title("sum of counts for thresholds in [{}, {}]".format(threshold_min, threshold_max))
+plt.show()
+
+# determine min area
+
+
 
 # plot 
 thresholds_to_plot = [132, 137, 141]
@@ -382,17 +430,6 @@ for i, threshold in enumerate(thresholds_to_plot):
 plt.title("sum of counts for thresholds in [{}, {}]".format(threshold_min, threshold_max))
 plt.xlabel("areas_size")
 plt.ylabel("counts")
-plt.show()
-
-
-# calculate sum of area counts (without binning) over all thresholds and plot
-counts_sum = np.sum(counts, axis=0)
-plt.figure()
-# plt.plot(areas, counts_sum)
-plt.bar(areas, counts_sum) # TRY !!!
-plt.xlabel("areas_size")
-plt.ylabel("counts_sum")
-plt.title("sum of counts for thresholds in [{}, {}]".format(threshold_min, threshold_max))
 plt.show()
 
 # smooth curve (can be smoothed by binning the x-axis)
@@ -408,52 +445,82 @@ plt.show()
 
 #====================== ALGORITHM 2 (with area binning) =======================
 
-# compute descriptive values
-minimum = np.amin(resmaps_val_uint8)
-maximum = np.amax(resmaps_val_uint8)
-mu = resmaps_val_uint8.flatten().mean()
-sigma = resmaps_val_uint8.flatten().std()
-# scipy.stats.norm(mu, sigma).ppf(0.999)
+def get_threshold_min(resmaps, ppf_value=0.97):
+    # compute descriptive values
+    minimum = np.amin(resmaps_val_uint8)
+    maximum = np.amax(resmaps_val_uint8)
+    mu = resmaps_val_uint8.flatten().mean()
+    sigma = resmaps_val_uint8.flatten().std()
+    th_min = int(round(scipy.stats.norm(mu, sigma).ppf(0.97), 1)) - 1
+    print("th_min = {} \n mu = {} \n sigma = {} \n min = {}\n max = {}".format(th_min, mu, sigma, minimum, maximum))
+    return th_min
 
-# Compute threshold and area boundaries 
-threshold_min = 126 # int(round(scipy.stats.norm(mu, sigma).ppf(0.97), 1)) - 1
-threshold_max = 156 # when nb_regions == 0, maximum
-max_area = get_max_area(resmaps_val_uint8, threshold_min)
+def get_xbars(edges):
+    x_bars = edges[:-1] + ((edges[1] - edges[0]) / 2)
+    return x_bars
 
-# initialize variables and parameters
-thresholds = np.arange(threshold_min, threshold_max+1)
-# areas = np.arange(1, max_area+1)
-nbins = 200
-range_area = (1, max_area)
-counts = np.zeros(shape=(len(thresholds), nbins))
+    
 
-# loop over all thresholds and calculate area counts (with binning)
-for i, threshold in enumerate(thresholds):
-    resmaps_val_uint8_th = threshold_images(resmaps_val_uint8, threshold)
-    resmaps_val_uint8_th_fil = filter_median_images(resmaps_val_uint8_th)
-    resmaps_val_labeled, areas_all_val = label_images(resmaps_val_uint8_th_fil)
-    areas_all_val_1d = [item for sublist in areas_all_val for item in sublist]
-    # counts[i] = np.array([areas_all_val_1d.count(area) for area in areas])
-    count, edges = np.histogram(
-                areas_all_val_1d, 
-                bins=nbins, 
-                density=True, 
-                range=range_area
-            )
-    counts[i] = count
+def get_area_size_counts_multiple_thresholds(resmaps_val_uint8, th_min, th_max, nbins=200):
+    # compute max_area
+    max_area = get_max_area(resmaps_val_uint8, th_min)
+    
+    # initialize variables and parameters
+    thresholds = np.arange(th_min, th_max+1)
+    range_area = (0.5 , float(max_area)+0.5)
+    counts = np.zeros(shape=(len(thresholds), nbins))
+    
+    # loop over all thresholds and calculate area counts (with binning)
+    for i, threshold in enumerate(thresholds):
+        resmaps_val_uint8_th = threshold_images(resmaps_val_uint8, threshold)
+        resmaps_val_uint8_th_fil = filter_median_images(resmaps_val_uint8_th)
+        resmaps_val_labeled, areas_all_val = label_images(resmaps_val_uint8_th_fil)
+        areas_all_val_1d = [item for sublist in areas_all_val for item in sublist]
+        count, edges = np.histogram(
+                    areas_all_val_1d, 
+                    bins=nbins, 
+                    density=True, 
+                    range=range_area
+                )
+        counts[i] = count
+    return counts, edges
+
+def get_sum_counts(counts, edges, th_min, th_max, plot=False):
+    counts_sum = np.sum(counts, axis=0)
+    x_bars = get_xbars(edges)    
+    if plot:
+        plt.figure()        
+        plt.bar(x_bars, counts_sum, width=edges[1]-edges[0])
+        plt.grid(which="both")
+        plt.xlabel("areas_size")
+        plt.ylabel("counts_sum (bins)")
+        plt.title("sum of bin counts for thresholds in [{}, {}]".format(th_min, th_max))
+        plt.show()
+    return counts_sum, x_bars
+    
 
 # calculate sum of area counts (with binning) over all thresholds and plot
-counts_sum = np.sum(counts, axis=0)
-plt.figure()
-x_bars = edges[:-1] + ((edges[1] - edges[0]) / 2)
-plt.bar(x_bars, counts_sum, width=edges[1]-edges[0])
-plt.grid(which="both")
-plt.xlabel("areas_size")
-plt.ylabel("counts_sum (bins)")
-plt.title("sum of bin counts for thresholds in [{}, {}]".format(threshold_min, threshold_max))
-plt.show()
+th_min = get_threshold_min(resmaps_val_uint8) # 126 # int(round(scipy.stats.norm(mu, sigma).ppf(0.97), 1)) - 1
+th_max = 156 # when nb_regions == 0, maximum 
+counts, edges = get_area_size_counts_multiple_thresholds(resmaps_val_uint8, th_min, th_max)
+counts_sum, x_bars = get_sum_counts(counts, edges, th_min, th_max, plot=True)
 
-# fit histogram to an inverse exponential distribution
+th_min = 129
+counts, edges = get_area_size_counts_multiple_thresholds(resmaps_val_uint8, th_min, th_max)
+counts_sum, x_bars = get_sum_counts(counts, edges, th_min, th_max, plot=True)
+
+
+# determine min area ------------------------------------------------------------------------
+counts_cumsum = np.cumsum(counts_sum)/np.sum(counts_sum)
+
+th_min = get_threshold_min(resmaps_val_uint8_blur) # 126 # int(round(scipy.stats.norm(mu, sigma).ppf(0.97), 1)) - 1
+th_max = 156 # when nb_regions == 0, maximum 
+counts, edges = get_area_size_counts_multiple_thresholds(resmaps_val_uint8, th_min, th_max)
+counts_sum, x_bars = get_sum_counts(counts, edges, th_min, th_max, plot=True)
+
+
+
+# fit histogram to an inverse exponential distribution ----------------------------------------------
 tmp0 = scipy.stats.expon.pdf(counts_sum)
 tmp1 = scipy.stats.expon.cdf(counts_sum)
 
@@ -467,20 +534,15 @@ plt.show()
 
 # ========================================================================
 
-
-
-
-
 zlist = [get_max_area(resmaps_val_uint8, th) for th in list(range(132, 156))]
 
 
 
 # VISUALIZING
-def plot_area_distro_for_multiple_thresholds(resmaps, thresholds_to_plot, threshold_min, nbins=200, method="line", title="provide a title"):
+def plot_area_distro_for_multiple_thresholds(resmaps, thresholds_to_plot, threshold_min, nbins=200, method="line", title="provide a title"):    
     # fix range so that counts have the save x value
-    threshold_min = 126 # from gaussian pdf
     max_area = get_max_area(resmaps_val_uint8, threshold_min)
-    range_area = (1, max_area)
+    range_area = (0.5 , float(max_area)+0.5)
     
     # compute residual maps for multiple thresholds
     fig = plt.figure(figsize=(12, 5))
@@ -533,15 +595,38 @@ thresholds_to_plot = [132, 137, 141] # [129, 135, 137, 139, 141]
 title_val = "Distribution of anomaly areas' sizes for validation ResMaps with various Thresholds"
 plot_area_distro_for_multiple_thresholds(resmaps_val_uint8, thresholds_to_plot, threshold_min, nbins=100, method="line", title=title_val)
 
-threshold = 132
-max_area = get_max_area(resmaps_val_uint8, threshold)
-plot_area_distro_for_multiple_thresholds(resmaps_val_uint8, [threshold], threshold_min, nbins=max_area, method="line", title=title_val)
-
-# count_hand = np.array([areas_all.count(area) for area in range(1,max_area+1)])
+resmaps_val_uint8_blur = filter_gauss_images(resmaps_val_uint8)
+plot_area_distro_for_multiple_thresholds(resmaps_val_uint8_blur, thresholds_to_plot, 129, nbins=100, method="line", title="blur")
 
 thresholds_to_plot = [132, 137, 141] # [129, 135, 137, 139, 141]
 title_test = "Distribution of anomaly areas' sizes for test ResMaps with various Thresholds"
 plot_area_distro_for_multiple_thresholds(resmaps_test_uint8, thresholds_to_plot, threshold_min, nbins=400, method="hist", title=title_test)
+
+
+# investigating gaussian blur --------------------------------------------------------------------------------------------------------
+threshold = 141
+max_area = get_max_area(resmaps_val_uint8, threshold)
+plot_area_distro_for_multiple_thresholds(resmaps_val_uint8, [threshold], threshold, nbins=max_area, method="line", title="no blur")
+
+resmaps_val_uint8_blur = filter_gauss_images(resmaps_val_uint8)
+max_area_blur = get_max_area(resmaps_val_uint8_blur, threshold)
+plot_area_distro_for_multiple_thresholds(resmaps_val_uint8_blur, [threshold], threshold, nbins=max_area_blur, method="line", title="blur")
+
+
+
+# compute descriptive values
+mu = resmaps_val_uint8.flatten().mean()
+sigma = resmaps_val_uint8.flatten().std()
+int(round(scipy.stats.norm(mu, sigma).ppf(0.97), 1)) - 1
+
+
+mu_blur = resmaps_val_uint8_blur.flatten().mean()
+sigma_blur = resmaps_val_uint8_blur.flatten().std()
+int(round(scipy.stats.norm(mu_blur, sigma_blur).ppf(0.97), 1)) - 1
+# count_hand = np.array([areas_all.count(area) for area in range(1,max_area+1)])
+
+
+
 
 # =============================================================================
 # =============================================================================

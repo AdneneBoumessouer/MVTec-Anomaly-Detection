@@ -7,11 +7,13 @@ from tensorflow import keras
 from keras.preprocessing.image import ImageDataGenerator
 
 from modules import utils as utils
+from modules.utils import printProgressBar as printProgressBar
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import json
 import argparse
+import time
 
 from skimage.util import img_as_ubyte
 from modules.cv import scale_pixel_values as scale_pixel_values
@@ -22,9 +24,18 @@ from modules.cv import label_images as label_images
 
 
 def main(args):
+    # Get validation arguments
     model_path = args.path
-    min_area = args.area
     save = args.save
+    area_list = sorted(list(set(args.area)))
+    if len(area_list) > 2:
+        raise ValueError(
+            "Exactly two area values must be passed: area_min and area_max"
+        )
+    else:
+        min_areas = list(np.arange(area_list[0], area_list[1] + 1))
+
+    # ========================= SETUP ==============================
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -66,7 +77,7 @@ def main(args):
         loss,
         model_dir_name,
         "validation",
-        "a_" + str(min_area),
+        # "a_" + str(min_area),
     )
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
@@ -75,6 +86,8 @@ def main(args):
     plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
     fig = plot.get_figure()
     fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
+
+    # ============================= PREPROCESSING ===============================
 
     # This will do preprocessing
     if architecture in ["mvtec", "mvtec2"]:
@@ -127,35 +140,55 @@ def main(args):
     # Convert to 8-bit unsigned int
     resmaps_val = img_as_ubyte(resmaps_val)
 
+    # blur resmaps
+    resmaps_val = filter_gauss_images(resmaps_val)
+
+    # ========================= VALIDATION ALGORITHM ==============================
+
+    dict_val = {"min_area": [], "threshold": []}
+
     threshold_min = np.amin(resmaps_val)
     threshold_max = np.amax(resmaps_val)
 
-    for threshold in range(threshold_min, threshold_max):
-        # threshold residual maps
-        resmaps_th = threshold_images(resmaps_val, threshold)
-        print("current threshold = {}".format(threshold))
+    l = len(min_areas)
+    printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
+    for i, min_area in enumerate(min_areas):
+        # print("current area = {}".format(min_area))
 
-        # filter images to remove salt noise
-        resmaps_fil = filter_median_images(resmaps_th, kernel_size=3)
+        for threshold in range(threshold_min, threshold_max + 1):
+            # threshold residual maps
+            resmaps_th = threshold_images(resmaps_val, threshold)
 
-        # compute connected components
-        resmaps_labeled, areas_all = label_images(resmaps_fil)
+            # filter images to remove salt noise
+            resmaps_fil = filter_median_images(resmaps_th, kernel_size=3)
 
-        # check if area of largest anomalous region is below the minimum area
-        areas_all_flat = [item for sublist in areas_all for item in sublist]
-        areas_all_flat.sort(reverse=True)
-        if min_area > areas_all_flat[0]:
-            break
+            # compute connected components
+            resmaps_labeled, areas_all = label_images(resmaps_fil)
 
-    # save threshold value and min_area
-    val_results = {
-        "threshold": str(threshold),
-        "area": str(min_area),
-    }
-    print(val_results)
+            # check if area of largest anomalous region is below the minimum area
+            areas_all_flat = [item for sublist in areas_all for item in sublist]
+            areas_all_flat.sort(reverse=True)
+            if min_area > areas_all_flat[0]:
+                break
 
-    with open(os.path.join(save_dir, "val_results.json"), "w") as json_file:
-        json.dump(val_results, json_file)
+        time.sleep(0.1)
+        printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
+
+        dict_val["min_area"].append(min_area)
+        dict_val["threshold"].append(threshold)
+
+    df_val = pd.DataFrame.from_dict(dict_val)
+    with pd.option_context("display.max_rows", None, "display.max_columns", None):
+        print(df_val)
+
+    # save DataFrame (as .txt and .pkl)
+    with open(os.path.join(save_dir, "validation_results.txt"), "a") as f:
+        f.truncate(0)
+        f.write(df_val.to_string(header=True, index=True))
+        print("validation_results.txt saved at {}".format(save_dir))
+
+    df_val.to_pickle(os.path.join(save_dir, "validation_results.pkl"))
+    print("validation_results.pkl saved at {}".format(save_dir))
 
 
 if __name__ == "__main__":
@@ -168,6 +201,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-a",
         "--area",
+        nargs="+",
         type=int,
         required=True,
         metavar="",
@@ -189,3 +223,4 @@ if __name__ == "__main__":
 # Example of command to initiate validation
 
 # python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -a 55
+# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -a 30 200

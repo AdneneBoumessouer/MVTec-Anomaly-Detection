@@ -105,7 +105,7 @@ def main(args):
         loss,
         model_dir_name,
         "test",
-        "th_" + str(threshold) + "_a_" + str(min_area),
+        # "th_" + str(threshold) + "_a_" + str(min_area),
     )
 
     if not os.path.isdir(save_dir):
@@ -159,6 +159,24 @@ def main(args):
 
     # Convert to 8-bit unsigned int
     resmaps_test = img_as_ubyte(resmaps_test)
+
+    # blur resmaps
+    resmaps_val = filter_gauss_images(resmaps_val)
+
+    # =================== Classification Algorithm ==========================
+
+    # load min_areas and corresponding thresholds from validation
+    parent_dir = str(Path(save_dir).parent)
+    val_dir = os.path.join(parent_dir, "validation")
+
+    df_val = pd.read_pickle(os.path.join(val_dir, "validation_results.pkl"))
+    dict_val = df_val.to_dict(orient="list")
+
+    elems = list(zip(dict_val["min_area"], dict_val["threshold"]))
+
+    for i, elem in elems:
+        min_area, threshold = elem[0], elem[1]
+        # CONTINUE HERE
 
     # threshold residual maps with the given threshold
     resmaps_th = threshold_images(resmaps_test, threshold)

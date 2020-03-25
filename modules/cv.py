@@ -15,6 +15,30 @@ def scale_pixel_values(architecture, resmaps):
     return resmaps
 
 
+def equalize_images(images):
+    """
+    Performs Histograms Equalization on images.
+    https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_histograms/py_histogram_equalization/py_histogram_equalization.html
+
+    Parameters
+    ----------
+    images : array of uint8
+        Residual maps.
+
+    Returns
+    -------
+    images_equalized : array of uint8
+        Equalized images.
+
+    """
+    images_equalized = np.zeros(shape=images.shape, dtype="uint8")
+    for i, image in enumerate(images):
+        image_equalized = cv.equalizeHist(image)
+        image_equalized = np.expand_dims(image_equalized, axis=-1)
+        images_equalized[i] = image_equalized
+    return images_equalized
+
+
 def filter_gauss_images(images, kernel_size=5):
     images_filtered = np.zeros(shape=images.shape, dtype="uint8")
     kernel = (kernel_size, kernel_size)

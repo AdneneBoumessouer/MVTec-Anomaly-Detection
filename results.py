@@ -35,6 +35,7 @@ def main(model_path, directory, architecture, loss):
 
     # save DataFrame
     with open(os.path.join(test_dir, "test_results_all.txt"), "a") as f:
+        f.truncate(0)
         f.write(df_test_results_all.to_string(header=True, index=True))
 
     # print DataFrame to console

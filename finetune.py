@@ -25,13 +25,13 @@ from modules.cv import label_images as label_images
 
 
 def main(args):
-    # Get finetuning parameters
+    # Get finetuning arguments
     model_path = args.path
     save = args.save
     img_val = args.val
     img_test = args.test
-    thresholds_to_plot = list(set(args.list))
-    thresholds_to_plot.sort()
+    thresholds_to_plot = sorted(list(set(args.list)))
+    # thresholds_to_plot.sort()
 
     # ========================= SETUP ==============================
 
@@ -138,13 +138,8 @@ def main(args):
 
     # ======= NUMBER OF REGIONS, THEIR MEAN SIZE AND STD DEVIATION WITH INCREASING THRESHOLDS =======
 
-    dict_out = {
-        "threshold": [],
-        "nb_regions": [],
-        "mean_areas_size": [],
-        "std_areas_size": [],
-        "sum_areas_size": [],
-    }
+    # blur resmaps
+    resmaps_val = filter_gauss_images(resmaps_val)
 
     # compute descriptive values
     min_pixel_value = np.amin(resmaps_val)
@@ -156,20 +151,30 @@ def main(args):
     threshold_min = int(round(scipy.stats.norm(mu, sigma).ppf(0.97), 1)) - 1
     threshold_max = max_pixel_value
 
+    dict_out = {
+        "threshold": [],
+        "nb_regions": [],
+        "mean_areas_size": [],
+        "std_areas_size": [],
+        "sum_areas_size": [],
+    }
+
     # compute and plot number of anomalous regions and their area sizes with increasing thresholds
     print("computing anomalous regions and area sizes with increasing thresholds...")
-    for threshold in range(threshold_min, threshold_max):
+    for threshold in range(threshold_min, threshold_max + 1):
         # threshold residual maps
         resmaps_th = threshold_images(resmaps_val, threshold)
 
         # filter images to remove salt noise
         resmaps_fil = filter_median_images(resmaps_th, kernel_size=3)
 
-        # compute anomalous regions for current threshold
+        # compute anomalous regions and their size for current threshold
         resmaps_labeled, areas_all = label_images(resmaps_fil)
-
-        # compute characteristics
         areas_all_1d = [item for sublist in areas_all for item in sublist]
+
+        # compute the size of the biggest anomalous region (corresponds with smallest threshold)
+        if threshold == threshold_min:
+            max_region_size = np.amax(np.array(areas_all_1d))
 
         nb_regions = len(areas_all_1d)
         if nb_regions == 0:
