@@ -4,7 +4,6 @@
 Created on Tue Dec 10 19:46:17 2019
 
 @author: adnene33
-This Script is meant to train on a single object category of MVTec.
 """
 import os
 import sys
@@ -32,6 +31,24 @@ import pandas as pd
 import json
 
 import argparse
+
+"""
+Valid input arguments for color_mode and loss:
+
+                        +----------------+----------------+
+                        |       Model Architecture        |  
+                        +----------------+----------------+
+                        | mvtec, mvtec2  | Resnet, Nasnet |
+========================+================+================+
+        ||              |                |                |
+        ||   grayscale  | SSIM, L2, MSE  |   Not Valid    |
+Color   ||              |                |                |
+Mode    ----------------+----------------+----------------+
+        ||              |                |                |
+        ||      RGB     | MSSIM, L2, MSE | MSSIM, L2, MSE |
+        ||              |                |                |
+--------+---------------+----------------+----------------+
+"""
 
 
 def main(args):
@@ -72,9 +89,9 @@ def main(args):
         elif architecture == "resnet":
             model, base_encoder = resnet.build_model()
         elif architecture == "nasnet":
-            """NOT YET IMPLEMENTED"""
+            raise Exception("Nasnet ist not yet implemented.")
             # model, base_encoder = models.build_nasnet()
-            sys.exit()
+            # sys.exit()
 
         # set loss function
         if loss == "SSIM":
@@ -118,13 +135,14 @@ def main(args):
         )
 
     # RESUME TRAINING
-    # elif args.command == "resume":
-    #     model_path = args.model
+    elif args.command == "resume":
+        raise Exception("Resume training of an existing model is not yet implemented.")
+        # model_path = args.model
 
-    #     # load model
-    #     model, train_setup, _ = utils.load_SavedModel(model_path)
-    #     color_mode = train_setup["color_mode"]
-    #     validation_split = train_setup["validation_split"]
+        # # load model
+        # model, train_setup, _ = utils.load_SavedModel(model_path)
+        # color_mode = train_setup["color_mode"]
+        # validation_split = train_setup["validation_split"]
 
     # ============================= PREPROCESSING ===============================
 
@@ -369,7 +387,7 @@ def main(args):
     #     }
 
     with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
-        json.dump(setup, json_file)
+        json.dump(setup, json_file, indent=4)
 
 
 if __name__ == "__main__":
@@ -434,7 +452,7 @@ if __name__ == "__main__":
 
     parser_new_training.add_argument(
         "-t", "--tag", type=str, help="give a tag to the model to be trained"
-    )  # modofied (previously comment)
+    )
 
     # create the subparser to resume the training of an existing model
     parser_resume_training = subparsers.add_parser("resume")

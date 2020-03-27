@@ -15,6 +15,8 @@ import json
 import argparse
 import time
 
+from modules.resmaps import calculate_resmaps as calculate_resmaps
+
 from skimage.util import img_as_ubyte
 from modules.cv import scale_pixel_values as scale_pixel_values
 from modules.cv import filter_gauss_images as filter_gauss_images
@@ -27,13 +29,16 @@ def main(args):
     # Get validation arguments
     model_path = args.path
     save = args.save
-    area_list = sorted(list(set(args.area)))
-    if len(area_list) > 2:
-        raise ValueError(
-            "Exactly two area values must be passed: area_min and area_max"
-        )
+    if args.area is None:
+        pass
     else:
-        min_areas = list(np.arange(area_list[0], area_list[1] + 1))
+        area_list = sorted(list(set(args.area)))
+        if len(area_list) > 2:
+            raise ValueError(
+                "Exactly two area values must be passed: area_min and area_max"
+            )
+        else:
+            min_areas = list(np.arange(area_list[0], area_list[1] + 1))
 
     # ========================= SETUP ==============================
 
@@ -124,7 +129,7 @@ def main(args):
     imgs_val_pred = model.predict(imgs_val_input)
 
     # compute residual maps on validation dataset
-    resmaps_val = imgs_val_input - imgs_val_pred
+    resmaps_val = calculate_resmaps(imgs_val_input, imgs_val_pred, loss="SSIM")
 
     if color_mode == "rgb":
         resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
@@ -134,36 +139,43 @@ def main(args):
         utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
         utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
 
+    if args.area is None:
+        exit()
+
     # scale pixel values linearly to [0,1]
-    resmaps_val = scale_pixel_values(architecture, resmaps_val)
+    # resmaps_val = scale_pixel_values(architecture, resmaps_val)
 
     # Convert to 8-bit unsigned int
     resmaps_val = img_as_ubyte(resmaps_val)
 
     # blur resmaps
-    resmaps_val = filter_gauss_images(resmaps_val)
+    # resmaps_val = filter_gauss_images(resmaps_val)
 
     # ========================= VALIDATION ALGORITHM ==============================
 
+    # initialize validation dictionary
     dict_val = {"min_area": [], "threshold": []}
 
+    # set threshold boundaries
     threshold_min = np.amin(resmaps_val)
     threshold_max = np.amax(resmaps_val)
 
+    # initialize progress bar
     l = len(min_areas)
     printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
+
+    # loop over all min_areas and compute corresponding thresholds
     for i, min_area in enumerate(min_areas):
-        # print("current area = {}".format(min_area))
 
         for threshold in range(threshold_min, threshold_max + 1):
             # threshold residual maps
             resmaps_th = threshold_images(resmaps_val, threshold)
 
             # filter images to remove salt noise
-            resmaps_fil = filter_median_images(resmaps_th, kernel_size=3)
+            # resmaps_val = filter_median_images(resmaps_val, kernel_size=3)
 
             # compute connected components
-            resmaps_labeled, areas_all = label_images(resmaps_fil)
+            resmaps_labeled, areas_all = label_images(resmaps_th)
 
             # check if area of largest anomalous region is below the minimum area
             areas_all_flat = [item for sublist in areas_all for item in sublist]
@@ -171,22 +183,24 @@ def main(args):
             if min_area > areas_all_flat[0]:
                 break
 
+        # print progress bar
         time.sleep(0.1)
         printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
 
+        # append min_area and corresponding threshold to validation dictionary
         dict_val["min_area"].append(min_area)
         dict_val["threshold"].append(threshold)
 
+    # print validation DataFrame to console
     df_val = pd.DataFrame.from_dict(dict_val)
     with pd.option_context("display.max_rows", None, "display.max_columns", None):
         print(df_val)
 
-    # save DataFrame (as .txt and .pkl)
-    with open(os.path.join(save_dir, "validation_results.txt"), "a") as f:
-        f.truncate(0)
+    # save validation DataFrame as .txt and .pkl files
+    with open(os.path.join(save_dir, "validation_results.txt"), "w+") as f:
+        # f.truncate(0)
         f.write(df_val.to_string(header=True, index=True))
         print("validation_results.txt saved at {}".format(save_dir))
-
     df_val.to_pickle(os.path.join(save_dir, "validation_results.pkl"))
     print("validation_results.pkl saved at {}".format(save_dir))
 

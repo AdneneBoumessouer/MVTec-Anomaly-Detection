@@ -31,7 +31,7 @@ def main(model_path, directory, architecture, loss):
         test_results_all["TNR"].append(test_results["TNR"])
 
     df_test_results_all = pd.DataFrame.from_dict(test_results_all)
-    df_test_results_all.sort_values(by=["threshold", "min_area"])
+    df_test_results_all.sort_values(by=["threshold", "min_area"], inplace=True)
 
     # save DataFrame
     with open(os.path.join(test_dir, "test_results_all.txt"), "a") as f:

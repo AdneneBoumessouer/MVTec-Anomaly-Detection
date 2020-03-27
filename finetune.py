@@ -139,7 +139,7 @@ def main(args):
     # ======= NUMBER OF REGIONS, THEIR MEAN SIZE AND STD DEVIATION WITH INCREASING THRESHOLDS =======
 
     # blur resmaps
-    resmaps_val = filter_gauss_images(resmaps_val)
+    # resmaps_val = filter_gauss_images(resmaps_val)
 
     # compute descriptive values
     min_pixel_value = np.amin(resmaps_val)

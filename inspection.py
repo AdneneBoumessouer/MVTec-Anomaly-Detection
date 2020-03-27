@@ -117,32 +117,38 @@ def hist_image_uint8(img, range_x=None, title=None):
     plt.legend()
     plt.show()
 
-df = pd.DataFrame({'col1': [1, 2],
-                   'col2': [0.5, 0.75]})
 
-dico = df.to_dict(orient='list')
-lista = list(zip(dico['col1'], dico['col2']))
+    
+# df_val = pd.read_pickle("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/validation/validation_results.pkl")
 
-for i, x in enumerate(lista):
-    print(i, x)
+
+# areas = [40, 45, 50]
+# thresholds = [135, 140, 145]
+# elems = [(area, threshold) for threshold in thresholds for area in areas]
 
 # =========================================================================
 
 # VALIDATION
-# imgs_val_input = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/imgs_val_input.npy", allow_pickle=True)
-# imgs_val_pred = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/imgs_val_pred.npy", allow_pickle=True)
+imgs_val_input = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/imgs_val_input.npy", allow_pickle=True)
+imgs_val_pred = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/imgs_val_pred.npy", allow_pickle=True)
 resmaps_val = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/finetune/resmaps_val.npy", allow_pickle=True)
+# resmaps_val_l2 = (imgs_val_input - imgs_val_pred)**2
 
 index_val = 0
 # plot_img(imgs_val_input[index_val])
 # plot_img(imgs_val_pred[index_val])
-plot_img(resmaps_val[index_val])
+plot_img(resmaps_val[index_val], title="resmaps_val")
+plot_img(resmaps_val[index_val], title="resmaps_val_l2")
 
+hist_image(resmaps_val, title="resmaps_val")
+# hist_image(resmaps_val_l2,  title="resmaps_val_l2")
+hist_image(imgs_val_input, title="imgs_val_input")
+hist_image(imgs_val_pred, title="imgs_val_pred")
 
 
 # TEST
-# imgs_test_input = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/imgs_test_input.npy", allow_pickle=True)
-# imgs_test_pred = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/imgs_test_pred.npy", allow_pickle=True)
+imgs_test_input = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/imgs_test_input.npy", allow_pickle=True)
+imgs_test_pred = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/imgs_test_pred.npy", allow_pickle=True)
 resmaps_test = np.load("results/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/test/th_32_a_70/resmaps_test.npy", allow_pickle=True)
 
 index_test = 68
@@ -150,13 +156,94 @@ index_test = 68
 # plot_img(imgs_test_pred[index_test])
 plot_img(resmaps_test[index_test])
 
+
+
+# testing ssim ===========================================================================
+
+img_true = imgs_test_input[index_test]
+plot_img(img_true[:,:,0], title="img_true")
+img_pred = imgs_test_pred[index_test]
+plot_img(img_pred[:,:,0], title="img_pred")
+
+# for loss
+tensor_true = tf.convert_to_tensor(img_true)
+tensor_pred = tf.convert_to_tensor(img_pred)
+tf.image.ssim(tensor_true, tensor_pred, 1.0)
+tf.image.ssim(tf.convert_to_tensor(imgs_val_input), tf.convert_to_tensor(imgs_val_pred), 1.0) # shape=(21,)
+
+# for validation
+
+import importlib
+import modules
+importlib.reload(modules)
+
+from modules.resmaps import resmaps_ssim as resmaps_ssim
+
+# VALIDATION
+resmaps_val_ssim = resmaps_ssim(imgs_val_input, imgs_val_pred)
+plot_img(resmaps_val_ssim[index_val])
+hist_image(resmaps_val_ssim, title="resmaps_val_ssim")
+
+resmaps_val_ssim_uint8 = img_as_ubyte(resmaps_val_ssim)
+plot_img(resmaps_val_ssim_uint8[index_val])
+hist_image(resmaps_val_ssim_uint8, title="resmaps_val_ssim_uint8")
+
+# TEST
+resmaps_test_ssim = resmaps_ssim(imgs_test_input, imgs_test_pred)
+plot_img(resmaps_test_ssim[index_test])
+hist_image(resmaps_test_ssim, title="resmaps_test_ssim")
+
+# find out which images have pixel intensity > 1 ---------------------------
+def test_bool_array(array_bool):
+    for boolean in array_bool:
+        if boolean == True:
+            print("YO")
+            return True
+    return False
+
+my_list = []
+for i, image in enumerate(resmaps_test_ssim):
+    if test_bool_array(image.flatten()>1) == True:
+        my_list.append(i)
+
+# [1, 4, 6, 9, 17, 20, 91]
+index = 1
+plot_img(resmaps_test_ssim[index], title="resmaps_test_ssim[{}]".format(index))   
+hist_image(resmaps_test_ssim[index], title="resmaps_test_ssim[{}]".format(index))     
+
+# Testing clipping
+from skimage.util import dtype_limits as dtype_limits
+variable = dtype_limits(resmaps_test_ssim[index])
+
+img_sample = resmaps_test_ssim[1]
+img_sample_clip = np.clip(img_sample, -1, 1)
+hist_image(img_sample_clip, title="img_sample_clip")
+
+
+
+resmaps_test_ssim_clip = np.clip(resmaps_test_ssim.copy(), -1, 1)
+
+hist_image(resmaps_test_ssim_clip, title="resmaps_test_ssim_clip")
+hist_image(resmaps_test_ssim, title="resmaps_test_ssim")
+# [1, 4, 6, 9, 17, 20, 91]
+index = 1
+plot_img(resmaps_test_ssim[index], title="resmaps_test_ssim[{}]".format(index))
+plot_img(resmaps_test_ssim_clip[index], title="resmaps_test_ssim_clip[{}]".format(index))
+
+# ----------------------------------------------------------------------------        
+
+resmaps_test_ssim_uint8 = img_as_ubyte(resmaps_test_ssim_clip)
+plot_img(resmaps_test_ssim_uint8[index_test])
+hist_image(resmaps_test_ssim_uint8, title="resmaps_test_ssim")
+
 # ============================= PLAYGROUND ====================================
 
 # inspect pixel value distribution of val and test -----------------------
 hist_image(resmaps_val, range_x=(-1,1), title="resmaps_val")
 hist_image(resmaps_test, range_x=(-1,1), title="resmaps_test")
-# hist_image(resmaps_val, range_x=(-0.6, 0.6), title="resmaps_val")
-# hist_image(resmaps_test, range_x=(-0.6, 0.6), title="resmaps_test")
+
+hist_image(resmaps_val, title="resmaps_val")
+hist_image(resmaps_test, title="resmaps_test")
 
 
 # scale pixel values in [0,1] and plot --------------------------------------
