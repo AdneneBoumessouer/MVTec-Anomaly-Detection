@@ -2,19 +2,12 @@ import os
 import sys
 import argparse
 from pathlib import Path
-import utils
+from modules import utils as utils
 import json
 import pandas as pd
 
 
 def main(model_path, directory, architecture, loss):
-    # model_path = args.path
-
-    # # load setup
-    # setup = utils.get_model_setup(model_path)
-    # directory = setup["data_setup"]["directory"]
-    # architecture = setup["train_setup"]["architecture"]
-    # loss = setup["train_setup"]["loss"]
 
     # get test directory
     model_dir_name = os.path.basename(str(Path(model_path).parent))
@@ -38,10 +31,11 @@ def main(model_path, directory, architecture, loss):
         test_results_all["TNR"].append(test_results["TNR"])
 
     df_test_results_all = pd.DataFrame.from_dict(test_results_all)
-    df_test_results_all.sort_values(by=["threshold", "min_area"])
+    df_test_results_all.sort_values(by=["threshold", "min_area"], inplace=True)
 
     # save DataFrame
     with open(os.path.join(test_dir, "test_results_all.txt"), "a") as f:
+        f.truncate(0)
         f.write(df_test_results_all.to_string(header=True, index=True))
 
     # print DataFrame to console

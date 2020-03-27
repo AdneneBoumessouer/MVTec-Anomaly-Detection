@@ -4,7 +4,6 @@
 Created on Tue Dec 10 19:46:17 2019
 
 @author: adnene33
-This Script is meant to train on a single object category of MVTec.
 """
 import os
 import sys
@@ -12,9 +11,13 @@ import sys
 import tensorflow as tf
 from tensorflow import keras
 import keras.backend as K
-import custom_loss_functions
-import models
-import utils
+from modules import loss_functions as loss_functions
+
+import modules.models.mvtec as mvtec
+import modules.models.mvtec_2 as mvtec_2
+import modules.models.resnet as resnet
+
+from modules import utils as utils
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 
@@ -28,6 +31,24 @@ import pandas as pd
 import json
 
 import argparse
+
+"""
+Valid input arguments for color_mode and loss:
+
+                        +----------------+----------------+
+                        |       Model Architecture        |  
+                        +----------------+----------------+
+                        | mvtec, mvtec2  | Resnet, Nasnet |
+========================+================+================+
+        ||              |                |                |
+        ||   grayscale  | SSIM, L2, MSE  |   Not Valid    |
+Color   ||              |                |                |
+Mode    ----------------+----------------+----------------+
+        ||              |                |                |
+        ||      RGB     | MSSIM, L2, MSE | MSSIM, L2, MSE |
+        ||              |                |                |
+--------+---------------+----------------+----------------+
+"""
 
 
 def main(args):
@@ -62,23 +83,23 @@ def main(args):
 
         # build model
         if architecture == "mvtec":
-            model = models.build_mvtec(channels)
+            model = mvtec.build_model(channels)
         elif architecture == "mvtec2":
-            model = models.build_mvtec_2(channels)
+            model = mvtec_2.build_model(channels)
         elif architecture == "resnet":
-            model, base_encoder = models.build_resnet()
+            model, base_encoder = resnet.build_model()
         elif architecture == "nasnet":
-            """NOT YET IMPLEMENTED"""
+            raise Exception("Nasnet ist not yet implemented.")
             # model, base_encoder = models.build_nasnet()
-            sys.exit()
+            # sys.exit()
 
         # set loss function
         if loss == "SSIM":
-            loss_function = custom_loss_functions.ssim
+            loss_function = loss_functions.ssim
         elif loss == "MSSIM":
-            loss_function = custom_loss_functions.mssim
+            loss_function = loss_functions.mssim
         elif loss == "L2":
-            loss_function = custom_loss_functions.l2
+            loss_function = loss_functions.l2
         elif loss == "MSE":
             loss_function = "mean_squared_error"
 
@@ -114,13 +135,14 @@ def main(args):
         )
 
     # RESUME TRAINING
-    # elif args.command == "resume":
-    #     model_path = args.model
+    elif args.command == "resume":
+        raise Exception("Resume training of an existing model is not yet implemented.")
+        # model_path = args.model
 
-    #     # load model
-    #     model, train_setup, _ = utils.load_SavedModel(model_path)
-    #     color_mode = train_setup["color_mode"]
-    #     validation_split = train_setup["validation_split"]
+        # # load model
+        # model, train_setup, _ = utils.load_SavedModel(model_path)
+        # color_mode = train_setup["color_mode"]
+        # validation_split = train_setup["validation_split"]
 
     # ============================= PREPROCESSING ===============================
 
@@ -365,7 +387,7 @@ def main(args):
     #     }
 
     with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
-        json.dump(setup, json_file)
+        json.dump(setup, json_file, indent=4)
 
 
 if __name__ == "__main__":
@@ -430,7 +452,7 @@ if __name__ == "__main__":
 
     parser_new_training.add_argument(
         "-t", "--tag", type=str, help="give a tag to the model to be trained"
-    )  # modofied (previously comment)
+    )
 
     # create the subparser to resume the training of an existing model
     parser_resume_training = subparsers.add_parser("resume")
