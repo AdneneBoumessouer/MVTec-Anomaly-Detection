@@ -217,7 +217,7 @@ if __name__ == "__main__":
         "--area",
         nargs="+",
         type=int,
-        required=True,
+        required=False,
         metavar="",
         help="minimum area for a connected component",
     )

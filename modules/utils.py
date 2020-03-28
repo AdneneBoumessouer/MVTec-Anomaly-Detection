@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow import keras
 import numpy as np
 from modules import loss_functions as loss_functions
+from modules import metrics as custom_metrics
 import os
 import csv
 import pandas as pd
@@ -59,6 +60,7 @@ def load_model_HDF5(model_path):
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
                 "mssim_loss": loss_functions.mssim_loss,
+                "mssim_metric": custom_metrics.mssim_metric,
             },
             compile=True,
         )
@@ -69,6 +71,7 @@ def load_model_HDF5(model_path):
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
                 "ssim_loss": loss_functions.ssim_loss,
+                "ssim_metric": custom_metrics.ssim_metric,
             },
             compile=True,
         )
@@ -79,6 +82,8 @@ def load_model_HDF5(model_path):
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
                 "l2_loss": loss_functions.l2_loss,
+                "ssim_loss": loss_functions.ssim_loss,
+                "mssim_metric": custom_metrics.mssim_metric,
             },
             compile=True,
         )
@@ -117,8 +122,7 @@ def printProgressBar(
         fill        - Optional  : bar fill character (Str)
         printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
     """
-    percent = ("{0:." + str(decimals) + "f}").format(100 *
-                                                     (iteration / float(total)))
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + "-" * (length - filledLength)
     print("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix), end=printEnd)
