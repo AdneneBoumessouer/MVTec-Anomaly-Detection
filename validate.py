@@ -140,6 +140,7 @@ def main(args):
         utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
 
     if args.area is None:
+        print("[INFO] exiting")
         exit()
 
     # scale pixel values linearly to [0,1]

@@ -206,3 +206,26 @@ def get_preprocessing_function(architecture):
     elif architecture == "nasnet":
         preprocessing_function = keras.applications.nasnet.preprocess_input
     return preprocessing_function
+
+
+def save_images(save_dir, imgs, filenames, color_mode, suffix):
+    filenames_new = []
+    for filename in filenames:
+        filename_new, ext = os.path.splitext(filename)
+        filename_new = os.path.basename(filename_new)
+        filename_new = filename_new + "_" + suffix + ext
+        filenames_new.append(filename_new)
+
+    if color_mode == "grayscale":
+        for i in range(len(imgs)):
+            img = imgs[i, :, :, 0]
+            save_path = os.path.join(save_dir, filenames_new[i])
+            plt.imsave(save_path, img, cmap=plt.cm.gray)
+
+    if color_mode == "RGB":
+        for i in range(len(imgs)):
+            img = imgs[i, :, :, 0]
+            save_path = os.path.join(save_dir, filenames_new[i])
+            plt.imsave(save_path, img)
+
+    print("[INFO] validation images for inspection saved at /{}".format(save_dir))

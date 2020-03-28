@@ -18,6 +18,8 @@ import modules.models.mvtec as mvtec
 import modules.models.mvtec_2 as mvtec_2
 import modules.models.resnet as resnet
 
+from modules.resmaps import calculate_resmaps as calculate_resmaps
+
 from modules import utils as utils
 from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
@@ -65,89 +67,78 @@ def main(args):
     architecture = args.architecture
     tag = args.tag
 
-    # NEW TRAINING
-    if args.command == "new":
-        # check input arguments
-        if architecture == "resnet" and color_mode == "grayscale":
-            raise ValueError("ResNet expects rgb images")
-        if architecture == "nasnet" and color_mode == "grayscale":
-            raise ValueError("NasNet expects rgb images")
-        if loss == "MSSIM" and color_mode == "grayscale":
-            raise ValueError("MSSIM works only with rgb images")
-        if loss == "SSIM" and color_mode == "rgb":
-            raise ValueError("SSIM works only with grayscale images")
+    # check input arguments
+    if architecture == "resnet" and color_mode == "grayscale":
+        raise ValueError("ResNet expects rgb images")
+    if architecture == "nasnet" and color_mode == "grayscale":
+        raise ValueError("NasNet expects rgb images")
+    if loss == "MSSIM" and color_mode == "grayscale":
+        raise ValueError("MSSIM works only with rgb images")
+    if loss == "SSIM" and color_mode == "rgb":
+        raise ValueError("SSIM works only with grayscale images")
 
-        # set chennels and metrics to monitor training
-        if color_mode == "grayscale":
-            channels = 1
-            metrics = [custom_metrics.ssim_metric]
-        elif color_mode == "rgb":
-            channels = 3
-            metrics = [custom_metrics.mssim_metric]
+    # set chennels and metrics to monitor training
+    if color_mode == "grayscale":
+        channels = 1
+        resmaps_mode = "SSIM"
+        metrics = [custom_metrics.ssim_metric]
+    elif color_mode == "rgb":
+        channels = 3
+        resmaps_mode = "MSSIM"
+        metrics = [custom_metrics.mssim_metric]
 
-        # build model
-        if architecture == "mvtec":
-            model = mvtec.build_model(channels)
-        elif architecture == "mvtec2":
-            model = mvtec_2.build_model(channels)
-        elif architecture == "resnet":
-            model, base_encoder = resnet.build_model()
-        elif architecture == "nasnet":
-            raise Exception("Nasnet ist not yet implemented.")
-            # model, base_encoder = models.build_nasnet()
-            # sys.exit()
+    # build model
+    if architecture == "mvtec":
+        model = mvtec.build_model(channels)
+    elif architecture == "mvtec2":
+        model = mvtec_2.build_model(channels)
+    elif architecture == "resnet":
+        model, base_encoder = resnet.build_model()
+    elif architecture == "nasnet":
+        raise Exception("Nasnet ist not yet implemented.")
+        # model, base_encoder = models.build_nasnet()
+        # sys.exit()
 
-        # set loss function
-        if loss == "SSIM":
-            loss_function = loss_functions.ssim_loss
-        elif loss == "MSSIM":
-            loss_function = loss_functions.mssim_loss
-        elif loss == "L2":
-            loss_function = loss_functions.l2_loss
-        elif loss == "MSE":
-            loss_function = "mean_squared_error"
+    # set loss function
+    if loss == "SSIM":
+        loss_function = loss_functions.ssim_loss
+    elif loss == "MSSIM":
+        loss_function = loss_functions.mssim_loss
+    elif loss == "L2":
+        loss_function = loss_functions.l2_loss
+    elif loss == "MSE":
+        loss_function = "mean_squared_error"
 
-        # specify model name and directory to save model
-        now = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        save_dir = os.path.join(
-            os.getcwd(), "saved_models", directory, architecture, loss, now
-        )
-        if not os.path.isdir(save_dir):
-            os.makedirs(save_dir)
-        model_name = "CAE_" + architecture + "_b{}".format(batch_size)
-        model_path = os.path.join(save_dir, model_name + ".h5")
+    # specify model name and directory to save model
+    now = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+    save_dir = os.path.join(
+        os.getcwd(), "saved_models", directory, architecture, loss, now
+    )
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+    model_name = "CAE_" + architecture + "_b{}".format(batch_size)
+    model_path = os.path.join(save_dir, model_name + ".h5")
 
-        # specify logging directory for tensorboard visualization
-        log_dir = os.path.join(save_dir, "logs")
-        if not os.path.isdir(log_dir):
-            os.makedirs(log_dir)
+    # specify logging directory for tensorboard visualization
+    log_dir = os.path.join(save_dir, "logs")
+    if not os.path.isdir(log_dir):
+        os.makedirs(log_dir)
 
-        # set callbacks
-        early_stopping_cb = keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=12, mode="min", verbose=1,
-        )
-        checkpoint_cb = keras.callbacks.ModelCheckpoint(
-            filepath=model_path,
-            monitor="val_loss",
-            verbose=1,
-            save_best_only=False,  # True
-            save_weights_only=False,
-            period=1,
-        )
-        tensorboard_cb = keras.callbacks.TensorBoard(
-            log_dir=log_dir, write_graph=True, update_freq="epoch"
-        )
-
-    # RESUME TRAINING
-    elif args.command == "resume":
-        raise Exception(
-            "Resume training of an existing model is not yet implemented.")
-        # model_path = args.model
-
-        # # load model
-        # model, train_setup, _ = utils.load_SavedModel(model_path)
-        # color_mode = train_setup["color_mode"]
-        # validation_split = train_setup["validation_split"]
+    # set callbacks
+    early_stopping_cb = keras.callbacks.EarlyStopping(
+        monitor="val_loss", patience=12, mode="min", verbose=1,
+    )
+    checkpoint_cb = keras.callbacks.ModelCheckpoint(
+        filepath=model_path,
+        monitor="val_loss",
+        verbose=1,
+        save_best_only=False,  # True
+        save_weights_only=False,
+        period=1,
+    )
+    tensorboard_cb = keras.callbacks.TensorBoard(
+        log_dir=log_dir, write_graph=True, update_freq="epoch"
+    )
 
     # ============================= PREPROCESSING ===============================
 
@@ -168,7 +159,7 @@ def main(args):
         preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
         pass
 
-    print("Using Keras's flow_from_directory method.")
+    print("[INFO] Using Keras's flow_from_directory method...")
     # This will do preprocessing and realtime data augmentation:
     train_datagen = ImageDataGenerator(
         # randomly rotate images in the range (degrees, 0 to 180)
@@ -241,9 +232,7 @@ def main(args):
         )
 
         model.compile(
-            loss=loss_function,
-            optimizer=optimizer,
-            metrics=metrics,
+            loss=loss_function, optimizer=optimizer, metrics=metrics,
         )
 
         # Fit the model on the batches generated by datagen.flow_from_directory()
@@ -276,9 +265,7 @@ def main(args):
         )
 
         model.compile(
-            loss=loss_function,
-            optimizer=optimizer,
-            metrics=metrics,
+            loss=loss_function, optimizer=optimizer, metrics=metrics,
         )
 
         # Fit the model on the batches generated by datagen.flow_from_directory()
@@ -308,9 +295,7 @@ def main(args):
         # )
 
         model.compile(
-            loss=loss_function,
-            optimizer=optimizer,
-            metrics=metrics,
+            loss=loss_function, optimizer=optimizer, metrics=metrics,
         )
 
         # train for the remaining epochs
@@ -380,33 +365,38 @@ def main(args):
             "tag": tag,
         }
 
-    # elif args.command == "resume":
-    #     train_setup = {
-    #         "directory": directory,
-    #         "epochs": epochs,
-    #         "batch_size": batch_size,
-    #         "loss": loss,
-    #         "color_mode": color_mode,
-    #         "channels": channels,
-    #         "validation_split": validation_split,
-    #         "path_to_previous_model": args.model,
-    #     }
-
     with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
         json.dump(setup, json_file, indent=4)
 
+    # predict on validation images, compute resmaps and save for visual inspection
+    inspection_generator = validation_datagen.flow_from_directory(
+        directory=train_data_dir,
+        target_size=shape,
+        color_mode=color_mode,
+        batch_size=validation_generator.samples,
+        class_mode="input",
+        subset="validation",
+        shuffle=False,
+    )
+    imgs_val_input = validation_generator.next()[0]
+    filenames = validation_generator.filenames
+    imgs_val_pred = model.predict(imgs_val_input)
+    resmaps_val = calculate_resmaps(imgs_val_input, imgs_val_pred, loss=resmaps_mode)
+
+    if color_mode == "rgb":
+        resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
+
+    inspection_dir = os.path.join(save_dir, "inscpection")
+    if not os.path.isdir(log_dir):
+        os.makedirs(inspection_dir)
+    utils.save_images(inspection_dir, imgs_val_pred, filenames, color_mode, "pred")
+    utils.save_images(inspection_dir, imgs_val_pred, filenames, color_mode, "resmap")
+
 
 if __name__ == "__main__":
-    # create top level parser
+    # create parser
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(
-        help="help for subcommand", title="commands", dest="command"
-    )
-
-    # create the subparser to begin training a new model
-    parser_new_training = subparsers.add_parser("new")
-
-    parser_new_training.add_argument(
+    parser.add_argument(
         "-d",
         "--directory",
         type=str,
@@ -415,7 +405,7 @@ if __name__ == "__main__":
         help="training directory",
     )
 
-    parser_new_training.add_argument(
+    parser.add_argument(
         "-a",
         "--architecture",
         type=str,
@@ -425,7 +415,7 @@ if __name__ == "__main__":
         help="model to use in training",
     )
 
-    parser_new_training.add_argument(
+    parser.add_argument(
         "-i",
         "--images",
         type=int,
@@ -433,10 +423,10 @@ if __name__ == "__main__":
         metavar="",
         help="number of training images",
     )
-    parser_new_training.add_argument(
+    parser.add_argument(
         "-b", "--batch", type=int, required=True, metavar="", help="batch size"
     )
-    parser_new_training.add_argument(
+    parser.add_argument(
         "-l",
         "--loss",
         type=str,
@@ -446,7 +436,7 @@ if __name__ == "__main__":
         help="loss function used during training",
     )
 
-    parser_new_training.add_argument(
+    parser.add_argument(
         "-c",
         "--color",
         type=str,
@@ -454,50 +444,28 @@ if __name__ == "__main__":
         metavar="",
         choices=["rgb", "grayscale"],
         help="color mode",
-    )  # new
+    )
 
-    parser_new_training.add_argument(
+    parser.add_argument(
         "-t", "--tag", type=str, help="give a tag to the model to be trained"
-    )
-
-    # create the subparser to resume the training of an existing model
-    parser_resume_training = subparsers.add_parser("resume")
-    parser_resume_training.add_argument(
-        "-p",
-        "--path",
-        type=str,
-        required=True,
-        metavar="",
-        help="path to existing model",
-    )
-    parser_resume_training.add_argument(
-        "-e",
-        "--epochs",
-        type=int,
-        required=True,
-        metavar="",
-        help="number of training epochs",
-    )
-    parser_resume_training.add_argument(
-        "-b", "--batch", type=int, required=True, metavar="", help="batch size"
     )
 
     args = parser.parse_args()
     if tf.test.is_gpu_available():
-        print("GPU was detected.")
+        print("[INFO] GPU was detected...")
     else:
-        print("No GPU was detected. CNNs can be very slow without a GPU.")
-    print("Tensorflow version: {}".format(tf.__version__))
-    print("Keras version: {}".format(keras.__version__))
+        print("[INFO] No GPU was detected. CNNs can be very slow without a GPU...")
+    print("[INFO] Tensorflow version: {} ...".format(tf.__version__))
+    print("[INFO] Keras version: {} ...".format(keras.__version__))
     main(args)
 
 # Examples of commands to initiate training
 
-# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l ssim -c grayscale
-# python3 train.py new -d mvtec/capsule -a mvtec -b 12 -l l2 -c grayscale
+# python3 train.py -d mvtec/capsule -a mvtec -b 12 -l ssim -c grayscale
+# python3 train.py -d mvtec/capsule -a mvtec -b 12 -l l2 -c grayscale
 
-# python3 train.py new -d werkstueck/data_a30_nikon_weiss_edit -a mvtec -b 12 -l ssim -c grayscale
+# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec -b 12 -l ssim -c grayscale
 
 # RESNET not yet supported
 
-# python3 train.py new -d mvtec/capsule -a resnet -b 12 -l mssim -c rgb
+# python3 train.py -d mvtec/capsule -a resnet -b 12 -l mssim -c rgb
