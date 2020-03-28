@@ -58,7 +58,7 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "mssim": loss_functions.mssim,
+                "mssim_loss": loss_functions.mssim_loss,
             },
             compile=True,
         )
@@ -68,7 +68,7 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "ssim": loss_functions.ssim,
+                "ssim_loss": loss_functions.ssim_loss,
             },
             compile=True,
         )
@@ -78,7 +78,7 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "l2": loss_functions.l2,
+                "l2_loss": loss_functions.l2_loss,
             },
             compile=True,
         )
@@ -117,7 +117,8 @@ def printProgressBar(
         fill        - Optional  : bar fill character (Str)
         printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
     """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    percent = ("{0:." + str(decimals) + "f}").format(100 *
+                                                     (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + "-" * (length - filledLength)
     print("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix), end=printEnd)
