@@ -88,9 +88,9 @@ def main(args):
         os.makedirs(save_dir)
 
     # Plot and save loss and val_loss
-    plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
-    fig = plot.get_figure()
-    fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
+    # plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
+    # fig = plot.get_figure()
+    # fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
 
     # ============================= PREPROCESSING ===============================
 

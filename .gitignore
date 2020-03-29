@@ -1,8 +1,9 @@
 /mvtec/
 /werkstueck/
 /inspection/
-inspection.py
+# inspection.py
 inspection2.py
+xyz.py
 .vscode/
 
 # numpy arrays

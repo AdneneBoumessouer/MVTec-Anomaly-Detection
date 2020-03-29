@@ -52,10 +52,10 @@ def main(args):
 
     if threshold is None and min_area is None:
         adopt_validation = True
-        print("testing with validation areas and thresholds.")
+        print("[INFO] Testing with validation areas and thresholds.")
     elif threshold is not None and min_area is not None:
         adopt_validation = False
-        print("testing with user passed areas and thresholds")
+        print("[INFO] Testing with user passed areas and thresholds")
     else:
         raise Exception("Threshold and area must both be passed.")
 
