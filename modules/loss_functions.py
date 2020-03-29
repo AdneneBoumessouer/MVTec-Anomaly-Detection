@@ -13,7 +13,8 @@ def ssim_loss(imgs_true, imgs_pred):
     Values approaching 1 indicate dissimilarity.
     This implementation is used as a loss function for training. 
     """
-    return (1 - K.mean(tf.image.ssim(imgs_true, imgs_pred, 1.0), axis=-1)) / 2
+    # return (1 - K.mean(tf.image.ssim(imgs_true, imgs_pred, 1.0), axis=-1)) / 2
+    return - K.mean(tf.image.ssim(imgs_true, imgs_pred, 1.0), axis=-1)
 
 
 def mssim_loss(imgs_true, imgs_pred):

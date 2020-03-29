@@ -18,7 +18,7 @@ import modules.models.mvtec as mvtec
 import modules.models.mvtec_2 as mvtec_2
 import modules.models.resnet as resnet
 
-from modules.resmaps import calculate_resmaps as calculate_resmaps
+# from modules.resmaps import calculate_resmaps as calculate_resmaps
 
 from modules import utils as utils
 from keras.preprocessing.image import ImageDataGenerator
@@ -224,8 +224,8 @@ def main(args):
 
     if architecture in ["mvtec", "mvtec2"]:
 
-        learning_rate = 2e-4  # 2e-4
-        decay = 1e-5
+        learning_rate = 2e-3  # initialy 2e-4
+        decay = 1e-4  # initialy 1e-5
 
         optimizer = keras.optimizers.Adam(
             learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=decay
@@ -337,36 +337,35 @@ def main(args):
     epochs_trained = utils.get_epochs_trained(history)
 
     # save training setup and model configuration
-    if args.command == "new":
-        setup = {
-            "data_setup": {
-                "directory": directory,
-                "nb_training_images": train_generator.samples,
-                "nb_validation_images": validation_generator.samples,
-            },
-            "preprocessing_setup": {
-                "rescale": rescale,
-                "shape": shape,
-                "preprocessing": preprocessing,
-            },
-            "train_setup": {
-                "architecture": architecture,
-                "nb_training_images_aug": nb_training_images_aug,
-                "epochs": epochs,
-                "learning_rate": learning_rate,
-                "decay": decay,
-                "batch_size": batch_size,
-                "loss": loss,
-                "color_mode": color_mode,
-                "channels": channels,
-                "validation_split": validation_split,
-                "epochs_trained": epochs_trained,
-            },
-            "tag": tag,
-        }
+    setup = {
+        "data_setup": {
+            "directory": directory,
+            "nb_training_images": train_generator.samples,
+            "nb_validation_images": validation_generator.samples,
+        },
+        "preprocessing_setup": {
+            "rescale": rescale,
+            "shape": shape,
+            "preprocessing": preprocessing,
+        },
+        "train_setup": {
+            "architecture": architecture,
+            "nb_training_images_aug": nb_training_images_aug,
+            "epochs": epochs,
+            "learning_rate": learning_rate,
+            "decay": decay,
+            "batch_size": batch_size,
+            "loss": loss,
+            "color_mode": color_mode,
+            "channels": channels,
+            "validation_split": validation_split,
+            "epochs_trained": epochs_trained,
+        },
+        "tag": tag,
+    }
 
     with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
-        json.dump(setup, json_file, indent=4)
+        json.dump(setup, json_file, indent=4, sort_keys=False)
 
     # predict on validation images, compute resmaps and save for visual inspection
     inspection_generator = validation_datagen.flow_from_directory(
@@ -381,16 +380,18 @@ def main(args):
     imgs_val_input = validation_generator.next()[0]
     filenames = validation_generator.filenames
     imgs_val_pred = model.predict(imgs_val_input)
-    resmaps_val = calculate_resmaps(imgs_val_input, imgs_val_pred, loss=resmaps_mode)
+    # resmaps_val = calculate_resmaps(
+    #     imgs_val_input, imgs_val_pred, loss=resmaps_mode)
 
-    if color_mode == "rgb":
-        resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
+    # if color_mode == "rgb":
+    #     resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
 
-    inspection_dir = os.path.join(save_dir, "inscpection")
-    if not os.path.isdir(log_dir):
+    inspection_dir = os.path.join(save_dir, "inspection")
+    if not os.path.isdir(inspection_dir):
         os.makedirs(inspection_dir)
-    utils.save_images(inspection_dir, imgs_val_pred, filenames, color_mode, "pred")
-    utils.save_images(inspection_dir, imgs_val_pred, filenames, color_mode, "resmap")
+    utils.save_images(inspection_dir, imgs_val_pred,
+                      filenames, color_mode, "pred")
+    # utils.save_images(inspection_dir, resmaps, filenames, color_mode, "resmap")
 
 
 if __name__ == "__main__":

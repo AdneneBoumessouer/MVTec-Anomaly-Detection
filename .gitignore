@@ -4,15 +4,6 @@
 inspection.py
 inspection2.py
 .vscode/
-# results/mvtec/capsule/mvtec2/MSE/25-02-2020_08:54:06/
-
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
 
 # numpy arrays
 saved_models/**/*.npy
@@ -21,10 +12,22 @@ results/**/*.npy
 # saved models
 saved_models/**/*.h5
 
+# inspection folders containing inspection images
+saved_models/**/inspection
+saved_models/**/logs
+
 # png images
 # saved_models/**/*.png
 # results/**/*.png
 # results/**/*.pdf
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
 
 # Distribution / packaging
 .Python
