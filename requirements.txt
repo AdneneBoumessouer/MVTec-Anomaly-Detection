@@ -60,6 +60,7 @@ jupyter-client==5.3.4
 jupyter-core==4.6.1
 Keras==2.3.0
 Keras-Applications==1.0.8
+keras-one-cycle-lr==0.0.1
 Keras-Preprocessing==1.1.0
 keyring==21.1.0
 kiwisolver==1.1.0
