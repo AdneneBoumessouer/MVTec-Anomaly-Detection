@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow import keras
 import numpy as np
 from modules import loss_functions as loss_functions
+from modules import metrics as custom_metrics
 import os
 import csv
 import pandas as pd
@@ -58,7 +59,8 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "mssim": loss_functions.mssim,
+                "mssim_loss": loss_functions.mssim_loss,
+                "mssim_metric": custom_metrics.mssim_metric,
             },
             compile=True,
         )
@@ -68,7 +70,8 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "ssim": loss_functions.ssim,
+                "ssim_loss": loss_functions.ssim_loss,
+                "ssim_metric": custom_metrics.ssim_metric,
             },
             compile=True,
         )
@@ -78,7 +81,9 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "l2": loss_functions.l2,
+                "l2_loss": loss_functions.l2_loss,
+                "ssim_loss": loss_functions.ssim_loss,
+                "mssim_metric": custom_metrics.mssim_metric,
             },
             compile=True,
         )
@@ -201,3 +206,26 @@ def get_preprocessing_function(architecture):
     elif architecture == "nasnet":
         preprocessing_function = keras.applications.nasnet.preprocess_input
     return preprocessing_function
+
+
+def save_images(save_dir, imgs, filenames, color_mode, suffix):
+    filenames_new = []
+    for filename in filenames:
+        filename_new, ext = os.path.splitext(filename)
+        filename_new = os.path.basename(filename_new)
+        filename_new = filename_new + "_" + suffix + ext
+        filenames_new.append(filename_new)
+
+    if color_mode == "grayscale":
+        for i in range(len(imgs)):
+            img = imgs[i, :, :, 0]
+            save_path = os.path.join(save_dir, filenames_new[i])
+            plt.imsave(save_path, img, cmap=plt.cm.gray)
+
+    if color_mode == "RGB":
+        for i in range(len(imgs)):
+            img = imgs[i, :, :, 0]
+            save_path = os.path.join(save_dir, filenames_new[i])
+            plt.imsave(save_path, img)
+
+    print("[INFO] validation images for inspection saved at /{}".format(save_dir))

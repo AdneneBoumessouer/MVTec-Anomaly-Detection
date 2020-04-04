@@ -88,9 +88,9 @@ def main(args):
         os.makedirs(save_dir)
 
     # Plot and save loss and val_loss
-    plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
-    fig = plot.get_figure()
-    fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
+    # plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
+    # fig = plot.get_figure()
+    # fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
 
     # ============================= PREPROCESSING ===============================
 
@@ -140,6 +140,7 @@ def main(args):
         utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
 
     if args.area is None:
+        print("[INFO] exiting")
         exit()
 
     # scale pixel values linearly to [0,1]
@@ -217,7 +218,7 @@ if __name__ == "__main__":
         "--area",
         nargs="+",
         type=int,
-        required=True,
+        required=False,
         metavar="",
         help="minimum area for a connected component",
     )
