@@ -62,3 +62,4 @@ if __name__ == "__main__":
     main(model_path, directory, architecture, loss)
 
 # python3 results.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
+# python3 results.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
