@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+321  #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Dec 10 19:46:17 2019
@@ -389,8 +389,7 @@ def main(args):
     inspection_dir = os.path.join(save_dir, "inspection")
     if not os.path.isdir(inspection_dir):
         os.makedirs(inspection_dir)
-    utils.save_images(inspection_dir, imgs_val_pred,
-                      filenames, color_mode, "pred")
+    utils.save_images(inspection_dir, imgs_val_pred, filenames, color_mode, "pred")
     # utils.save_images(inspection_dir, resmaps, filenames, color_mode, "resmap")
 
 
