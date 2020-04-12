@@ -26,9 +26,8 @@ from LR_Scheduler.lr_finder import LearningRateFinder
 from LR_Scheduler.clr_callback import CyclicLR
 from LR_Scheduler import config
 
-# from modules.resmaps import calculate_resmaps as calculate_resmaps
-# 321  # !/usr/bin/env python3
-# # -*- coding: utf-8 -*-
+import ktrain
+
 """
 Created on Tue Dec 10 19:46:17 2019
 
@@ -231,21 +230,43 @@ def main(args):
         )
 
         if args.lr_find > 0:
-            # initialize the learning rate finder and then train with learning
-            # rates ranging from 1e-10 to 1e+1
-            print("[INFO] finding learning rate...")
-            lrf = LearningRateFinder(model)
-            lrf.find(
-                trainData=train_generator,
-                startLR=1e-10,
-                endLR=1e1,
-                epochs=3,
-                stepsPerEpoch=train_generator.samples // batch_size,
+            # wrap model and data in ktrain.Learner object
+            learner = ktrain.get_learner(
+                model=model,
+                train_data=train_generator,
+                val_data=validation_generator,
+                # workers=8,
+                use_multiprocessing=False,
+                batch_size=batch_size,
             )
 
-            # plot the loss for the various learning rates and save the
-            # resulting plot to disk
-            lrf.plot_loss()
+            # find good learning rate
+            learner.lr_find(
+                start_lr=1e-7,
+                lr_mult=1.01,
+                max_epochs=10,
+                stop_factor=4,
+                show_plot=False,
+                verbose=1,
+            )  # briefly simulate training to find good learning rate
+            learner.lr_plot()  # visually identify best learning rate
+
+            # # initialize the learning rate finder and then train with learning
+            # # rates ranging from 1e-10 to 1e+1
+            # print("[INFO] finding learning rate...")
+            # lrf = LearningRateFinder(model)
+            # lrf.find(
+            #     trainData=train_generator,
+            #     startLR=1e-10,
+            #     endLR=1e1,
+            #     epochs=3,
+            #     stepsPerEpoch=train_generator.samples // batch_size,
+            # )
+
+            # # plot the loss for the various learning rates and save the
+            # # resulting plot to disk
+            # lrf.plot_loss()
+
             plt.savefig(os.path.join(save_dir, "lrfind_plot.png"))
 
             # gracefully exit the script so we can adjust our learning rates
