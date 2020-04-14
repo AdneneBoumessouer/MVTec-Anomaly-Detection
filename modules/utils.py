@@ -161,17 +161,17 @@ def plot_input_pred_resmaps_val(inputs, preds, resmaps, index_val):
     try:
         axarr[0].imshow(inputs[index_val])
     except TypeError:
-        axarr[0].imshow(inputs[index_val, :, :, 0], cmap=plt.cm.gray)
+        axarr[0].imshow(inputs[index_val, :, :, 0], cmap="gray")
     axarr[0].set_title("original defect-free val image")
     try:
         axarr[1].imshow(preds[index_val])
     except TypeError:
-        axarr[1].imshow(preds[index_val, :, :, 0], cmap=plt.cm.gray)
+        axarr[1].imshow(preds[index_val, :, :, 0], cmap="gray")
     axarr[1].set_title("reconstruction defect-free val image")
     try:
         axarr[2].imshow(resmaps[index_val])
     except TypeError:
-        axarr[2].imshow(resmaps[index_val, :, :, 0], cmap=plt.cm.gray)
+        axarr[2].imshow(resmaps[index_val, :, :, 0], cmap="gray")
     axarr[2].set_title("ResMap defect-free val image")
 
     return fig
@@ -182,17 +182,17 @@ def plot_input_pred_resmaps_test(inputs, preds, resmaps, index_test):
     try:
         axarr[0].imshow(inputs[index_test])
     except TypeError:
-        axarr[0].imshow(inputs[index_test, :, :, 0], cmap=plt.cm.gray)
+        axarr[0].imshow(inputs[index_test, :, :, 0], cmap="gray")
     axarr[0].set_title("original sample test image")
     try:
         axarr[1].imshow(preds[index_test])
     except TypeError:
-        axarr[1].imshow(preds[index_test, :, :, 0], cmap=plt.cm.gray)
+        axarr[1].imshow(preds[index_test, :, :, 0], cmap="gray")
     axarr[1].set_title("reconstruction test image")
     try:
         axarr[2].imshow(resmaps[index_test])
     except TypeError:
-        axarr[2].imshow(resmaps[index_test, :, :, 0], cmap=plt.cm.gray)
+        axarr[2].imshow(resmaps[index_test, :, :, 0], cmap="gray")
     axarr[2].set_title("ResMap test image")
 
     return fig
@@ -208,6 +208,12 @@ def get_preprocessing_function(architecture):
     return preprocessing_function
 
 
+def get_plot_name(filename, suffix):
+    filename_new, ext = os.path.splitext(filename)
+    filename_new = "_".join(filename_new.split("/")) + "_" + suffix + ext
+    return filename_new
+
+
 def save_images(save_dir, imgs, filenames, color_mode, suffix):
     filenames_new = []
     for filename in filenames:
@@ -220,7 +226,7 @@ def save_images(save_dir, imgs, filenames, color_mode, suffix):
         for i in range(len(imgs)):
             img = imgs[i, :, :, 0]
             save_path = os.path.join(save_dir, filenames_new[i])
-            plt.imsave(save_path, img, cmap=plt.cm.gray)
+            plt.imsave(save_path, img, cmap="gray")
 
     if color_mode == "RGB":
         for i in range(len(imgs)):

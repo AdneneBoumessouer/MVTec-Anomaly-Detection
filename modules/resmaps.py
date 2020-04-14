@@ -52,13 +52,13 @@ def resmaps_mse(imgs_input, imgs_pred):
     pass
 
 
-def calculate_resmaps(imgs_input, imgs_pred, loss):
-    if loss == "L2":
+def calculate_resmaps(imgs_input, imgs_pred, method):
+    if method == "L2":
         resmaps = resmaps_l2(imgs_input, imgs_pred)
-    elif loss == "MSE":
+    elif method == "MSE":
         resmaps = resmaps_l2(imgs_input, imgs_pred)
-    elif loss == "SSIM":
+    elif method == "SSIM":
         resmaps = resmaps_ssim(imgs_input, imgs_pred)
-    elif loss == "MSSIM":
+    elif method == "MSSIM":
         resmaps = resmaps_mssim(imgs_input, imgs_pred)
     return resmaps

@@ -7,6 +7,9 @@ inspection3.py
 xyz.py
 .vscode/
 
+# remove this line after finishing project to upload data
+saved_models/
+
 # numpy arrays
 saved_models/**/*.npy
 results/**/*.npy

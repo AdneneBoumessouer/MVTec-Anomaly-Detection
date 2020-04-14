@@ -51,6 +51,6 @@ def build_model(channels=3):
 
     model = keras.models.Model(input_img, decoded)
     # keras.utils.plot_model(model, to_file="model.png")
-    print(model.summary())
+    # print(model.summary())
 
     return model

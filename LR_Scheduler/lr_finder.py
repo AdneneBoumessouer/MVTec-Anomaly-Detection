@@ -21,7 +21,7 @@ class LearningRateFinder:
 
         # initialize our learning rate multiplier, average loss, best
         # loss found thus far, current batch number, and weights file
-        self.lrMult = 1
+        self.lrMult = 1.01
         self.avgLoss = 0
         self.bestLoss = 1e9
         self.batchNum = 0
@@ -171,8 +171,8 @@ class LearningRateFinder:
             )
 
         # restore the original model weights and learning rate
-        # self.model.load_weights(self.weightsFile)
-        # K.set_value(self.model.optimizer.lr, origLR)
+        self.model.load_weights(self.weightsFile)
+        K.set_value(self.model.optimizer.lr, origLR)
 
     def plot_loss(self, skipBegin=10, skipEnd=1, title=""):
         # grab the learning rate and losses values to plot

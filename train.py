@@ -9,6 +9,7 @@ import requests
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
 from modules import utils as utils
+from modules.utils import printProgressBar as printProgressBar
 from modules.resmaps import calculate_resmaps
 import modules.models.resnet as resnet
 import modules.models.mvtec_2 as mvtec_2
@@ -20,6 +21,7 @@ from tensorflow import keras
 import tensorflow as tf
 import sys
 import os
+import time
 
 from LR_Scheduler.lr_finder import LearningRateFinder
 from LR_Scheduler.clr_callback import CyclicLR
@@ -219,10 +221,19 @@ def main(args):
 
     # =============================== TRAINING =================================
 
+    # define configuration for LR_find
+    print("[INFO] initializing LR_find configuration...")
+    if loss == "SSIM":
+        max_epochs = 10
+        stop_factor = -6
+    elif loss == "L2":
+        max_epochs = None
+        stop_factor = 6
+    start_lr = 1e-7
+
     # initialize the optimizer and compile model
     print("[INFO] compiling model...")
-    # optimizer = keras.optimizers.SGD(lr=config.MIN_LR, momentum=0.9)
-    optimizer = keras.optimizers.Adam(learning_rate=1e-7)
+    optimizer = keras.optimizers.Adam(learning_rate=start_lr)
     model.compile(
         loss=loss_function, optimizer=optimizer, metrics=metrics,
     )
@@ -237,41 +248,34 @@ def main(args):
         batch_size=batch_size,
     )
 
-    if args.lr_find > 0:
-        # find good learning rate
-        learner.lr_find(
-            start_lr=1e-7,
-            lr_mult=1.01,
-            # max_epochs=config.MAX_EPOCHS,
-            stop_factor=6,
-            show_plot=False,
-            verbose=1,
-        )
-        learner.lr_plot()
-        plt.savefig(os.path.join(save_dir, "lr_find_plot.png"))
-        plt.show(block=True)
+    # if args.lr_find > 0:
+    # find good learning rate
+    learner.lr_find(
+        start_lr=start_lr,
+        lr_mult=1.01,
+        max_epochs=max_epochs,
+        stop_factor=stop_factor,
+        show_plot=False,
+        verbose=1,
+    )
+    learner.lr_plot()
+    plt.savefig(os.path.join(save_dir, "lr_find_plot.png"))
+    plt.show(block=True)
+    print("[INFO] learning rate finder complete")
+    print("[INFO] examine plot and adjust learning rates before training")
 
-        # gracefully exit the script so we can adjust our learning rates
-        # in the config and then train the network for our full set of
-        # epochs
-        print("[INFO] learning rate finder complete")
-        print("[INFO] examine plot and adjust learning rates before training")
-        # sys.exit(0)
-        max_lr = float(input("Enter max learning rate: "))
-        learner.reset_weights()
+    # prompt user to enter max learning rate
+    max_lr = float(input("Enter max learning rate: "))
 
-    # otherwise, we have already defined a learning rate space to train
-    # over, so compute the step size and initialize the 1 Cycle learning
-    # rate method
+    # start training
     history = learner.fit_onecycle(
-        lr=max_lr,  # config.MAX_LR
+        lr=max_lr,
         epochs=epochs,
         cycle_momentum=True,
         max_momentum=0.95,
         min_momentum=0.85,
         verbose=1,
     )
-    # history = history.history
 
     # Save model
     tf.keras.models.save_model(
@@ -303,18 +307,23 @@ def main(args):
             "shape": shape,
             "preprocessing": preprocessing,
         },
+        "lr_finder": {
+            "start_lr": start_lr,
+            "max_lr": max_lr,
+            "stop_factor": stop_factor,
+            "max_epochs": max_epochs,
+        },
         "train_setup": {
             "architecture": architecture,
             "nb_training_images_aug": nb_training_images_aug,
             "epochs": epochs,
-            # "learning_rate": learning_rate,
-            # "decay": decay,
+            "max_lr": max_lr,
+            "min_lr": max_lr / 10,
             "batch_size": batch_size,
             "loss": loss,
             "color_mode": color_mode,
             "channels": channels,
             "validation_split": validation_split,
-            # "epochs_trained": epochs_trained,
         },
         "tag": tag,
     }
@@ -322,29 +331,179 @@ def main(args):
     with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
         json.dump(setup, json_file, indent=4, sort_keys=False)
 
-    # predict on validation images, compute resmaps and save for visual inspection
-    inspection_generator = validation_datagen.flow_from_directory(
-        directory=train_data_dir,
-        target_size=shape,
-        color_mode=color_mode,
-        batch_size=validation_generator.samples,
-        class_mode="input",
-        subset="validation",
-        shuffle=False,
-    )
-    imgs_val_input = validation_generator.next()[0]
-    filenames = validation_generator.filenames
-    imgs_val_pred = model.predict(imgs_val_input)
-    resmaps_val = calculate_resmaps(imgs_val_input, imgs_val_pred, loss=resmaps_mode)
+    if args.inspect == True:
+        # INSPECTING VALIDATION IMAGES
+        print("[INFO] inspecting validation images...")
 
-    if color_mode == "rgb":
-        resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
+        # create a directory to save inspection plots
+        inspection_val_dir = os.path.join(save_dir, "inspection_val")
+        if not os.path.isdir(inspection_val_dir):
+            os.makedirs(inspection_val_dir)
 
-    inspection_dir = os.path.join(save_dir, "inspection")
-    if not os.path.isdir(inspection_dir):
-        os.makedirs(inspection_dir)
-    utils.save_images(inspection_dir, imgs_val_pred, filenames, color_mode, "pred")
-    utils.save_images(inspection_dir, resmaps_val, filenames, color_mode, "resmap")
+        # create a generator that yields preprocessed validation images
+        inspection_val_generator = validation_datagen.flow_from_directory(
+            directory=train_data_dir,
+            target_size=shape,
+            color_mode=color_mode,
+            batch_size=validation_generator.samples,
+            class_mode="input",
+            subset="validation",
+            shuffle=False,
+        )
+        imgs_val_input = inspection_val_generator.next()[0]
+        filenames = inspection_val_generator.filenames
+
+        # predict on validation images
+        print("[INFO] reconstructing validation images...")
+        imgs_val_pred = model.predict(imgs_val_input)
+
+        # save input and pred arrays
+        print(
+            "[INFO] saving input and pred validation images at {}...".format(
+                inspection_val_dir
+            )
+        )
+        utils.save_np(imgs_val_input, inspection_val_dir, "imgs_val_input.npy")
+        utils.save_np(imgs_val_pred, inspection_val_dir, "imgs_val_input.npy")
+
+        # compute resmaps by substracting pred out of input
+        resmaps_val_diff = imgs_val_input - imgs_val_pred
+
+        # compute resmaps using the ssim method
+        resmaps_val_ssim = calculate_resmaps(
+            imgs_val_input, imgs_val_pred, method="SSIM"
+        )
+
+        # compute resmaps using the L2 method
+        resmaps_val_l2 = calculate_resmaps(imgs_val_input, imgs_val_pred, method="L2")
+
+        # # convert to grayscale if necessary
+        # if color_mode == "rgb":
+        #     resmaps_val_ssim = tf.image.rgb_to_grayscale(resmaps_val)
+
+        # generate and save inspection images
+        print("[INFO] generating inspection plots on validation images...")
+        l = len(filenames)
+        printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
+        for i in range(len(imgs_val_input)):
+            f, axarr = plt.subplots(3, 2)
+            f.set_size_inches((8, 9))
+            axarr[0, 0].imshow(imgs_val_input[i, :, :, 0], cmap="gray")
+            axarr[0, 0].set_title("input")
+            axarr[0, 0].set_axis_off()
+            axarr[0, 1].imshow(imgs_val_pred[i, :, :, 0], cmap="gray")
+            axarr[0, 1].set_title("pred")
+            axarr[0, 1].set_axis_off()
+            axarr[1, 0].imshow(resmaps_val_diff[i, :, :, 0], cmap="gray")
+            axarr[1, 0].set_title("resmap_diff")
+            axarr[1, 0].set_axis_off()
+            axarr[1, 1].imshow(resmaps_val_ssim[i, :, :, 0], cmap="gray")
+            axarr[1, 1].set_title("resmap_ssim")
+            axarr[1, 1].set_axis_off()
+            axarr[2, 0].imshow(resmaps_val_l2[i, :, :, 0], cmap="gray")
+            axarr[2, 0].set_title("resmap_L2")
+            axarr[2, 0].set_axis_off()
+            axarr[2, 1].set_axis_off()
+            plt.suptitle("VALIDATION\n" + filenames[i])
+            plot_name = utils.get_plot_name(filenames[i], suffix="inspection")
+            f.savefig(os.path.join(inspection_val_dir, plot_name))
+            plt.close(fig=f)
+            # print progress bar
+            time.sleep(0.1)
+            printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
+
+        # INSPECTING TEST IMAGES
+        print("[INFO] inspecting test images...")
+
+        # create a directory to save inspection plots
+        inspection_test_dir = os.path.join(save_dir, "inspection_test")
+        if not os.path.isdir(inspection_test_dir):
+            os.makedirs(inspection_test_dir)
+
+        test_datagen = ImageDataGenerator(
+            rescale=rescale,
+            data_format="channels_last",
+            preprocessing_function=preprocessing_function,
+        )
+        test_data_dir = os.path.join(directory, "test")
+        total_number = utils.get_total_number_test_images(test_data_dir)
+
+        # retrieve preprocessed test images as a numpy array
+        inspection_test_generator = test_datagen.flow_from_directory(
+            directory=test_data_dir,
+            target_size=shape,
+            color_mode=color_mode,
+            batch_size=total_number,
+            shuffle=False,
+            class_mode="input",
+        )
+        imgs_test_input = inspection_test_generator.next()[0]
+        filenames = inspection_test_generator.filenames
+
+        # predict on test images
+        print("[INFO] reconstructing test images...")
+        imgs_test_pred = model.predict(imgs_test_input)
+
+        # save input and pred arrays
+        print(
+            "[INFO] saving input and pred test images at {}...".format(
+                inspection_test_dir
+            )
+        )
+        utils.save_np(imgs_test_input, inspection_test_dir, "imgs_test_input.npy")
+        utils.save_np(imgs_test_pred, inspection_test_dir, "imgs_test_input.npy")
+
+        # compute resmaps by substracting pred out of input
+        resmaps_test_diff = imgs_test_input - imgs_test_pred
+
+        # # convert to grayscale if necessary
+        # if color_mode == "rgb":
+        #     resmaps_test_ssim = tf.image.rgb_to_grayscale(resmaps_test)
+
+        # compute resmaps using the ssim method
+        resmaps_test_ssim = calculate_resmaps(
+            imgs_test_input, imgs_test_pred, method="SSIM"
+        )
+
+        # compute resmaps using the L2 method
+        resmaps_test_l2 = calculate_resmaps(
+            imgs_test_input, imgs_test_pred, method="L2"
+        )
+
+        # generate and save inspection images
+        print("[INFO] generating inspection plots on test images...")
+        l = len(filenames)
+        printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
+        for i in range(len(imgs_test_input)):
+            f, axarr = plt.subplots(3, 2)
+            f.set_size_inches((8, 9))
+            axarr[0, 0].imshow(imgs_test_input[i, :, :, 0], cmap="gray")
+            axarr[0, 0].set_title("input")
+            axarr[0, 0].set_axis_off()
+            axarr[0, 1].imshow(imgs_test_pred[i, :, :, 0], cmap="gray")
+            axarr[0, 1].set_title("pred")
+            axarr[0, 1].set_axis_off()
+            axarr[1, 0].imshow(resmaps_test_diff[i, :, :, 0], cmap="gray")
+            axarr[1, 0].set_title("resmap_diff")
+            axarr[1, 0].set_axis_off()
+            axarr[1, 1].imshow(resmaps_test_ssim[i, :, :, 0], cmap="gray")
+            axarr[1, 1].set_title("resmap_ssim")
+            axarr[1, 1].set_axis_off()
+            axarr[2, 0].imshow(resmaps_test_l2[i, :, :, 0], cmap="gray")
+            axarr[2, 0].set_title("resmap_L2")
+            axarr[2, 0].set_axis_off()
+            axarr[2, 1].set_axis_off()
+            plt.suptitle("TEST\n" + filenames[i])
+            plot_name = utils.get_plot_name(filenames[i], suffix="inspection")
+            f.savefig(os.path.join(inspection_test_dir, plot_name))
+            plt.close(fig=f)
+            # print progress bar
+            time.sleep(0.1)
+            printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
+
+        print("[INFO] done.")
+        print("[INFO] all generated files are saved at: \n{}".format(save_dir))
+        print("exiting script...")
 
 
 if __name__ == "__main__":
@@ -400,11 +559,19 @@ if __name__ == "__main__":
         help="color mode",
     )
 
+    # parser.add_argument(
+    #     "-f",
+    #     "--lr-find",
+    #     type=int,
+    #     default=0,
+    #     help="whether or not to find optimal learning rate",
+    # )
+
     parser.add_argument(
-        "-f",
-        "--lr-find",
-        type=int,
-        default=0,
+        "-i",
+        "--inspect",
+        type=bool,
+        default=True,
         help="whether or not to find optimal learning rate",
     )
 
@@ -423,11 +590,9 @@ if __name__ == "__main__":
 
 # Examples of commands to initiate training
 
-# python3 train.py -d mvtec/capsule -a mvtec -b 12 -l ssim -c grayscale
-# python3 train.py -d mvtec/capsule -a mvtec -b 12 -l l2 -c grayscale
+# python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale --inspect True
 
-# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec -b 12 -l ssim -c grayscale
-# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec2 -b 12 -l l2 -c grayscale --lr-find 1
+# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec2 -b 12 -l l2 -c grayscale --inspect True
 
 # RESNET not yet supported
 # python3 train.py -d mvtec/capsule -a resnet -b 12 -l mssim -c rgb
