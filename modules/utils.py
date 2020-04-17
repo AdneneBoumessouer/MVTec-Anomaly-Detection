@@ -8,6 +8,7 @@ import os
 import csv
 import pandas as pd
 import json
+from copy import deepcopy
 
 """
 SAVE AND LOAD LINKS:
@@ -138,6 +139,16 @@ def extend_dict(dict1, dict2):
         dict3[key].extend(dict1[key])
         dict3[key].extend(dict2[key])
     return dict3
+
+
+def update_history(history1, history2):
+    dict3 = {}
+    for key in list(history1.history.keys()):
+        dict3[key] = []
+        dict3[key].extend(history1.history[key])
+        dict3[key].extend(history2.history[key])
+    history1.history = dict3
+    return history1
 
 
 def get_epochs_trained(history_dict):

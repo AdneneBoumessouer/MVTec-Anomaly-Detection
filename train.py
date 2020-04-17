@@ -81,10 +81,12 @@ def main(args):
         channels = 1
         resmaps_mode = "SSIM"
         metrics = [custom_metrics.ssim_metric]
+        hist_keys = ("loss", "val_loss", "ssim_metric", "val_ssim_metric")
     elif color_mode == "rgb":
         channels = 3
         resmaps_mode = "MSSIM"
         metrics = [custom_metrics.mssim_metric]
+        hist_keys = ("loss", "val_loss", "mssim_metric", "val_mssim_metric")
 
     # build model
     if architecture == "mvtec":
@@ -146,7 +148,7 @@ def main(args):
         shape = (256, 256)
         preprocessing_function = None
         preprocessing = None
-    elif architecture == "resnet":
+    if architecture == "resnet":
         rescale = None
         shape = (299, 299)
         preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
@@ -156,7 +158,6 @@ def main(args):
         shape = (224, 224)
         preprocessing_function = keras.applications.nasnet.preprocess_input
         preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
-        pass
 
     print("[INFO] Using Keras's flow_from_directory method...")
     # This will do preprocessing and realtime data augmentation:
@@ -224,64 +225,257 @@ def main(args):
     # define configuration for LR_find
     print("[INFO] initializing LR_find configuration...")
     if loss == "SSIM":
-        max_epochs = 10
         stop_factor = -6
     elif loss == "L2":
-        max_epochs = None
         stop_factor = 6
+    max_epochs = 10
     start_lr = 1e-7
 
-    # initialize the optimizer and compile model
-    print("[INFO] compiling model...")
-    optimizer = keras.optimizers.Adam(learning_rate=start_lr)
-    model.compile(
-        loss=loss_function, optimizer=optimizer, metrics=metrics,
-    )
+    if architecture in ["mvtec", "mvtec2"]:
 
-    # wrap model and data in ktrain.Learner object
-    learner = ktrain.get_learner(
-        model=model,
-        train_data=train_generator,
-        val_data=validation_generator,
-        # workers=8,
-        use_multiprocessing=False,
-        batch_size=batch_size,
-    )
+        # initialize the optimizer and compile model
+        print("[INFO] compiling model...")
+        optimizer = keras.optimizers.Adam(learning_rate=start_lr)
+        model.compile(
+            loss=loss_function, optimizer=optimizer, metrics=metrics,
+        )
 
-    # if args.lr_find > 0:
-    # find good learning rate
-    learner.lr_find(
-        start_lr=start_lr,
-        lr_mult=1.01,
-        max_epochs=max_epochs,
-        stop_factor=stop_factor,
-        show_plot=False,
-        verbose=1,
-    )
-    learner.lr_plot()
-    plt.savefig(os.path.join(save_dir, "lr_find_plot.png"))
-    plt.show(block=True)
-    print("[INFO] learning rate finder complete")
-    print("[INFO] examine plot and adjust learning rates before training")
+        # wrap model and data in ktrain.Learner object
+        learner = ktrain.get_learner(
+            model=model,
+            train_data=train_generator,
+            val_data=validation_generator,
+            # workers=8,
+            use_multiprocessing=False,
+            batch_size=batch_size,
+        )
 
-    # prompt user to enter max learning rate
-    max_lr = float(input("Enter max learning rate: "))
+        # find good learning rate
+        learner.lr_find(
+            start_lr=start_lr,
+            lr_mult=1.01,
+            max_epochs=max_epochs,
+            stop_factor=stop_factor,
+            show_plot=False,
+            # callbacks=[early_stopping_cb]
+            verbose=1,
+        )
+        plt.figure()  # added
+        learner.lr_plot()
+        plt.savefig(os.path.join(save_dir, "lr_find_plot.png"))
+        plt.show(block=True)
+        plt.close()  # added
+        print("[INFO] learning rate finder complete")
 
-    # start training
-    history = learner.fit_onecycle(
-        lr=max_lr,
-        epochs=epochs,
-        cycle_momentum=True,
-        max_momentum=0.95,
-        min_momentum=0.85,
-        verbose=1,
-    )
+        # prompt user to enter max learning rate
+        print("[INFO] examine plot and choose max learning rates...")
+        max_lr = float(input("Enter max learning rate: "))
+
+        # start training
+        history = learner.fit_onecycle(
+            lr=max_lr,
+            epochs=epochs,
+            cycle_momentum=True,
+            max_momentum=0.95,
+            min_momentum=0.85,
+            verbose=1,
+        )
+
+        # setup and model configuration
+        setup = {
+            "data_setup": {
+                "directory": directory,
+                "nb_training_images": train_generator.samples,
+                "nb_validation_images": validation_generator.samples,
+            },
+            "preprocessing_setup": {
+                "rescale": rescale,
+                "shape": shape,
+                "preprocessing": preprocessing,
+            },
+            "lr_finder": {
+                "start_lr": start_lr,
+                "max_lr": max_lr,
+                "stop_factor": stop_factor,
+                "max_epochs": max_epochs,
+            },
+            "train_setup": {
+                "architecture": architecture,
+                "nb_training_images_aug": nb_training_images_aug,
+                "epochs": epochs,
+                "max_lr": max_lr,
+                "min_lr": max_lr / 10,
+                "batch_size": batch_size,
+                "loss": loss,
+                "color_mode": color_mode,
+                "channels": channels,
+                "validation_split": validation_split,
+            },
+            "tag": tag,
+        }
+
+    elif architecture in ["resnet", "nasnet"]:
+
+        # ------------------- PHASE 1 ---------------------
+
+        print("[INFO] PHASE 1: training base encoder...")
+        # freeze base
+        print("[INFO] freezing base encoder's layers...")
+        for layer in base_encoder.layers:
+            layer.trainable = False
+        epochs_1 = int(np.ceil(0.7 * epochs))
+
+        # initialize the optimizer and compile model
+        print("[INFO] compiling model...")
+        optimizer = keras.optimizers.Adam(learning_rate=start_lr)
+        model.compile(
+            loss=loss_function, optimizer=optimizer, metrics=metrics,
+        )
+
+        # wrap model and data in ktrain.Learner object
+        learner = ktrain.get_learner(
+            model=model,
+            train_data=train_generator,
+            val_data=validation_generator,
+            # workers=8,
+            use_multiprocessing=False,
+            batch_size=batch_size,
+        )
+
+        # find good learning rate
+        learner.lr_find(
+            start_lr=start_lr,
+            lr_mult=1.01,
+            max_epochs=max_epochs,
+            stop_factor=stop_factor,
+            show_plot=True,
+            verbose=1,
+        )
+        # plt.figure()  # added
+        # learner.lr_plot()
+        plt.savefig(os.path.join(save_dir, "lr_find_plot_1.png"))
+        plt.show(block=True)
+        plt.close()  # added
+        print("[INFO] learning rate finder for PHASE 1 complete")
+
+        # prompt user to enter max learning rate
+        print("[INFO] examine plot and choose max learning rates...")
+        max_lr_1 = float(input("Enter max learning rate: "))
+
+        # Phase 1: start training
+        history_1 = learner.fit_onecycle(
+            lr=max_lr_1,
+            epochs=epochs_1,
+            cycle_momentum=True,
+            max_momentum=0.95,
+            min_momentum=0.85,
+            callbacks=[early_stopping_cb],
+            verbose=1,
+        )
+
+        # ------------------- PHASE 2 ---------------------
+
+        print("[INFO] PHASE 2: training entire model...")
+        print("[INFO] unfreezing base encoder's layers...")
+        for layer in base_encoder.layers:
+            layer.trainable = True
+        epochs_2 = epochs - epochs_1
+
+        # initialize the optimizer and compile model for Phase 2
+        print("[INFO] compiling model...")
+        optimizer = keras.optimizers.Adam(learning_rate=start_lr)
+        model.compile(
+            loss=loss_function, optimizer=optimizer, metrics=metrics,
+        )
+
+        # find good learning rate
+        learner.lr_find(
+            start_lr=start_lr,
+            lr_mult=1.01,
+            max_epochs=max_epochs,
+            stop_factor=stop_factor,
+            show_plot=False,
+            verbose=1,
+        )
+        plt.figure()  # added
+        learner.lr_plot()
+        plt.savefig(os.path.join(save_dir, "lr_find_plot_2.png"))
+        plt.show(block=True)
+        plt.close()  # added
+        print("[INFO] learning rate finder for PHASE 2 complete")
+
+        # prompt user to enter max learning rate
+        print("[INFO] examine plot and choose max learning rates...")
+        max_lr_2 = float(input("Enter max learning rate: "))
+
+        # Phase 2: start training
+        history_2 = learner.fit_onecycle(
+            lr=max_lr_2,
+            epochs=epochs_2,
+            cycle_momentum=True,
+            max_momentum=0.95,
+            min_momentum=0.85,
+            callbacks=[early_stopping_cb],
+            verbose=1,
+        )
+
+        # update history
+        history = utils.update_history(history_1, history_2)
+        learner.history = history
+
+        # setup and model configuration
+        setup = {
+            "data_setup": {
+                "directory": directory,
+                "nb_training_images": train_generator.samples,
+                "nb_validation_images": validation_generator.samples,
+            },
+            "preprocessing_setup": {
+                "rescale": rescale,
+                "shape": shape,
+                "preprocessing": preprocessing,
+            },
+            "lr_finder": {
+                "start_lr": start_lr,
+                "max_lr_1": max_lr_1,
+                "max_lr_2": max_lr_2,
+                "stop_factor": stop_factor,
+                "max_epochs": max_epochs,
+            },
+            "train_setup": {
+                "architecture": architecture,
+                "nb_training_images_aug": nb_training_images_aug,
+                "epochs": epochs,
+                "max_lr_1": max_lr_1,
+                "min_lr_1": max_lr_1 / 10,
+                "max_lr_2": max_lr_2,
+                "min_lr_2": max_lr_2 / 10,
+                "batch_size": batch_size,
+                "loss": loss,
+                "color_mode": color_mode,
+                "channels": channels,
+                "validation_split": validation_split,
+            },
+            "tag": tag,
+        }
+
+    # save setup
+    with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
+        json.dump(setup, json_file, indent=4, sort_keys=False)
 
     # Save model
     tf.keras.models.save_model(
         model, model_path, include_optimizer=True, save_format="h5"
     )
     print("Saved trained model at %s " % model_path)
+
+    # save training history
+    hist_dict = dict((key, history.history[key]) for key in hist_keys)
+    hist_df = pd.DataFrame(hist_dict)
+    hist_csv_file = os.path.join(save_dir, "history.csv")
+    with open(hist_csv_file, mode="w") as f:
+        hist_df.to_csv(f)
+    print("Saved training history at %s " % hist_csv_file)
 
     # save loss plot
     plt.figure()
@@ -294,42 +488,6 @@ def main(args):
     learner.plot(plot_type="lr")
     plt.savefig(os.path.join(save_dir, "lr_plot.png"))
     print("learning rate plot saved at {} ".format(save_dir))
-
-    # save training setup and model configuration
-    setup = {
-        "data_setup": {
-            "directory": directory,
-            "nb_training_images": train_generator.samples,
-            "nb_validation_images": validation_generator.samples,
-        },
-        "preprocessing_setup": {
-            "rescale": rescale,
-            "shape": shape,
-            "preprocessing": preprocessing,
-        },
-        "lr_finder": {
-            "start_lr": start_lr,
-            "max_lr": max_lr,
-            "stop_factor": stop_factor,
-            "max_epochs": max_epochs,
-        },
-        "train_setup": {
-            "architecture": architecture,
-            "nb_training_images_aug": nb_training_images_aug,
-            "epochs": epochs,
-            "max_lr": max_lr,
-            "min_lr": max_lr / 10,
-            "batch_size": batch_size,
-            "loss": loss,
-            "color_mode": color_mode,
-            "channels": channels,
-            "validation_split": validation_split,
-        },
-        "tag": tag,
-    }
-
-    with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
-        json.dump(setup, json_file, indent=4, sort_keys=False)
 
     if args.inspect == True:
         # INSPECTING VALIDATION IMAGES
@@ -560,19 +718,19 @@ if __name__ == "__main__":
     )
 
     # parser.add_argument(
-    #     "-f",
-    #     "--lr-find",
-    #     type=int,
-    #     default=0,
-    #     help="whether or not to find optimal learning rate",
+    #     "-i",
+    #     "--inspect",
+    #     type=bool,
+    #     default=True,
+    #     help="whether or not to reconstruct validation and test images",
     # )
 
     parser.add_argument(
         "-i",
         "--inspect",
-        type=bool,
-        default=True,
-        help="whether or not to find optimal learning rate",
+        # default=True,
+        action="store_true",
+        help="whether or not to reconstruct validation and test images after training",
     )
 
     parser.add_argument(
@@ -588,80 +746,13 @@ if __name__ == "__main__":
     print("[INFO] Keras version: {} ...".format(keras.__version__))
     main(args)
 
-# Examples of commands to initiate training
+# Examples of commands to initiate training with resnet architecture
+
+# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb -n 1100 --inspect True
+# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb --inspect True
+
+
+# Examples of commands to initiate training with mvtec architecture
 
 # python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale --inspect True
-
 # python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec2 -b 12 -l l2 -c grayscale --inspect True
-
-# RESNET not yet supported
-# python3 train.py -d mvtec/capsule -a resnet -b 12 -l mssim -c rgb
-
-
-# elif architecture in ["resnet", "nasnet"]:
-
-#     # Phase 1: train the decoder with frozen encoder
-#     epochs_1 = int(np.ceil(0.7 * epochs))
-
-#     for layer in base_encoder.layers:
-#         layer.trainable = False
-
-#     # print(base_encoder.summary())
-#     print(model.summary())
-
-#     learning_rate_1 = 2e-4
-#     decay_1 = 1e-5
-
-#     optimizer = keras.optimizers.Adam(
-#         learning_rate=learning_rate_1, beta_1=0.9, beta_2=0.999, decay=decay_1
-#     )
-
-#     model.compile(
-#         loss=loss_function, optimizer=optimizer, metrics=metrics,
-#     )
-
-#     # Fit the model on the batches generated by datagen.flow_from_directory()
-#     history_1 = model.fit_generator(
-#         generator=train_generator,
-#         epochs=epochs_1,  #
-#         steps_per_epoch=train_generator.samples // batch_size,
-#         validation_data=validation_generator,
-#         validation_steps=validation_generator.samples // batch_size,
-#         # callbacks=[checkpoint_cb],
-#     )
-
-#     # Phase 2: train both encoder and decoder together
-#     epochs_2 = epochs - epochs_1
-
-#     for layer in base_encoder.layers:
-#         layer.trainable = True
-
-#     # print(base_encoder.summary())
-#     print(model.summary())
-
-#     # learning_rate_2 = 1e-5
-#     # decay_2 = 1e-6
-
-#     # optimizer = keras.optimizers.Adam(
-#     #     learning_rate=learning_rate_2, beta_1=0.9, beta_2=0.999, decay=decay_2
-#     # )
-
-#     model.compile(
-#         loss=loss_function, optimizer=optimizer, metrics=metrics,
-#     )
-
-#     # train for the remaining epochs
-#     history_2 = model.fit_generator(
-#         generator=train_generator,
-#         epochs=epochs_2,  #
-#         steps_per_epoch=train_generator.samples // batch_size,
-#         validation_data=validation_generator,
-#         validation_steps=validation_generator.samples // batch_size,
-#         # callbacks=[checkpoint_cb],
-#     )
-
-#     # wrap training hyper-parameters of both phases
-#     epochs = [epochs_1, epochs_2]
-#     learning_rate = [learning_rate_1, learning_rate_2]
-#     decay = [decay_1, decay_2]
-#     history = utils.extend_dict(history_1.history, history_2.history)
