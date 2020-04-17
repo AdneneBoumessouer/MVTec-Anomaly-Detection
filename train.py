@@ -22,11 +22,6 @@ import tensorflow as tf
 import sys
 import os
 import time
-
-from LR_Scheduler.lr_finder import LearningRateFinder
-from LR_Scheduler.clr_callback import CyclicLR
-from LR_Scheduler import config
-
 import ktrain
 
 """
@@ -148,7 +143,7 @@ def main(args):
         shape = (256, 256)
         preprocessing_function = None
         preprocessing = None
-    if architecture == "resnet":
+    elif architecture == "resnet":
         rescale = None
         shape = (299, 299)
         preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
@@ -224,12 +219,13 @@ def main(args):
 
     # define configuration for LR_find
     print("[INFO] initializing LR_find configuration...")
-    if loss == "SSIM":
+    if loss in ["SSIM", "MSSIM"]:
         stop_factor = -6
     elif loss == "L2":
         stop_factor = 6
     max_epochs = 10
     start_lr = 1e-7
+    plt.close("all")
 
     if architecture in ["mvtec", "mvtec2"]:
 
@@ -348,14 +344,14 @@ def main(args):
             lr_mult=1.01,
             max_epochs=max_epochs,
             stop_factor=stop_factor,
-            show_plot=True,
+            show_plot=False,
             verbose=1,
         )
-        # plt.figure()  # added
-        # learner.lr_plot()
+        # fig1 = plt.figure()  # added
+        learner.lr_plot()
         plt.savefig(os.path.join(save_dir, "lr_find_plot_1.png"))
-        plt.show(block=True)
-        plt.close()  # added
+        # plt.show(block=True)
+        plt.close("all")  # added
         print("[INFO] learning rate finder for PHASE 1 complete")
 
         # prompt user to enter max learning rate
@@ -394,13 +390,14 @@ def main(args):
             lr_mult=1.01,
             max_epochs=max_epochs,
             stop_factor=stop_factor,
-            show_plot=False,
+            show_plot=True,
             verbose=1,
         )
-        plt.figure()  # added
+        # fig2 = plt.figure()  # added
         learner.lr_plot()
+        plt.xscale("log")
         plt.savefig(os.path.join(save_dir, "lr_find_plot_2.png"))
-        plt.show(block=True)
+        # plt.show(block=True)
         plt.close()  # added
         print("[INFO] learning rate finder for PHASE 2 complete")
 
@@ -489,7 +486,7 @@ def main(args):
     plt.savefig(os.path.join(save_dir, "lr_plot.png"))
     print("learning rate plot saved at {} ".format(save_dir))
 
-    if args.inspect == True:
+    if args.inspect:
         # INSPECTING VALIDATION IMAGES
         print("[INFO] inspecting validation images...")
 
@@ -720,7 +717,7 @@ if __name__ == "__main__":
     # parser.add_argument(
     #     "-i",
     #     "--inspect",
-    #     type=bool,
+    #     type=str,
     #     default=True,
     #     help="whether or not to reconstruct validation and test images",
     # )
@@ -748,8 +745,8 @@ if __name__ == "__main__":
 
 # Examples of commands to initiate training with resnet architecture
 
-# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb -n 1100 --inspect True
-# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb --inspect True
+# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb -n 1100
+# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb --inspect
 
 
 # Examples of commands to initiate training with mvtec architecture
