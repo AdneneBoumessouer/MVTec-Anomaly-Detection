@@ -49,7 +49,9 @@ Mode    ----------------+----------------+----------------+
 
 
 def main(args):
+
     # ========================= SETUP ==============================
+
     # Get training data setup
     directory = args.directory
     train_data_dir = os.path.join(directory, "train")
@@ -71,39 +73,44 @@ def main(args):
     if loss == "SSIM" and color_mode == "rgb":
         raise ValueError("SSIM works only with grayscale images")
 
-    # set chennels and metrics to monitor training
+    # set channels
     if color_mode == "grayscale":
         channels = 1
-        resmaps_mode = "SSIM"
-        metrics = [custom_metrics.ssim_metric]
-        hist_keys = ("loss", "val_loss", "ssim_metric", "val_ssim_metric")
     elif color_mode == "rgb":
         channels = 3
-        resmaps_mode = "MSSIM"
-        metrics = [custom_metrics.mssim_metric]
-        hist_keys = ("loss", "val_loss", "mssim_metric", "val_mssim_metric")
 
     # build model
     if architecture == "mvtec":
         model = mvtec.build_model(channels)
+        dynamic_range = 1.0
     elif architecture == "mvtec2":
         model = mvtec_2.build_model(channels)
+        dynamic_range = 1.0
     elif architecture == "resnet":
         model, base_encoder = resnet.build_model()
+        dynamic_range = 2.0
     elif architecture == "nasnet":
-        raise Exception("Nasnet ist not yet implemented.")
         # model, base_encoder = models.build_nasnet()
-        # sys.exit()
+        # dynamic_range = 2
+        raise Exception("Nasnet ist not yet implemented.")
+
+    # set metrics to monitor training
+    if color_mode == "grayscale":
+        metrics = [custom_metrics.ssim_metric(dynamic_range)]
+        hist_keys = ("loss", "val_loss", "ssim", "val_ssim")
+    elif color_mode == "rgb":
+        metrics = [custom_metrics.mssim_metric(dynamic_range)]
+        hist_keys = ("loss", "val_loss", "mssim", "val_mssim")
 
     # set loss function
     if loss == "SSIM":
-        loss_function = loss_functions.ssim_loss
+        loss_function = loss_functions.ssim_loss(dynamic_range)
     elif loss == "MSSIM":
-        loss_function = loss_functions.mssim_loss
+        loss_function = loss_functions.mssim_loss(dynamic_range)
     elif loss == "L2":
         loss_function = loss_functions.l2_loss
     elif loss == "MSE":
-        loss_function = "mean_squared_error"
+        loss_function = keras.losses.mean_squared_error
 
     # specify model name and directory to save model
     now = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
@@ -344,14 +351,14 @@ def main(args):
             lr_mult=1.01,
             max_epochs=max_epochs,
             stop_factor=stop_factor,
-            show_plot=False,
+            show_plot=True,
             verbose=1,
         )
-        # fig1 = plt.figure()  # added
-        learner.lr_plot()
+        # plt.close("all")
+        # learner.lr_plot()
+        # plt.xscale("log")
         plt.savefig(os.path.join(save_dir, "lr_find_plot_1.png"))
-        # plt.show(block=True)
-        plt.close("all")  # added
+        plt.close("all")
         print("[INFO] learning rate finder for PHASE 1 complete")
 
         # prompt user to enter max learning rate
@@ -365,7 +372,7 @@ def main(args):
             cycle_momentum=True,
             max_momentum=0.95,
             min_momentum=0.85,
-            callbacks=[early_stopping_cb],
+            # callbacks=[early_stopping_cb],
             verbose=1,
         )
 
@@ -390,15 +397,14 @@ def main(args):
             lr_mult=1.01,
             max_epochs=max_epochs,
             stop_factor=stop_factor,
-            show_plot=True,
+            show_plot=False,
             verbose=1,
         )
-        # fig2 = plt.figure()  # added
+        # plt.close("all")
         learner.lr_plot()
-        plt.xscale("log")
+        # plt.xscale("log")
         plt.savefig(os.path.join(save_dir, "lr_find_plot_2.png"))
-        # plt.show(block=True)
-        plt.close()  # added
+        plt.close("all")
         print("[INFO] learning rate finder for PHASE 2 complete")
 
         # prompt user to enter max learning rate
@@ -412,7 +418,7 @@ def main(args):
             cycle_momentum=True,
             max_momentum=0.95,
             min_momentum=0.85,
-            callbacks=[early_stopping_cb],
+            # callbacks=[early_stopping_cb],
             verbose=1,
         )
 
@@ -487,7 +493,7 @@ def main(args):
     print("learning rate plot saved at {} ".format(save_dir))
 
     if args.inspect:
-        # INSPECTING VALIDATION IMAGES
+        # -------------- INSPECTING VALIDATION IMAGES --------------
         print("[INFO] inspecting validation images...")
 
         # create a directory to save inspection plots
@@ -501,16 +507,22 @@ def main(args):
             target_size=shape,
             color_mode=color_mode,
             batch_size=validation_generator.samples,
-            class_mode="input",
+            class_mode=None,
             subset="validation",
             shuffle=False,
         )
-        imgs_val_input = inspection_val_generator.next()[0]
+        # imgs_val_input = inspection_val_generator.next()[0]
+        imgs_val_input = next(inspection_val_generator)
         filenames = inspection_val_generator.filenames
 
         # predict on validation images
         print("[INFO] reconstructing validation images...")
         imgs_val_pred = model.predict(imgs_val_input)
+
+        # convert to grayscale if RGB
+        if color_mode == "rgb":
+            imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input).numpy()
+            imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred).numpy()
 
         # save input and pred arrays
         print(
@@ -531,10 +543,6 @@ def main(args):
 
         # compute resmaps using the L2 method
         resmaps_val_l2 = calculate_resmaps(imgs_val_input, imgs_val_pred, method="L2")
-
-        # # convert to grayscale if necessary
-        # if color_mode == "rgb":
-        #     resmaps_val_ssim = tf.image.rgb_to_grayscale(resmaps_val)
 
         # generate and save inspection images
         print("[INFO] generating inspection plots on validation images...")
@@ -567,7 +575,8 @@ def main(args):
             time.sleep(0.1)
             printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
 
-        # INSPECTING TEST IMAGES
+        # -------------- INSPECTING TEST IMAGES --------------
+
         print("[INFO] inspecting test images...")
 
         # create a directory to save inspection plots
@@ -590,14 +599,20 @@ def main(args):
             color_mode=color_mode,
             batch_size=total_number,
             shuffle=False,
-            class_mode="input",
+            class_mode=None,
         )
-        imgs_test_input = inspection_test_generator.next()[0]
+        # imgs_test_input = inspection_test_generator.next()[0]
+        imgs_test_input = next(inspection_test_generator)
         filenames = inspection_test_generator.filenames
 
         # predict on test images
         print("[INFO] reconstructing test images...")
         imgs_test_pred = model.predict(imgs_test_input)
+
+        # convert to grayscale if RGB
+        if color_mode == "rgb":
+            imgs_test_input = tf.image.rgb_to_grayscale(imgs_test_input).numpy()
+            imgs_test_pred = tf.image.rgb_to_grayscale(imgs_test_pred).numpy()
 
         # save input and pred arrays
         print(
@@ -610,10 +625,6 @@ def main(args):
 
         # compute resmaps by substracting pred out of input
         resmaps_test_diff = imgs_test_input - imgs_test_pred
-
-        # # convert to grayscale if necessary
-        # if color_mode == "rgb":
-        #     resmaps_test_ssim = tf.image.rgb_to_grayscale(resmaps_test)
 
         # compute resmaps using the ssim method
         resmaps_test_ssim = calculate_resmaps(
@@ -714,18 +725,9 @@ if __name__ == "__main__":
         help="color mode",
     )
 
-    # parser.add_argument(
-    #     "-i",
-    #     "--inspect",
-    #     type=str,
-    #     default=True,
-    #     help="whether or not to reconstruct validation and test images",
-    # )
-
     parser.add_argument(
         "-i",
         "--inspect",
-        # default=True,
         action="store_true",
         help="whether or not to reconstruct validation and test images after training",
     )
@@ -747,6 +749,8 @@ if __name__ == "__main__":
 
 # python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb -n 1100
 # python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb --inspect
+
+# python3 train.py -d werkstueck/data_a30_nikon_schwarz_ooc_cut -a mvtec2 -b 4 -l ssim -c grayscale --inspect
 
 
 # Examples of commands to initiate training with mvtec architecture
