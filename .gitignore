@@ -15,6 +15,9 @@ saved_models/
 saved_models/**/*.npy
 results/**/*.npy
 
+# jupyter notebboks
+*.ipynb
+
 # saved models
 saved_models/**/*.h5
 

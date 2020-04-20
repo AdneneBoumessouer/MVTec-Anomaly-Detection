@@ -143,14 +143,8 @@ def main(args):
         print("[INFO] exiting")
         exit()
 
-    # scale pixel values linearly to [0,1]
-    # resmaps_val = scale_pixel_values(architecture, resmaps_val)
-
     # Convert to 8-bit unsigned int
     resmaps_val = img_as_ubyte(resmaps_val)
-
-    # blur resmaps
-    # resmaps_val = filter_gauss_images(resmaps_val)
 
     # ========================= VALIDATION ALGORITHM ==============================
 
@@ -171,9 +165,6 @@ def main(args):
         for threshold in range(threshold_min, threshold_max + 1):
             # threshold residual maps
             resmaps_th = threshold_images(resmaps_val, threshold)
-
-            # filter images to remove salt noise
-            # resmaps_val = filter_median_images(resmaps_val, kernel_size=3)
 
             # compute connected components
             resmaps_labeled, areas_all = label_images(resmaps_th)

@@ -531,7 +531,7 @@ def main(args):
             )
         )
         utils.save_np(imgs_val_input, inspection_val_dir, "imgs_val_input.npy")
-        utils.save_np(imgs_val_pred, inspection_val_dir, "imgs_val_input.npy")
+        utils.save_np(imgs_val_pred, inspection_val_dir, "imgs_val_pred.npy")
 
         # compute resmaps by substracting pred out of input
         resmaps_val_diff = imgs_val_input - imgs_val_pred
@@ -557,13 +557,13 @@ def main(args):
             axarr[0, 1].imshow(imgs_val_pred[i, :, :, 0], cmap="gray")
             axarr[0, 1].set_title("pred")
             axarr[0, 1].set_axis_off()
-            axarr[1, 0].imshow(resmaps_val_diff[i, :, :, 0], cmap="gray")
+            axarr[1, 0].imshow(resmaps_val_diff[i, :, :, 0], cmap="gray")  # remove
             axarr[1, 0].set_title("resmap_diff")
             axarr[1, 0].set_axis_off()
-            axarr[1, 1].imshow(resmaps_val_ssim[i, :, :, 0], cmap="gray")
+            axarr[1, 1].imshow(resmaps_val_ssim[i, :, :, 0], cmap="inferno")
             axarr[1, 1].set_title("resmap_ssim")
             axarr[1, 1].set_axis_off()
-            axarr[2, 0].imshow(resmaps_val_l2[i, :, :, 0], cmap="gray")
+            axarr[2, 0].imshow(resmaps_val_l2[i, :, :, 0], cmap="inferno")  # remove
             axarr[2, 0].set_title("resmap_L2")
             axarr[2, 0].set_axis_off()
             axarr[2, 1].set_axis_off()
@@ -621,7 +621,7 @@ def main(args):
             )
         )
         utils.save_np(imgs_test_input, inspection_test_dir, "imgs_test_input.npy")
-        utils.save_np(imgs_test_pred, inspection_test_dir, "imgs_test_input.npy")
+        utils.save_np(imgs_test_pred, inspection_test_dir, "imgs_test_pred.npy")
 
         # compute resmaps by substracting pred out of input
         resmaps_test_diff = imgs_test_input - imgs_test_pred
