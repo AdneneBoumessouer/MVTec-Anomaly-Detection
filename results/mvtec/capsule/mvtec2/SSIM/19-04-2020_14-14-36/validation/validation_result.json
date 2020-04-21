@@ -1,4 +1,4 @@
 {
-    "min_area": 20,
-    "threshold": 208
+    "min_area": 10,
+    "threshold": 220
 }
