@@ -47,19 +47,8 @@ def main(args):
     # parse arguments
     model_path = args.path
     save = args.save
-    threshold = args.threshold
-    min_area = args.area
 
-    if threshold is None and min_area is None:
-        adopt_validation = True
-        print("[INFO] Testing with validation areas and thresholds.")
-    elif threshold is not None and min_area is not None:
-        adopt_validation = False
-        print("[INFO] Testing with user passed areas and thresholds")
-    else:
-        raise Exception("Threshold and area must both be passed.")
-
-    # ========================= SETUP ==============================
+    # ========================= LOAD SETUP ==============================
 
     # load model, setup and history
     model, setup, history = utils.load_model_HDF5(model_path)
@@ -77,9 +66,6 @@ def main(args):
 
     # train_setup
     color_mode = setup["train_setup"]["color_mode"]
-    learning_rate = setup["train_setup"]["learning_rate"]
-    decay = setup["train_setup"]["decay"]
-    epochs_trained = setup["train_setup"]["epochs_trained"]
     nb_training_images_aug = setup["train_setup"]["nb_training_images_aug"]
     epochs = setup["train_setup"]["epochs"]
     batch_size = setup["train_setup"]["batch_size"]
@@ -94,36 +80,27 @@ def main(args):
     model_dir_name = os.path.basename(str(Path(model_path).parent))
 
     save_dir = os.path.join(
-        os.getcwd(),
-        "results",
-        directory,
-        architecture,
-        loss,
-        model_dir_name,
-        "test",
-        # "th_" + str(threshold) + "_a_" + str(min_area),
+        os.getcwd(), "results", directory, architecture, loss, model_dir_name, "test",
     )
 
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    if adopt_validation:
-        # load areas and corresponding thresholds from validation text file
+    if args.adopt_validation:
+        print("[INFO] adopting min_area and threshold yielded during validation...")
+        # load area and corresponding threshold from validation json file
         parent_dir = str(Path(save_dir).parent)
         val_dir = os.path.join(parent_dir, "validation")
-        df_val = pd.read_pickle(os.path.join(val_dir, "validation_results.pkl"))
-        dict_val = df_val.to_dict(orient="list")
-        # create a list containing (min_area, threshold) pairs
-        elems = list(zip(dict_val["min_area"], dict_val["threshold"]))
-    else:
-        # compute combinations of given areas and thresholds
-        areas = sorted(list(set(args.area)))
-        thresholds = sorted(list(set(args.threshold)))
-        # create a list containing (min_area, threshold) pairs
-        elems = [(area, threshold) for threshold in thresholds for area in areas]
+        with open(os.path.join(val_dir, "validation_result.json"), "r") as read_file:
+            validation_result = json.load(read_file)
 
-    with open(os.path.join(save_dir, "classification.txt"), "w+") as f:
-        f.write("Classification of image files.\n\n")
+        min_area = validation_result["min_area"]
+        threshold = validation_result["threshold"]
+
+    else:
+        print("[INFO] adopting user passed min_area and threshold...")
+        threshold = args.threshold
+        min_area = args.area
 
     # ============================= PREPROCESSING ===============================
 
@@ -150,9 +127,9 @@ def main(args):
         color_mode=color_mode,
         batch_size=total_number,
         shuffle=False,
-        class_mode="input",
+        class_mode=None,
     )
-    imgs_test_input = test_generator.next()[0]
+    imgs_test_input = next(test_generator)
 
     # retrieve test image names
     filenames = test_generator.filenames
@@ -161,122 +138,85 @@ def main(args):
     imgs_test_pred = model.predict(imgs_test_input)
 
     # calculate residual maps on test set
-    resmaps_test = calculate_resmaps(imgs_test_input, imgs_test_pred, loss="SSIM")
-
-    if color_mode == "rgb":
-        resmaps_test = tf.image.rgb_to_grayscale(resmaps_test)
-
-    # format float64, values between [-1,1]
-    if save:
-        utils.save_np(imgs_test_input, save_dir, "imgs_test_input.npy")
-        utils.save_np(imgs_test_pred, save_dir, "imgs_test_pred.npy")
-        utils.save_np(resmaps_test, save_dir, "resmaps_test.npy")
-
-    # scale pixel values linearly to [0,1]
-    # resmaps_test = scale_pixel_values(architecture, resmaps_test)
+    resmaps_test = calculate_resmaps(imgs_test_input, imgs_test_pred, method="SSIM")
 
     # Convert to 8-bit unsigned int
     resmaps_test = img_as_ubyte(resmaps_test)
 
-    # blur resmaps
-    # resmaps_val = filter_gauss_images(resmaps_val)
-
-    # =================== Classification Algorithm ==========================
+    # ====================== Classification ==========================
 
     # initialize dictionary to store test results
-    dict_test = {"min_area": [], "threshold": [], "TPR": [], "TNR": []}
+    test_result = {"min_area": [], "threshold": [], "TPR": [], "TNR": []}
 
-    # initialize progress bar
-    l = len(elems)
-    printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
+    # threshold residual maps with the given threshold
+    resmaps_th = threshold_images(resmaps_test, threshold)[:, :, :, 0]
 
-    # classify test images for all (min_area, threshold) pairs
-    for i, elem in enumerate(elems):
-        # get (min_area, threshold) pair
-        min_area, threshold = elem[0], elem[1]
+    # compute connected components
+    resmaps_labeled, areas_all = label_images(resmaps_th)
 
-        # threshold residual maps with the given threshold
-        resmaps_th = threshold_images(resmaps_test, threshold)
+    # classify images
+    y_pred = classify(areas_all, min_area)
 
-        # filter images to remove salt noise
-        # resmaps_test = filter_median_images(resmaps_test, kernel_size=3)
+    # retrieve ground truth
+    y_true = [1 if "good" not in filename.split("/") else 0 for filename in filenames]
 
-        # compute connected components
-        resmaps_labeled, areas_all = label_images(resmaps_th)
+    # condition positive (P)
+    P = y_true.count(1)
 
-        # classify images
-        y_pred = classify(areas_all, min_area)
+    # condition negative (N)
+    N = y_true.count(0)
 
-        # retrieve ground truth
-        y_true = [
-            1 if "good" not in filename.split("/") else 0 for filename in filenames
-        ]
+    # true positive (TP)
+    TP = np.sum([1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(total_number)])
 
-        # save classification of image files in a .txt file
-        classification = {
-            "filenames": filenames,
-            "predictions": y_pred,
-            "truth": y_true,
-        }
-        df_clf = pd.DataFrame.from_dict(classification)
-        with open(os.path.join(save_dir, "classification.txt"), "a") as f:
-            f.write(
-                "min_area = {}, threshold = {}, index = {}\n\n".format(
-                    min_area, threshold, i
-                )
-            )
-            f.write(df_clf.to_string(header=True, index=True))
-            f.write("\n" + "_" * 50 + "\n\n")
+    # true negative (TN)
+    TN = np.sum(
+        [1 if y_pred[i] == y_true[i] == False else 0 for i in range(total_number)]
+    )
 
-        # condition positive (P)
-        P = y_true.count(1)
+    # sensitivity, recall, hit rate, or true positive rate (TPR)
+    TPR = TP / P
 
-        # condition negative (N)
-        N = y_true.count(0)
+    # specificity, selectivity or true negative rate (TNR)
+    TNR = TN / N
 
-        # true positive (TP)
-        TP = np.sum(
-            [1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(total_number)]
-        )
+    # confusion matrix
+    conf_matrix = confusion_matrix(y_true, y_pred, normalize="true")
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, normalize="true").ravel()
 
-        # true negative (TN)
-        TN = np.sum(
-            [1 if y_pred[i] == y_true[i] == False else 0 for i in range(total_number)]
-        )
+    # append test results to dictionary
+    test_result["min_area"].append(min_area)
+    test_result["threshold"].append(threshold)
+    test_result["TPR"].append(TPR)
+    test_result["TNR"].append(TNR)
 
-        # sensitivity, recall, hit rate, or true positive rate (TPR)
-        TPR = TP / P
+    # save validation result
+    with open(os.path.join(save_dir, "test_result.json"), "w") as json_file:
+        json.dump(test_result, json_file, indent=4, sort_keys=False)
 
-        # specificity, selectivity or true negative rate (TNR)
-        TNR = TN / N
+    # save classification of image files in a .txt file
+    classification = {
+        "filenames": filenames,
+        "predictions": y_pred,
+        "truth": y_true,
+        "accurate_predictions": np.array(y_true) == np.array(y_pred),
+    }
+    df_clf = pd.DataFrame.from_dict(classification)
+    with open(os.path.join(save_dir, "classification.txt"), "w") as f:
+        f.write("min_area = {}, threshold = {}\n\n".format(min_area, threshold))
+        f.write(df_clf.to_string(header=True, index=True))
 
-        # confusion matrix
-        conf_matrix = confusion_matrix(y_true, y_pred, normalize="true")
-        tn, fp, fn, tp = confusion_matrix(y_true, y_pred, normalize="true").ravel()
-
-        # append test results to dictionary
-        dict_test["min_area"].append(min_area)
-        dict_test["threshold"].append(threshold)
-        dict_test["TPR"].append(TPR)
-        dict_test["TNR"].append(TNR)
-
-        # print progress bar
-        time.sleep(0.1)
-        printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
-
-    # print test results to console
-    df_test = pd.DataFrame.from_dict(dict_test)
-    df_test.sort_values(by=["min_area", "threshold"], inplace=True)
+    # print classification results to console
     with pd.option_context("display.max_rows", None, "display.max_columns", None):
-        print(df_test)
+        print(df_clf)
 
-    # save DataFrame (as .txt and .pkl)
-    with open(os.path.join(save_dir, "test_results.txt"), "w+") as f:
-        f.write(df_test.to_string(header=True, index=True))
-        print("test_results.txt saved at {}".format(save_dir))
+    # print test_results to console
+    print("[INFO] test results: {}".format(test_result))
 
-    df_test.to_pickle(os.path.join(save_dir, "test_results.pkl"))
-    print("test_results.pkl saved at {}".format(save_dir))
+    if save:
+        utils.save_np(imgs_val_input, save_dir, "imgs_test_input.npy")
+        utils.save_np(imgs_val_pred, save_dir, "imgs_test_pred.npy")
+        utils.save_np(resmaps_val, save_dir, "resmaps_test.npy")
 
 
 if __name__ == "__main__":
@@ -285,27 +225,28 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
     )
+
     parser.add_argument(
-        "-t",
-        "--threshold",
-        nargs="+",
-        type=int,
-        default=None,
-        metavar="",
-        help="threshold(s)",
+        "--adopt-validation",
+        action="store_true",
+        help="whether or not to (min_area, threshold) value pairs during validation",
     )
+
     parser.add_argument(
-        "-a", "--area", nargs="+", type=int, default=None, metavar="", help="area(s)",
+        "-t", "--threshold", type=int, default=220, metavar="", help="threshold(s)",
     )
+
+    parser.add_argument(
+        "-a", "--area", type=int, default=80, metavar="", help="area(s)",
+    )
+
     parser.add_argument(
         "-s",
         "--save",
-        type=bool,
-        required=False,
-        default=False,
-        metavar="",
+        action="store_true",
         help="save inputs, predictions and reconstructions of validation dataset",
     )
+
     args = parser.parse_args()
 
     main(args)
@@ -316,7 +257,7 @@ if __name__ == "__main__":
 # python3 test.py -p saved_models/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
 
 # using passed arguments for threshold and area
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -t 28 -a 50
+# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 --adopt-validation
 # python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -t 141 -a 40
 # python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
 # python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5

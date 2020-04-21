@@ -53,6 +53,7 @@ def load_model_HDF5(model_path):
     dir_name = os.path.dirname(model_path)
     setup = get_model_setup(model_path)
     loss = setup["train_setup"]["loss"]
+    dynamic_range = setup["train_setup"]["dynamic_range"]
 
     # load autoencoder
     if loss == "MSSIM":
@@ -60,8 +61,8 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "mssim_loss": loss_functions.mssim_loss,
-                "mssim_metric": custom_metrics.mssim_metric,
+                "loss": loss_functions.mssim_loss(dynamic_range),
+                "mssim": custom_metrics.mssim_metric(dynamic_range),
             },
             compile=True,
         )
@@ -71,8 +72,8 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "ssim_loss": loss_functions.ssim_loss,
-                "ssim_metric": custom_metrics.ssim_metric,
+                "loss": loss_functions.ssim_loss(dynamic_range),
+                "ssim": custom_metrics.ssim_metric(dynamic_range),
             },
             compile=True,
         )
@@ -83,8 +84,8 @@ def load_model_HDF5(model_path):
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
                 "l2_loss": loss_functions.l2_loss,
-                "ssim_loss": loss_functions.ssim_loss,
-                "mssim_metric": custom_metrics.mssim_metric,
+                "loss": loss_functions.ssim_loss(dynamic_range),
+                "mssim": custom_metrics.mssim_metric(dynamic_range),
             },
             compile=True,
         )
@@ -246,3 +247,9 @@ def save_images(save_dir, imgs, filenames, color_mode, suffix):
             plt.imsave(save_path, img)
 
     print("[INFO] validation images for inspection saved at /{}".format(save_dir))
+
+
+def save_dataframe_as_text_file(df, save_dir, filename):
+    with open(os.path.join(save_dir, filename), "w+") as f:
+        f.write(df.to_string(header=True, index=True))
+        print("validation_results.txt saved at {}".format(save_dir))

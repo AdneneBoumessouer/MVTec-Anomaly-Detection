@@ -455,6 +455,7 @@ def main(args):
                 "min_lr_2": max_lr_2 / 10,
                 "batch_size": batch_size,
                 "loss": loss,
+                "dynamic_range": dynamic_range,
                 "color_mode": color_mode,
                 "channels": channels,
                 "validation_split": validation_split,
