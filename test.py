@@ -257,7 +257,6 @@ if __name__ == "__main__":
 # python3 test.py -p saved_models/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
 
 # using passed arguments for threshold and area
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 --adopt-validation
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -t 141 -a 40
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
+# python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 --adopt-validation
+
+# python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -a 10 -t 200

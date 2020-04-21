@@ -203,5 +203,4 @@ if __name__ == "__main__":
 
 # Example of command to initiate validation
 
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -a 55
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -a 30 200
+# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -a 10
