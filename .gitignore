@@ -1,7 +1,7 @@
 /mvtec/
 /werkstueck/
 /inspection/
-# inspection.py
+inspection.py
 inspection2.py
 inspection3.py
 train_resnet.py
