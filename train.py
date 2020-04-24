@@ -552,21 +552,42 @@ def main(args):
         for i in range(len(imgs_val_input)):
             f, axarr = plt.subplots(3, 2)
             f.set_size_inches((8, 9))
-            axarr[0, 0].imshow(imgs_val_input[i, :, :, 0], cmap="gray")
+
+            im00 = axarr[0, 0].imshow(
+                imgs_val_input[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            )
             axarr[0, 0].set_title("input")
             axarr[0, 0].set_axis_off()
-            axarr[0, 1].imshow(imgs_val_pred[i, :, :, 0], cmap="gray")
+            f.colorbar(im00, ax=axarr[0, 0])
+
+            im01 = axarr[0, 1].imshow(
+                imgs_val_pred[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            )
             axarr[0, 1].set_title("pred")
             axarr[0, 1].set_axis_off()
-            axarr[1, 0].imshow(resmaps_val_diff[i, :, :, 0], cmap="gray")  # remove
+            f.colorbar(im01, ax=axarr[0, 1])
+
+            im10 = axarr[1, 0].imshow(
+                resmaps_val_diff[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            )
             axarr[1, 0].set_title("resmap_diff")
             axarr[1, 0].set_axis_off()
-            axarr[1, 1].imshow(resmaps_val_ssim[i, :, :, 0], cmap="inferno")
+            f.colorbar(im10, ax=axarr[1, 0])
+
+            im11 = axarr[1, 1].imshow(
+                resmaps_val_ssim[i, :, :, 0], cmap="inferno", vmin=0.0, vmax=1.0
+            )
             axarr[1, 1].set_title("resmap_ssim")
             axarr[1, 1].set_axis_off()
-            axarr[2, 0].imshow(resmaps_val_l2[i, :, :, 0], cmap="inferno")  # remove
+            f.colorbar(im11, ax=axarr[1, 1])
+
+            im20 = axarr[2, 0].imshow(
+                resmaps_val_l2[i, :, :, 0], cmap="inferno", vmin=0.0, vmax=1.0
+            )
             axarr[2, 0].set_title("resmap_L2")
             axarr[2, 0].set_axis_off()
+            f.colorbar(im20, ax=axarr[2, 0])
+
             axarr[2, 1].set_axis_off()
             plt.suptitle("VALIDATION\n" + filenames[i])
             plot_name = utils.get_plot_name(filenames[i], suffix="inspection")
@@ -644,21 +665,42 @@ def main(args):
         for i in range(len(imgs_test_input)):
             f, axarr = plt.subplots(3, 2)
             f.set_size_inches((8, 9))
-            axarr[0, 0].imshow(imgs_test_input[i, :, :, 0], cmap="gray")
+
+            im00 = axarr[0, 0].imshow(
+                imgs_test_input[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            )
             axarr[0, 0].set_title("input")
             axarr[0, 0].set_axis_off()
-            axarr[0, 1].imshow(imgs_test_pred[i, :, :, 0], cmap="gray")
+            f.colorbar(im00, ax=axarr[0, 0])
+
+            im01 = axarr[0, 1].imshow(
+                imgs_test_pred[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            )
             axarr[0, 1].set_title("pred")
             axarr[0, 1].set_axis_off()
-            axarr[1, 0].imshow(resmaps_test_diff[i, :, :, 0], cmap="gray")
+            f.colorbar(im01, ax=axarr[0, 1])
+
+            im10 = axarr[1, 0].imshow(
+                resmaps_test_diff[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            )
             axarr[1, 0].set_title("resmap_diff")
             axarr[1, 0].set_axis_off()
-            axarr[1, 1].imshow(resmaps_test_ssim[i, :, :, 0], cmap="gray")
+            f.colorbar(im10, ax=axarr[1, 0])
+
+            im11 = axarr[1, 1].imshow(
+                resmaps_test_ssim[i, :, :, 0], cmap="inferno", vmin=0.0, vmax=1.0
+            )
             axarr[1, 1].set_title("resmap_ssim")
             axarr[1, 1].set_axis_off()
-            axarr[2, 0].imshow(resmaps_test_l2[i, :, :, 0], cmap="gray")
+            f.colorbar(im11, ax=axarr[1, 1])
+
+            im20 = axarr[2, 0].imshow(
+                resmaps_test_l2[i, :, :, 0], cmap="inferno", vmin=0.0, vmax=1.0
+            )
             axarr[2, 0].set_title("resmap_L2")
             axarr[2, 0].set_axis_off()
+            f.colorbar(im20, ax=axarr[2, 0])
+
             axarr[2, 1].set_axis_off()
             plt.suptitle("TEST\n" + filenames[i])
             plot_name = utils.get_plot_name(filenames[i], suffix="inspection")
@@ -756,5 +798,5 @@ if __name__ == "__main__":
 
 # Examples of commands to initiate training with mvtec architecture
 
-# python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale --inspect True
-# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec2 -b 12 -l l2 -c grayscale --inspect True
+# python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale --inspect
+# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec2 -b 12 -l l2 -c grayscale --inspect
