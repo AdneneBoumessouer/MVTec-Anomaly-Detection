@@ -1,2 +1,0 @@
-   min_area  threshold  TPR  TNR
-0        50        140  1.0  0.0

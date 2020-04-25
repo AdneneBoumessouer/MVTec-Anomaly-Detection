@@ -1,5 +1,8 @@
 import numpy as np
 import cv2 as cv
+from skimage import data
+from skimage.filters import threshold_otsu
+from skimage.segmentation import clear_border
 from skimage.measure import label, regionprops
 from skimage.morphology import closing, square
 from skimage.color import label2rgb
@@ -94,12 +97,22 @@ def label_images(images):
     """
     images_labeled = np.zeros(shape=images.shape)
     areas_all = []
-    for i, image in enumerate(images):
-        # segment current image in connected components
-        image_labeled = label(image)
+    for i, image_th in enumerate(images):
+        # close small holes with binary closing
+        bw = closing(image_th, square(3))
+
+        # remove artifacts connected to image border
+        cleared = clear_border(bw)
+
+        # label image regions
+        image_labeled = label(cleared)
+
+        # append image
         images_labeled[i] = image_labeled
+
         # compute areas of anomalous regions in the current image
         regions = regionprops(image_labeled)
         areas = [region.area for region in regions]
         areas_all.append(areas)
+
     return images_labeled, areas_all

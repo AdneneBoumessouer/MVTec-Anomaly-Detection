@@ -29,16 +29,7 @@ def main(args):
     # Get validation arguments
     model_path = args.path
     save = args.save
-    if args.area is None:
-        pass
-    else:
-        area_list = sorted(list(set(args.area)))
-        if len(area_list) > 2:
-            raise ValueError(
-                "Exactly two area values must be passed: area_min and area_max"
-            )
-        else:
-            min_areas = list(np.arange(area_list[0], area_list[1] + 1))
+    min_area = args.area
 
     # ========================= SETUP ==============================
 
@@ -58,9 +49,6 @@ def main(args):
 
     # train_setup
     color_mode = setup["train_setup"]["color_mode"]
-    learning_rate = setup["train_setup"]["learning_rate"]
-    decay = setup["train_setup"]["decay"]
-    epochs_trained = setup["train_setup"]["epochs_trained"]
     nb_training_images_aug = setup["train_setup"]["nb_training_images_aug"]
     epochs = setup["train_setup"]["epochs"]
     batch_size = setup["train_setup"]["batch_size"]
@@ -86,11 +74,6 @@ def main(args):
     )
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
-
-    # Plot and save loss and val_loss
-    # plot = pd.DataFrame(history[["loss", "val_loss"]]).plot(figsize=(8, 5))
-    # fig = plot.get_figure()
-    # fig.savefig(os.path.join(save_dir, "train_val_losses.png"))
 
     # ============================= PREPROCESSING ===============================
 
@@ -129,81 +112,64 @@ def main(args):
     imgs_val_pred = model.predict(imgs_val_input)
 
     # compute residual maps on validation dataset
-    resmaps_val = calculate_resmaps(imgs_val_input, imgs_val_pred, loss="SSIM")
+    resmaps_val = calculate_resmaps(imgs_val_input, imgs_val_pred, method="SSIM")
 
     if color_mode == "rgb":
         resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
-
-    if save:
-        utils.save_np(imgs_val_input, save_dir, "imgs_val_input.npy")
-        utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
-        utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
 
     if args.area is None:
         print("[INFO] exiting")
         exit()
 
-    # scale pixel values linearly to [0,1]
-    # resmaps_val = scale_pixel_values(architecture, resmaps_val)
-
     # Convert to 8-bit unsigned int
     resmaps_val = img_as_ubyte(resmaps_val)
 
-    # blur resmaps
-    # resmaps_val = filter_gauss_images(resmaps_val)
-
     # ========================= VALIDATION ALGORITHM ==============================
 
-    # initialize validation dictionary
-    dict_val = {"min_area": [], "threshold": []}
-
     # set threshold boundaries
-    threshold_min = np.amin(resmaps_val)
+    threshold_min = 160  # np.amin(resmaps_val) + 1
     threshold_max = np.amax(resmaps_val)
+    thresholds = list(range(threshold_min, threshold_max + 1))
 
     # initialize progress bar
-    l = len(min_areas)
+    l = len(thresholds)
     printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
 
-    # loop over all min_areas and compute corresponding thresholds
-    for i, min_area in enumerate(min_areas):
+    for i, threshold in enumerate(thresholds):
+        # threshold residual maps
+        resmaps_th = threshold_images(resmaps_val, threshold)[:, :, :, 0]
 
-        for threshold in range(threshold_min, threshold_max + 1):
-            # threshold residual maps
-            resmaps_th = threshold_images(resmaps_val, threshold)
+        # compute connected components
+        resmaps_labeled, areas_all = label_images(resmaps_th)
 
-            # filter images to remove salt noise
-            # resmaps_val = filter_median_images(resmaps_val, kernel_size=3)
-
-            # compute connected components
-            resmaps_labeled, areas_all = label_images(resmaps_th)
-
-            # check if area of largest anomalous region is below the minimum area
-            areas_all_flat = [item for sublist in areas_all for item in sublist]
-            areas_all_flat.sort(reverse=True)
+        # check if area of largest anomalous region is below the minimum area
+        areas_all_flat = [item for sublist in areas_all for item in sublist]
+        areas_all_flat.sort(reverse=True)
+        try:
             if min_area > areas_all_flat[0]:
+                time.sleep(0.1)
+                printProgressBar(l, l, prefix="Progress:", suffix="Complete", length=50)
                 break
+        except IndexError:
+            continue
 
         # print progress bar
         time.sleep(0.1)
         printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
 
-        # append min_area and corresponding threshold to validation dictionary
-        dict_val["min_area"].append(min_area)
-        dict_val["threshold"].append(threshold)
+    # save area and threshold pair
+    validation_result = {"min_area": min_area, "threshold": threshold}
+    print("[INFO] validation results: {}".format(validation_result))
 
-    # print validation DataFrame to console
-    df_val = pd.DataFrame.from_dict(dict_val)
-    with pd.option_context("display.max_rows", None, "display.max_columns", None):
-        print(df_val)
+    # save validation result
+    with open(os.path.join(save_dir, "validation_result.json"), "w") as json_file:
+        json.dump(validation_result, json_file, indent=4, sort_keys=False)
+    print("[INFO] validation results saved at {}".format(save_dir))
 
-    # save validation DataFrame as .txt and .pkl files
-    with open(os.path.join(save_dir, "validation_results.txt"), "w+") as f:
-        # f.truncate(0)
-        f.write(df_val.to_string(header=True, index=True))
-        print("validation_results.txt saved at {}".format(save_dir))
-    df_val.to_pickle(os.path.join(save_dir, "validation_results.pkl"))
-    print("validation_results.pkl saved at {}".format(save_dir))
+    if save:
+        utils.save_np(imgs_val_input, save_dir, "imgs_val_input.npy")
+        utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
+        utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
 
 
 if __name__ == "__main__":
@@ -213,29 +179,28 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
     )
+
     parser.add_argument(
         "-a",
         "--area",
-        nargs="+",
+        # nargs="+",
         type=int,
-        required=False,
+        required=True,
         metavar="",
-        help="minimum area for a connected component",
+        help="minimum area for a connected component to be classified as anomalous",
     )
+
     parser.add_argument(
         "-s",
         "--save",
-        type=bool,
-        required=False,
-        default=False,
-        metavar="",
+        action="store_true",
         help="save inputs, predictions and reconstructions of validation dataset",
     )
+
     args = parser.parse_args()
 
     main(args)
 
 # Example of command to initiate validation
 
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -a 55
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5 -a 30 200
+# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -a 10

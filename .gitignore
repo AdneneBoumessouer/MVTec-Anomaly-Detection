@@ -1,15 +1,22 @@
 /mvtec/
 /werkstueck/
 /inspection/
-# inspection.py
+inspection.py
 inspection2.py
 inspection3.py
+train_resnet.py
 xyz.py
 .vscode/
+
+# remove this line after finishing project to upload data
+saved_models/
 
 # numpy arrays
 saved_models/**/*.npy
 results/**/*.npy
+
+# jupyter notebboks
+# *.ipynb
 
 # saved models
 saved_models/**/*.h5
