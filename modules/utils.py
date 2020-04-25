@@ -84,7 +84,7 @@ def load_model_HDF5(model_path):
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
                 "l2_loss": loss_functions.l2_loss,
-                "loss": loss_functions.ssim_loss(dynamic_range),
+                "ssim": loss_functions.ssim_loss(dynamic_range),
                 "mssim": custom_metrics.mssim_metric(dynamic_range),
             },
             compile=True,
