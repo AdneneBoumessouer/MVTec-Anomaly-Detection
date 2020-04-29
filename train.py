@@ -34,7 +34,7 @@ Created on Tue Dec 10 19:46:17 2019
 Valid input arguments for color_mode and loss:
 
                         +----------------+----------------+
-                        |       Model Architecture        |  
+                        |       Model Architecture        |
                         +----------------+----------------+
                         | mvtec, mvtec2  | Resnet, Nasnet |
 ========================+================+================+
@@ -151,16 +151,22 @@ def main(args):
         shape = (256, 256)
         preprocessing_function = None
         preprocessing = None
+        vmin = 0.0
+        vmax = 1.0
     elif architecture == "resnet":
         rescale = None
         shape = (299, 299)
         preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
         preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
+        vmin = -1.0
+        vmax = 1.0
     elif architecture == "nasnet":
         rescale = None
         shape = (224, 224)
         preprocessing_function = keras.applications.nasnet.preprocess_input
         preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
+        vmin = -1.0
+        vmax = 1.0
 
     print("[INFO] Using Keras's flow_from_directory method...")
     # This will do preprocessing and realtime data augmentation:
@@ -553,14 +559,14 @@ def main(args):
             f.set_size_inches((4, 9))
 
             im00 = axarr[0].imshow(
-                imgs_val_input[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+                imgs_val_input[i, :, :, 0], cmap="gray", vmin=vmin, vmax=vmax
             )
             axarr[0].set_title("input")
             axarr[0].set_axis_off()
             f.colorbar(im00, ax=axarr[0])
 
             im10 = axarr[1].imshow(
-                imgs_val_pred[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+                imgs_val_pred[i, :, :, 0], cmap="gray", vmin=vmin, vmax=vmax
             )
             axarr[1].set_title("pred")
             axarr[1].set_axis_off()
@@ -646,14 +652,14 @@ def main(args):
             f.set_size_inches((4, 9))
 
             im00 = axarr[0].imshow(
-                imgs_test_input[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+                imgs_test_input[i, :, :, 0], cmap="gray", vmin=vmin, vmax=vmax
             )
             axarr[0].set_title("input")
             axarr[0].set_axis_off()
             f.colorbar(im00, ax=axarr[0])
 
             im10 = axarr[1].imshow(
-                imgs_test_pred[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+                imgs_test_pred[i, :, :, 0], cmap="gray", vmin=vmin, vmax=vmax
             )
             axarr[1].set_title("pred")
             axarr[1].set_axis_off()
@@ -754,8 +760,8 @@ if __name__ == "__main__":
 
 # Examples of commands to initiate training with resnet architecture
 
-# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb -n 1100
 # python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb --inspect
+# python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l l2 -c grayscale --inspect
 
 # python3 train.py -d werkstueck/data_a30_nikon_schwarz_ooc_cut -a mvtec2 -b 4 -l ssim -c grayscale --inspect
 
