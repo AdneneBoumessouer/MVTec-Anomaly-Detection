@@ -92,8 +92,24 @@ def threshold_images(images, threshold):
 
 def label_images(images):
     """
-    Segments images into images of connected components (anomalous regions).
-    Returns segmented images and a list containing their areas. 
+    Segments images into images of connected components (regions).
+    Returns segmented images and a list of lists, whereby each list 
+    contains the areas of the regions of the corresponding image. 
+    
+    Parameters
+    ----------
+    images : array of uint8
+        Thresholded residual maps.
+    kernel_size : int, optional
+        Size of the kernel window. The default is 3.
+
+    Returns
+    -------
+    images_labeled : array of uint8
+        Labeled images.
+    areas_all : list of lists
+        List of lists, whereby each list contains the areas of the regions of the corresponding image.
+
     """
     images_labeled = np.zeros(shape=images.shape)
     areas_all = []

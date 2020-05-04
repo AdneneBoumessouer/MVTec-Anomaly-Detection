@@ -7,6 +7,7 @@ inspection3.py
 train_resnet.py
 xyz.py
 .vscode/
+/report
 
 # remove this line after finishing project to upload data
 saved_models/
