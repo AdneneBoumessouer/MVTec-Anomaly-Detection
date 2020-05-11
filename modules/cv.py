@@ -114,15 +114,16 @@ def label_images(images):
     images_labeled = np.zeros(shape=images.shape)
     areas_all = []
     for i, image_th in enumerate(images):
-        # close small holes with binary closing
-        bw = closing(image_th, square(3))
+        # # close small holes with binary closing
+        # bw = closing(image_th, square(3))
 
-        # remove artifacts connected to image border
-        cleared = clear_border(bw)
+        # # remove artifacts connected to image border
+        # cleared = clear_border(bw)
 
-        # label image regions
-        image_labeled = label(cleared)
-        # image_labeled = label(image_th)
+        # # label image regions
+        # image_labeled = label(cleared)
+
+        image_labeled = label(image_th)
 
         # append image
         images_labeled[i] = image_labeled
