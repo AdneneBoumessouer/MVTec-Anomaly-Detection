@@ -1,11 +1,11 @@
-min_area = 40, threshold = 224
+min_area = 180, threshold = 180
 
          filenames  predictions  truth  accurate_predictions
 0    crack/000.png            1      1                  True
 1    crack/001.png            1      1                  True
 2    crack/002.png            0      1                 False
 3    crack/003.png            0      1                 False
-4    crack/004.png            0      1                 False
+4    crack/004.png            1      1                  True
 5    crack/005.png            0      1                 False
 6    crack/006.png            1      1                  True
 7    crack/007.png            1      1                  True
@@ -17,7 +17,7 @@ min_area = 40, threshold = 224
 13   crack/013.png            0      1                 False
 14   crack/014.png            0      1                 False
 15   crack/015.png            1      1                  True
-16   crack/016.png            0      1                 False
+16   crack/016.png            1      1                  True
 17   crack/017.png            1      1                  True
 18     cut/000.png            0      1                 False
 19     cut/001.png            0      1                 False
@@ -25,16 +25,16 @@ min_area = 40, threshold = 224
 21     cut/003.png            0      1                 False
 22     cut/004.png            0      1                 False
 23     cut/005.png            0      1                 False
-24     cut/006.png            0      1                 False
+24     cut/006.png            1      1                  True
 25     cut/007.png            0      1                 False
-26     cut/008.png            0      1                 False
+26     cut/008.png            1      1                  True
 27     cut/009.png            0      1                 False
 28     cut/010.png            0      1                 False
 29     cut/011.png            0      1                 False
 30     cut/012.png            0      1                 False
-31     cut/013.png            0      1                 False
+31     cut/013.png            1      1                  True
 32     cut/014.png            0      1                 False
-33     cut/015.png            0      1                 False
+33     cut/015.png            1      1                  True
 34     cut/016.png            0      1                 False
 35    good/000.png            0      0                  True
 36    good/001.png            0      0                  True
@@ -79,10 +79,10 @@ min_area = 40, threshold = 224
 75    hole/000.png            1      1                  True
 76    hole/001.png            0      1                 False
 77    hole/002.png            1      1                  True
-78    hole/003.png            0      1                 False
-79    hole/004.png            0      1                 False
+78    hole/003.png            1      1                  True
+79    hole/004.png            1      1                  True
 80    hole/005.png            0      1                 False
-81    hole/006.png            0      1                 False
+81    hole/006.png            1      1                  True
 82    hole/007.png            1      1                  True
 83    hole/008.png            1      1                  True
 84    hole/009.png            1      1                  True
@@ -92,7 +92,7 @@ min_area = 40, threshold = 224
 88    hole/013.png            1      1                  True
 89    hole/014.png            1      1                  True
 90    hole/015.png            1      1                  True
-91    hole/016.png            0      1                 False
+91    hole/016.png            1      1                  True
 92    hole/017.png            1      1                  True
 93   print/000.png            1      1                  True
 94   print/001.png            1      1                  True

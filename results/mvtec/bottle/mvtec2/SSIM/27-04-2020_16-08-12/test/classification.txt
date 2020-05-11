@@ -1,4 +1,4 @@
-min_area = 134, threshold = 223
+min_area = 135, threshold = 223
 
                 filenames  predictions  truth  accurate_predictions
 0    broken_large/000.png            0      1                 False
