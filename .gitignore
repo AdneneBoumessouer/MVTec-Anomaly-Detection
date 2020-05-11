@@ -17,7 +17,8 @@ saved_models/**/*.npy
 results/**/*.npy
 
 # jupyter notebboks
-# *.ipynb
+compare_dtypes.ipynb
+notebook_demo.ipynb
 
 # saved models, logs and inspection images
 saved_models/**/*.h5
