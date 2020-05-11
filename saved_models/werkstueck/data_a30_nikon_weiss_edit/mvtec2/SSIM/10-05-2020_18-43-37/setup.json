@@ -1,0 +1,35 @@
+{
+    "data_setup": {
+        "directory": "werkstueck/data_a30_nikon_weiss_edit",
+        "nb_training_images": 162,
+        "nb_validation_images": 18
+    },
+    "preprocessing_setup": {
+        "rescale": 0.00392156862745098,
+        "shape": [
+            256,
+            256
+        ],
+        "preprocessing": null
+    },
+    "lr_finder": {
+        "start_lr": 1e-07,
+        "max_lr": 0.01,
+        "stop_factor": -6,
+        "max_epochs": 10
+    },
+    "train_setup": {
+        "architecture": "mvtec2",
+        "nb_training_images_aug": 10000,
+        "epochs": 61,
+        "max_lr": 0.01,
+        "min_lr": 0.001,
+        "batch_size": 8,
+        "loss": "SSIM",
+        "dynamic_range": 1.0,
+        "color_mode": "grayscale",
+        "channels": 1,
+        "validation_split": 0.1
+    },
+    "tag": null
+}
