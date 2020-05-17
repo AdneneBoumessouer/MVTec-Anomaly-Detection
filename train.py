@@ -11,6 +11,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from modules import utils as utils
 from modules.utils import printProgressBar as printProgressBar
 from modules.resmaps import calculate_resmaps
+from skimage.util import img_as_ubyte
 import modules.models.resnet as resnet
 import modules.models.mvtec_2 as mvtec_2
 import modules.models.mvtec as mvtec
@@ -33,7 +34,7 @@ Created on Tue Dec 10 19:46:17 2019
 Valid input arguments for color_mode and loss:
 
                         +----------------+----------------+
-                        |       Model Architecture        |  
+                        |       Model Architecture        |
                         +----------------+----------------+
                         | mvtec, mvtec2  | Resnet, Nasnet |
 ========================+================+================+
@@ -150,16 +151,22 @@ def main(args):
         shape = (256, 256)
         preprocessing_function = None
         preprocessing = None
+        vmin = 0.0
+        vmax = 1.0
     elif architecture == "resnet":
         rescale = None
         shape = (299, 299)
         preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
         preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
+        vmin = -1.0
+        vmax = 1.0
     elif architecture == "nasnet":
         rescale = None
         shape = (224, 224)
         preprocessing_function = keras.applications.nasnet.preprocess_input
         preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
+        vmin = -1.0
+        vmax = 1.0
 
     print("[INFO] Using Keras's flow_from_directory method...")
     # This will do preprocessing and realtime data augmentation:
@@ -535,61 +542,43 @@ def main(args):
         utils.save_np(imgs_val_input, inspection_val_dir, "imgs_val_input.npy")
         utils.save_np(imgs_val_pred, inspection_val_dir, "imgs_val_pred.npy")
 
-        # compute resmaps by substracting pred out of input
-        resmaps_val_diff = imgs_val_input - imgs_val_pred
-
         # compute resmaps using the ssim method
         resmaps_val_ssim = calculate_resmaps(
             imgs_val_input, imgs_val_pred, method="SSIM"
         )
 
-        # compute resmaps using the L2 method
-        resmaps_val_l2 = calculate_resmaps(imgs_val_input, imgs_val_pred, method="L2")
+        # Convert to 8-bit unsigned int
+        resmaps_val_ssim = img_as_ubyte(resmaps_val_ssim)
 
         # generate and save inspection images
         print("[INFO] generating inspection plots on validation images...")
         l = len(filenames)
         printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
         for i in range(len(imgs_val_input)):
-            f, axarr = plt.subplots(3, 2)
-            f.set_size_inches((8, 9))
+            f, axarr = plt.subplots(3, 1)
+            f.set_size_inches((4, 9))
 
-            im00 = axarr[0, 0].imshow(
-                imgs_val_input[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            im00 = axarr[0].imshow(
+                imgs_val_input[i, :, :, 0], cmap="gray", vmin=vmin, vmax=vmax
             )
-            axarr[0, 0].set_title("input")
-            axarr[0, 0].set_axis_off()
-            f.colorbar(im00, ax=axarr[0, 0])
+            axarr[0].set_title("input")
+            axarr[0].set_axis_off()
+            f.colorbar(im00, ax=axarr[0])
 
-            im01 = axarr[0, 1].imshow(
-                imgs_val_pred[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            im10 = axarr[1].imshow(
+                imgs_val_pred[i, :, :, 0], cmap="gray", vmin=vmin, vmax=vmax
             )
-            axarr[0, 1].set_title("pred")
-            axarr[0, 1].set_axis_off()
-            f.colorbar(im01, ax=axarr[0, 1])
+            axarr[1].set_title("pred")
+            axarr[1].set_axis_off()
+            f.colorbar(im10, ax=axarr[1])
 
-            im10 = axarr[1, 0].imshow(
-                resmaps_val_diff[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            im20 = axarr[2].imshow(
+                resmaps_val_ssim[i, :, :, 0], cmap="inferno", vmin=0, vmax=255
             )
-            axarr[1, 0].set_title("resmap_diff")
-            axarr[1, 0].set_axis_off()
-            f.colorbar(im10, ax=axarr[1, 0])
+            axarr[2].set_title("resmap_ssim")
+            axarr[2].set_axis_off()
+            f.colorbar(im20, ax=axarr[2])
 
-            im11 = axarr[1, 1].imshow(
-                resmaps_val_ssim[i, :, :, 0], cmap="inferno", vmin=0.0, vmax=1.0
-            )
-            axarr[1, 1].set_title("resmap_ssim")
-            axarr[1, 1].set_axis_off()
-            f.colorbar(im11, ax=axarr[1, 1])
-
-            im20 = axarr[2, 0].imshow(
-                resmaps_val_l2[i, :, :, 0], cmap="inferno", vmin=0.0, vmax=1.0
-            )
-            axarr[2, 0].set_title("resmap_L2")
-            axarr[2, 0].set_axis_off()
-            f.colorbar(im20, ax=axarr[2, 0])
-
-            axarr[2, 1].set_axis_off()
             plt.suptitle("VALIDATION\n" + filenames[i])
             plot_name = utils.get_plot_name(filenames[i], suffix="inspection")
             f.savefig(os.path.join(inspection_val_dir, plot_name))
@@ -646,63 +635,43 @@ def main(args):
         utils.save_np(imgs_test_input, inspection_test_dir, "imgs_test_input.npy")
         utils.save_np(imgs_test_pred, inspection_test_dir, "imgs_test_pred.npy")
 
-        # compute resmaps by substracting pred out of input
-        resmaps_test_diff = imgs_test_input - imgs_test_pred
-
         # compute resmaps using the ssim method
         resmaps_test_ssim = calculate_resmaps(
             imgs_test_input, imgs_test_pred, method="SSIM"
         )
 
-        # compute resmaps using the L2 method
-        resmaps_test_l2 = calculate_resmaps(
-            imgs_test_input, imgs_test_pred, method="L2"
-        )
+        # Convert to 8-bit unsigned int
+        resmaps_test_ssim = img_as_ubyte(resmaps_test_ssim)
 
         # generate and save inspection images
         print("[INFO] generating inspection plots on test images...")
         l = len(filenames)
         printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
         for i in range(len(imgs_test_input)):
-            f, axarr = plt.subplots(3, 2)
-            f.set_size_inches((8, 9))
+            f, axarr = plt.subplots(3, 1)
+            f.set_size_inches((4, 9))
 
-            im00 = axarr[0, 0].imshow(
-                imgs_test_input[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            im00 = axarr[0].imshow(
+                imgs_test_input[i, :, :, 0], cmap="gray", vmin=vmin, vmax=vmax
             )
-            axarr[0, 0].set_title("input")
-            axarr[0, 0].set_axis_off()
-            f.colorbar(im00, ax=axarr[0, 0])
+            axarr[0].set_title("input")
+            axarr[0].set_axis_off()
+            f.colorbar(im00, ax=axarr[0])
 
-            im01 = axarr[0, 1].imshow(
-                imgs_test_pred[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            im10 = axarr[1].imshow(
+                imgs_test_pred[i, :, :, 0], cmap="gray", vmin=vmin, vmax=vmax
             )
-            axarr[0, 1].set_title("pred")
-            axarr[0, 1].set_axis_off()
-            f.colorbar(im01, ax=axarr[0, 1])
+            axarr[1].set_title("pred")
+            axarr[1].set_axis_off()
+            f.colorbar(im10, ax=axarr[1])
 
-            im10 = axarr[1, 0].imshow(
-                resmaps_test_diff[i, :, :, 0], cmap="gray", vmin=0.0, vmax=1.0
+            im20 = axarr[2].imshow(
+                resmaps_test_ssim[i, :, :, 0], cmap="inferno", vmin=0, vmax=255
             )
-            axarr[1, 0].set_title("resmap_diff")
-            axarr[1, 0].set_axis_off()
-            f.colorbar(im10, ax=axarr[1, 0])
+            axarr[2].set_title("resmap_ssim")
+            axarr[2].set_axis_off()
+            f.colorbar(im20, ax=axarr[2])
 
-            im11 = axarr[1, 1].imshow(
-                resmaps_test_ssim[i, :, :, 0], cmap="inferno", vmin=0.0, vmax=1.0
-            )
-            axarr[1, 1].set_title("resmap_ssim")
-            axarr[1, 1].set_axis_off()
-            f.colorbar(im11, ax=axarr[1, 1])
-
-            im20 = axarr[2, 0].imshow(
-                resmaps_test_l2[i, :, :, 0], cmap="inferno", vmin=0.0, vmax=1.0
-            )
-            axarr[2, 0].set_title("resmap_L2")
-            axarr[2, 0].set_axis_off()
-            f.colorbar(im20, ax=axarr[2, 0])
-
-            axarr[2, 1].set_axis_off()
             plt.suptitle("TEST\n" + filenames[i])
             plot_name = utils.get_plot_name(filenames[i], suffix="inspection")
             f.savefig(os.path.join(inspection_test_dir, plot_name))
@@ -791,8 +760,8 @@ if __name__ == "__main__":
 
 # Examples of commands to initiate training with resnet architecture
 
-# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb -n 1100
 # python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb --inspect
+# python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l l2 -c grayscale --inspect
 
 # python3 train.py -d werkstueck/data_a30_nikon_schwarz_ooc_cut -a mvtec2 -b 4 -l ssim -c grayscale --inspect
 

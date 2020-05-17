@@ -7,22 +7,23 @@ inspection3.py
 train_resnet.py
 xyz.py
 .vscode/
+/report
 
 # remove this line after finishing project to upload data
-saved_models/
+# saved_models/
 
 # numpy arrays
 saved_models/**/*.npy
 results/**/*.npy
 
 # jupyter notebboks
-# *.ipynb
+compare_dtypes.ipynb
+notebook_demo.ipynb
 
-# saved models
+# saved models, logs and inspection images
 saved_models/**/*.h5
-
-# inspection folders containing inspection images
-saved_models/**/inspection
+saved_models/**/inspection_val
+saved_models/**/inspection_test
 saved_models/**/logs
 
 # png images

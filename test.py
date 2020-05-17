@@ -170,9 +170,7 @@ def main(args):
     TP = np.sum([1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(total_number)])
 
     # true negative (TN)
-    TN = np.sum(
-        [1 if y_pred[i] == y_true[i] == False else 0 for i in range(total_number)]
-    )
+    TN = np.sum([1 if y_pred[i] == y_true[i] == 0 else 0 for i in range(total_number)])
 
     # sensitivity, recall, hit rate, or true positive rate (TPR)
     TPR = TP / P
