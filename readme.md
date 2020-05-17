@@ -99,6 +99,9 @@ To train with your own dataset, you need to have a comparable directory structur
 
 --------
 
+## Overview
+![Image of Yaktocat](overview.png)
+
 ## Training (`train.py`)
 
 The method uses a Convolutional Auto-Encoder (CAE). There are two proposed variants:
@@ -110,27 +113,19 @@ During training, the CAE trains exclusively on defect-free images and learns to 
 
 To initiate training, go to the project directory and run the following command in your terminal:
 ```
-python3 train.py -d <direcroty containing training images> -i <number of training instances> -a <architecture of the model to use> -b <batch size> -l <loss function> -c <color mode> -t <tag>
+python3 train.py -d <direcroty containing training images> -n <number of training instances> -a <architecture of the model to use> -b <batch size> -l <loss function> -c <color mode> -t <tag>
 ```
 Here is an example:
 ```
-python3 train.py -d mvtec/capsule -a mvtec -b 12 -l ssim -c grayscale -t "first try"
+python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale -t "first model"
 ```
 **NOTE:** The number of training epochs will be determined by the given argument `<number of training instances>` specified during the initiation of the training, devided by the actual number of images contained in the train folder of the chosen class.
-Example: if you passed `-i 10000` and the training directory contains `1000` images, then the number of epochs will be equal to `10`.
-
-## Finetuning (`finetune.ipynb`)
-
-This script aims at guiding the the user in chosing the right minimum defect area size that an anomalous region in the thresholded Resmaps must have to be classified as defective. This value will be used during the validation step by `validate.py`.
-It investigates the following features:
-* Number of anomalous regions with increasing thresholds.
-* Sum, Mean and Standard Deviation of the anomalous regions' area size with increasing thresholds.
-* Distribution of the the anomalous regions' area size with validation ResMaps for a range of thresholds given bu the user.
+Example: if you passed `-n 10000` and the training directory contains `1000` images, then the number of epochs will be equal to `10`.
 
 
 ## Validation (`validate.py`)
 
-This script computes the threshold that must be used in classification during testing. It uses a small portion (10%) of defect-free training images (validation set). To determine the threshold, a minimum defect area must be passed as an argument. This value is determined in the finetuning step using the Jupyter-Notebook `finetune.ipynb`.
+This script computes the threshold that must be used in classification during testing. It uses a small portion (10%) of defect-free training images (validation set). To determine the threshold, a minimum defect area must be passed as an argument.
 
 To initiate validation, go to the project directory and run the following command in your terminal:
 ```
@@ -162,14 +157,19 @@ Example:
 python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -t 28 -a 50
 ```
 
+## Finetuning (`/finetune`)
+
+This folder contains jupyter-notebooks, one per trained Model per Dataset, that aim to determine the best minimum area and threshold pair of values to obtain the best classification possible. They simulate the validation for a wide range of discrete minimum area values to obtain corresponding threshold values. The test algorithm is subseqently run using each minimum area and threshold pair, obtaining at each time a classification, their corresponding detection ratios and the score. At the end, the best minimum area and threshold pair, which yielded the best score, is chosen to obtain the best classification.
+
 Project Organization
 ------------
 
     ├── mvtec                       <- folder containing all mvtec classes.
     │   ├── bottle                  <- subfolder of a class (contains additional subfolders /train and /test).
     |   |── ...
+    ├── finetuning                  <- directory containing jupyter-notebooks for finetuning
     ├── modules                     <- module containing model definitions, submodules for image processing and helper functions.
-    ├── results                     <- directory containing validation and results.
+    ├── results                     <- directory containing best validation and test results.
     ├── readme.md                   <- readme file.
     ├── requirements.txt            <- requirement text file containing used libraries.
     ├── saved_models                <- directory containing saved models, training history, loss and learning plots and inspection images.
