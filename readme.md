@@ -4,14 +4,15 @@
 
 This project aims at developping a Deep Learning model using an unsupervided method to detect surface anomalies on images.
 
-## Dataset
-
-The dataset being used is the [MVTec dataset](https://www.mvtec.com/company/research/datasets/mvtec-ad/).
-
-## Method
+## Overview
+![Image of Yaktocat](overview.png)
 
 The method being used in this project is inspired to a great extent by the papers [MVTec AD — A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf) and [Improving Unsupervised Defect Segmentation by Applying Structural Similarity to Autoencoders](https://arxiv.org/abs/1807.02011).
 The method is devided in 3 steps: training, validating and testing.
+
+## Dataset
+
+The dataset being used is the [MVTec dataset](https://www.mvtec.com/company/research/datasets/mvtec-ad/).
 
 ## Prerequisites
 
@@ -99,9 +100,6 @@ To train with your own dataset, you need to have a comparable directory structur
 
 --------
 
-## Overview
-![Image of Yaktocat](overview.png)
-
 ## Training (`train.py`)
 
 The method uses a Convolutional Auto-Encoder (CAE). There are two proposed variants:
@@ -157,7 +155,7 @@ Example:
 python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -t 28 -a 50
 ```
 
-## Finetuning (`/finetune`)
+## Finetuning (`/finetuning`)
 
 This folder contains jupyter-notebooks, one per trained Model per Dataset, that aim to determine the best minimum area and threshold pair of values to obtain the best classification possible. They simulate the validation for a wide range of discrete minimum area values to obtain corresponding threshold values. The test algorithm is subseqently run using each minimum area and threshold pair, obtaining at each time a classification, their corresponding detection ratios and the score. At the end, the best minimum area and threshold pair, which yielded the best score, is chosen to obtain the best classification.
 
