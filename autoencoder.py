@@ -41,8 +41,8 @@ class AutoEncoder:
         verbose=True,
     ):
         self.input_directory = input_directory
-        self.color_mode = color_mode
         self.architecture = architecture
+        self.color_mode = color_mode
         self.loss = loss
         self.batch_size = batch_size
 
@@ -155,25 +155,32 @@ class AutoEncoder:
         # find optimal learning rate
         min_loss = np.amin(losses)
         min_loss_i = np.argmin(losses)
+
         # retrieve segment containing decreasing losses
         segment = losses[: min_loss_i + 1]
         max_loss = np.amax(segment)
+
         # compute optimal loss
         optimal_loss = max_loss - 0.85 * (max_loss - min_loss)
+
         # get index corresponding to optimal loss
         self.opt_lr_i = np.argwhere(segment < optimal_loss)[0][0]
+
         # get optimal learning rate
         self.opt_lr = float(lrs[self.opt_lr_i])
+
         # get base learning rate
         self.base_lr = self.opt_lr / 10
         self.base_lr_i = np.argwhere(lrs[:min_loss_i] > self.base_lr)[0][0]
         print("[INFO] learning rate finder complete.")
         print(f"\tbase learning rate: {self.base_lr:.2E}")
         print(f"\toptimal learning rate: {self.opt_lr:.2E}")
-        # return opt_lr
         return
 
     def fit(self):
+        # create directory to save model and logs
+        self.create_save_dir()
+
         # create tensorboard callback to monitor training
         tensorboard_cb = keras.callbacks.TensorBoard(
             log_dir=self.log_dir, write_graph=True, update_freq="epoch"
@@ -197,7 +204,7 @@ class AutoEncoder:
             callbacks=[tensorboard_cb],
         )
 
-    ### Methods to create directory structure ===========================
+    ### Methods to create directory structure and save model =================
 
     def create_save_dir(self):
         # create a directory to save model
@@ -221,10 +228,32 @@ class AutoEncoder:
         return
 
     def create_model_name(self):
-        self.model_name = "CAE_" + self.architecture + "_b{}".format(self.batch_size)
+        epochs_trained = self.get_best_epoch()
+        model_name = (
+            "CAE_"
+            + self.architecture
+            + "_b_{}_e_{}.hdf5".format(self.batch_size, epochs_trained)
+        )
         # model_path = os.path.join(save_dir, model_name + ".h5")
-        self.model_path = os.path.join(self.save_dir, self.model_name + ".hdf5")
-        return
+        return model_name
+
+    def save_model(self):
+        # save model
+        self.model.save(os.path.join(self.save_dir, self.create_model_name()))
+        # save config
+        info = self.get_info()
+        with open(os.path.join(self.save_dir, "info.json"), "w") as json_file:
+            json.dump(info, json_file, indent=4, sort_keys=False)
+        # save training plots
+        self.loss_plot(save=True)
+        self.lr_find_plot(save=True)
+        self.lr_schedule_plot(save=True)
+        # save test results
+        print(
+            "[info] model, training info and plots successfully saved at: \n{} ...".format(
+                self.save_dir
+            )
+        )
 
     ### Methods for getting information about the training process ========
 
@@ -232,10 +261,39 @@ class AutoEncoder:
         hist_dict = dict((key, self.hist.history[key]) for key in self.hist_keys)
         return hist_dict
 
+    def get_info(self):
+        info = {
+            "data_setup": {
+                "input_directory": self.input_directory,
+                "nb_training_images": self.learner.train_data.samples,
+                "nb_validation_images": self.learner.val_data.samples,
+            },
+            "model_setup": {
+                "architecture": self.architecture,
+                "color_mode": self.color_mode,
+                "loss": self.loss,
+                "batch_size": self.batch_size,
+                "dynamic_range": self.dynamic_range,
+            },
+            "preprocessing_setup": {
+                "rescale": self.rescale,
+                "shape": self.shape,
+                "preprocessing": self.preprocessing,
+            },
+            "lr_finder": {"base_lr": self.base_lr, "opt_lr": self.opt_lr,},
+            "train_setup": {
+                "validation_split": self.learner.train_data.image_data_generator._validation_split,
+                "epochs_trained": self.get_best_epoch(),
+                "nb_train_images_total": len(self.hist.history["lr"]) * self.batch_size,
+            },
+        }
+        return info
+
     def get_best_epoch(self):
         """
-        Returns the epoch where the model had stopped training.
-        This epoch corresponds with the smallest val_loss registered during training.
+        Returns the index of the epoch when the model had stopped training.
+        This epoch corresponds to the lowest validation loss registered
+        during training because of the use of Early Stopping Callback.
         """
         hist_dict = self.get_history_dict()
         best_epoch = np.argmin(np.array(hist_dict["val_loss"]))
@@ -243,8 +301,7 @@ class AutoEncoder:
 
     def get_best_val_loss(self):
         """
-        Returns the smallest val_loss registered during training.
-        This value also corresponds with the epoch where the model stopped training.
+        Returns the (lowest) validation loss corresponding to the best epoch.
         """
         hist_dict = self.get_history_dict()
         epochs_trained = np.argmin(np.array(hist_dict["val_loss"]))
@@ -253,7 +310,7 @@ class AutoEncoder:
 
     ### Methods for plotting ============================================
 
-    def lr_plot(self, close=False):
+    def lr_find_plot(self, save=False):
         losses = np.array(self.learner.lr_finder.losses)
         lrs = np.array(self.learner.lr_finder.lrs)
         i = self.opt_lr_i
@@ -285,31 +342,36 @@ class AutoEncoder:
             )
             ax.legend()
             plt.show()
-        if close:
+        if save:
             plt.close()
-            return fig
+            fig.savefig(os.path.join(self.save_dir, "lr_plot.png"))
+        print(f"[info] nbase learning rate: {lrs[j]:.2E}")
         print(f"[info] optimal learning rate: {lrs[i]:.2E}")
+        return
 
-    def lr_schedule_plot(self, close=False):
+    def lr_schedule_plot(self, save=False):
         with plt.style.context("seaborn-darkgrid"):
             fig, _ = plt.subplots()
             self.learner.plot(plot_type="lr")
             plt.title("Cyclical Learning Rate Scheduler")
             plt.show()
-        if close:
+        if save:
             plt.close()
-            return fig
+            fig.savefig(os.path.join(self.save_dir, "lr_scheduler_plot.png"))
+            # return fig
+        return
 
-    def loss_plot(self, close=False):
+    def loss_plot(self, save=False):
         hist_dict = self.get_history_dict()
         hist_df = pd.DataFrame(hist_dict)
         with plt.style.context("seaborn-darkgrid"):
             fig = hist_df.plot().get_figure()
             plt.title("Loss Plot")
             plt.show()
-        if close:
+        if save:
             plt.close()
-            return fig
+            fig.savefig(os.path.join(self.save_dir, "loss_plot.png"))
+        return
 
     ### Methods to save model and data ====================
 

@@ -96,45 +96,21 @@ def main(args):
         batch_size=autoencoder.batch_size, shuffle=True
     )
 
+    nb_train_images = validation_generator.samples
+    nb_validation_images = validation_generator.samples
+
     # find best learning rates for training
     autoencoder.find_opt_lr(train_generator, validation_generator)
 
     # train
     autoencoder.fit()
 
+    #
+
+    # save model
+    autoencoder.save()
+
     # setup and model configuration
-    setup = {
-        "data_setup": {
-            "directory": directory,
-            "nb_training_images": train_generator.samples,
-            "nb_validation_images": validation_generator.samples,
-        },
-        "preprocessing_setup": {
-            "rescale": rescale,
-            "shape": shape,
-            "preprocessing": preprocessing,
-        },
-        "lr_finder": {
-            "start_lr": start_lr,
-            "max_lr": max_lr,
-            "stop_factor": stop_factor,
-            "max_epochs": max_epochs,
-        },
-        "train_setup": {
-            "architecture": architecture,
-            "nb_training_images_aug": nb_training_images_aug,
-            "epochs": epochs,
-            "max_lr": max_lr,
-            "min_lr": max_lr / 10,
-            "batch_size": batch_size,
-            "loss": loss,
-            "dynamic_range": dynamic_range,
-            "color_mode": color_mode,
-            "channels": channels,
-            "validation_split": validation_split,
-        },
-        "tag": tag,
-    }
 
     # save setup
     with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
