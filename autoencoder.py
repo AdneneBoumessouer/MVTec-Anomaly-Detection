@@ -4,7 +4,7 @@ Created on Tue Dec 10 19:46:17 2019
 
 @author: Adnene Boumessouer
 """
-
+import sys
 import os
 import shutil
 import datetime
@@ -23,7 +23,6 @@ from modules import loss_functions as loss_functions
 
 import matplotlib.pyplot as plt
 
-# import seaborn as sns
 
 # Learning Rate Finder Parameters
 START_LR = 1e-5
@@ -40,16 +39,16 @@ class AutoEncoder:
         batch_size=8,
         verbose=True,
     ):
+        # path attrivutes
         self.input_directory = input_directory
+        self.save_dir = None
+        self.log_dir = None
+
+        # model and data attributes
         self.architecture = architecture
         self.color_mode = color_mode
         self.loss = loss
         self.batch_size = batch_size
-
-        self.verbose = verbose
-        self.learner = None  # TO DO
-        self.model_path = None  # TO DO
-        self.hist = None  # TO DO
 
         # learning rate finder attributes
         self.opt_lr = None
@@ -57,10 +56,13 @@ class AutoEncoder:
         self.base_lr = None
         self.base_lr_i = None
 
-        self.epochs_trained = None
+        # training attributes
+        self.learner = None
+        self.verbose = verbose
 
-        self.save_dir = None
-        self.log_dir = None
+        # results attributes
+        self.hist = None
+        self.epochs_trained = None
 
         # build model and preprocessing variables
         if architecture == "mvtec":
@@ -189,22 +191,26 @@ class AutoEncoder:
         print("\ntensorboard --logdir={}\n".format(self.log_dir))
 
         # fit model using Cyclical Learning Rates
-        self.hist = self.learner.autofit(
-            self.opt_lr,
-            epochs=None,
-            early_stopping=20,
-            reduce_on_plateau=5,
-            reduce_factor=2,
-            cycle_momentum=True,
-            max_momentum=0.95,
-            min_momentum=0.85,
-            monitor="val_loss",  # Check this
-            checkpoint_folder=None,
-            verbose=1,
-            callbacks=[tensorboard_cb],
-        )
+        try:
+            self.hist = self.learner.autofit(
+                self.opt_lr,
+                epochs=None,
+                early_stopping=20,
+                reduce_on_plateau=5,
+                reduce_factor=2,
+                cycle_momentum=True,
+                max_momentum=0.95,
+                min_momentum=0.85,
+                monitor="val_loss",  # Check this
+                checkpoint_folder=None,
+                verbose=1,
+                callbacks=[tensorboard_cb],
+            )
+        except KeyboardInterrupt:
+            shutil.rmtree(self.save_dir)
+            sys.exit("exiting script.")
 
-    ### Methods to create directory structure and save model =================
+    ### Methods to create directory structure and save (and load?) model =================
 
     def create_save_dir(self):
         # create a directory to save model
@@ -237,10 +243,10 @@ class AutoEncoder:
         # model_path = os.path.join(save_dir, model_name + ".h5")
         return model_name
 
-    def save_model(self):
+    def save(self):
         # save model
         self.model.save(os.path.join(self.save_dir, self.create_model_name()))
-        # save config
+        # save trainnig info
         info = self.get_info()
         with open(os.path.join(self.save_dir, "info.json"), "w") as json_file:
             json.dump(info, json_file, indent=4, sort_keys=False)
@@ -248,14 +254,21 @@ class AutoEncoder:
         self.loss_plot(save=True)
         self.lr_find_plot(save=True)
         self.lr_schedule_plot(save=True)
-        # save test results
+        # save training history
+        hist_dict = self.get_history_dict()
+        hist_df = pd.DataFrame(hist_dict)
+        hist_csv_file = os.path.join(self.save_dir, "history.csv")
+        with open(hist_csv_file, mode="w") as csv_file:
+            hist_df.to_csv(csv_file)
+        # print("[info] training history has been successfully saved as csv file at %s " % hist_csv_file)
+        print("[info] training history has been successfully saved as csv file.")
         print(
-            "[info] model, training info and plots successfully saved at: \n{} ...".format(
+            "[info] all files have been successfully saved at: \n{}".format(
                 self.save_dir
             )
         )
 
-    ### Methods for getting information about the training process ========
+    ### Methods for getting finished training process info =====================
 
     def get_history_dict(self):
         hist_dict = dict((key, self.hist.history[key]) for key in self.hist_keys)
@@ -263,25 +276,25 @@ class AutoEncoder:
 
     def get_info(self):
         info = {
-            "data_setup": {
+            "data": {
                 "input_directory": self.input_directory,
                 "nb_training_images": self.learner.train_data.samples,
                 "nb_validation_images": self.learner.val_data.samples,
             },
-            "model_setup": {
+            "model": {
                 "architecture": self.architecture,
                 "color_mode": self.color_mode,
                 "loss": self.loss,
                 "batch_size": self.batch_size,
                 "dynamic_range": self.dynamic_range,
             },
-            "preprocessing_setup": {
+            "preprocessing": {
                 "rescale": self.rescale,
                 "shape": self.shape,
                 "preprocessing": self.preprocessing,
             },
             "lr_finder": {"base_lr": self.base_lr, "opt_lr": self.opt_lr,},
-            "train_setup": {
+            "train": {
                 "validation_split": self.learner.train_data.image_data_generator._validation_split,
                 "epochs_trained": self.get_best_epoch(),
                 "nb_train_images_total": len(self.hist.history["lr"]) * self.batch_size,
@@ -345,7 +358,8 @@ class AutoEncoder:
         if save:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "lr_plot.png"))
-        print(f"[info] nbase learning rate: {lrs[j]:.2E}")
+            print("[info] lr_plot.png successfully saved.")
+        print(f"[info] base learning rate: {lrs[j]:.2E}")
         print(f"[info] optimal learning rate: {lrs[i]:.2E}")
         return
 
@@ -357,7 +371,8 @@ class AutoEncoder:
             plt.show()
         if save:
             plt.close()
-            fig.savefig(os.path.join(self.save_dir, "lr_scheduler_plot.png"))
+            fig.savefig(os.path.join(self.save_dir, "lr_schedule_plot.png"))
+            print("[info] lr_schedule_plot.png successfully saved.")
             # return fig
         return
 
@@ -371,8 +386,7 @@ class AutoEncoder:
         if save:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "loss_plot.png"))
+            print("[info] loss_plot.png successfully saved.")
         return
-
-    ### Methods to save model and data ====================
 
     ### Methods to load model (and data?) =================

@@ -1,29 +1,28 @@
 import sys
 import os
 import argparse
-import json
+import time
 import pandas as pd
-import csv
-import datetime
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import requests
-import numpy as np
-from keras.preprocessing.image import ImageDataGenerator
-from modules import utils as utils
+
+from autoencoder import AutoEncoder
+from preprocessing import Preprocessor
+import tensorflow as tf
+from tensorflow import keras
+
+from modules import utils
 from modules.utils import printProgressBar as printProgressBar
 from modules.resmaps import calculate_resmaps
 from skimage.util import img_as_ubyte
-from modules import metrics as custom_metrics
-from modules import loss_functions as loss_functions
-import keras.backend as K
-from tensorflow import keras
 
-import time
-from autoencoder import AutoEncoder
-import ktrain
-import models
-from preprocessing import Preprocessor
+# import numpy as np
+# from modules import utils as utils
+# from modules import metrics as custom_metrics
+# from modules import loss_functions as loss_functions
+# import keras.backend as K
+# import ktrain
+# import models
+
 
 """
 Created on Tue Dec 10 19:46:17 2019
@@ -64,14 +63,14 @@ def check_arguments(architecture, color_mode, loss):
 def main(args):
 
     # get parsed arguments from user
-    input_directory = args.directory
+    input_directory = args.input_directory
     train_data_dir = os.path.join(input_directory, "train")
     batch_size = args.batch
     color_mode = args.color
     # loss = args.loss.upper()
     loss = args.loss
     architecture = args.architecture
-    tag = args.tag
+    # tag = args.tag
 
     # check arguments
     check_arguments(architecture, color_mode, loss)
@@ -96,62 +95,25 @@ def main(args):
         batch_size=autoencoder.batch_size, shuffle=True
     )
 
-    nb_train_images = validation_generator.samples
-    nb_validation_images = validation_generator.samples
-
     # find best learning rates for training
     autoencoder.find_opt_lr(train_generator, validation_generator)
 
     # train
     autoencoder.fit()
 
-    #
-
     # save model
     autoencoder.save()
-
-    # setup and model configuration
-
-    # save setup
-    with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
-        json.dump(setup, json_file, indent=4, sort_keys=False)
-
-    # Save model
-    tf.keras.models.save_model(
-        model, model_path, include_optimizer=True, save_format="h5"
-    )
-    print("Saved trained model at %s " % model_path)
-
-    # save training history
-    hist_dict = dict((key, history.history[key]) for key in hist_keys)
-    hist_df = pd.DataFrame(hist_dict)
-    hist_csv_file = os.path.join(save_dir, "history.csv")
-    with open(hist_csv_file, mode="w") as f:
-        hist_df.to_csv(f)
-    print("Saved training history at %s " % hist_csv_file)
-
-    # save loss plot
-    plt.figure()
-    learner.plot(plot_type="loss")
-    plt.savefig(os.path.join(save_dir, "loss_plot.png"))
-    print("loss plot saved at {} ".format(save_dir))
-
-    # save lr plot
-    plt.figure()
-    learner.plot(plot_type="lr")
-    plt.savefig(os.path.join(save_dir, "lr_plot.png"))
-    print("learning rate plot saved at {} ".format(save_dir))
 
     if args.inspect:
         # -------------- INSPECTING VALIDATION IMAGES --------------
         print("[INFO] inspecting validation images...")
 
         # create a directory to save inspection plots
-        inspection_val_dir = os.path.join(save_dir, "inspection_val")
+        inspection_val_dir = os.path.join(autoencoder.save_dir, "inspection_val")
         if not os.path.isdir(inspection_val_dir):
             os.makedirs(inspection_val_dir)
         inspection_val_generator = preprocessor.get_val_generator(
-            batch_size=nb_validation_images, shuffle=False
+            batch_size=autoencoder.learner.val_data.samples, shuffle=False
         )
         imgs_val_input = inspection_val_generator.next()[0]
         # imgs_val_input = next(inspection_val_generator)
@@ -310,7 +272,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-d",
-        "--directory",
+        "--input-directory",
         type=str,
         required=True,
         metavar="",
@@ -327,14 +289,14 @@ if __name__ == "__main__":
         help="model to use in training",
     )
 
-    parser.add_argument(
-        "-n",
-        "--nb-images",
-        type=int,
-        default=10000,
-        metavar="",
-        help="number of training images",
-    )
+    # parser.add_argument(
+    #     "-n",
+    #     "--nb-images",
+    #     type=int,
+    #     default=10000,
+    #     metavar="",
+    #     help="number of training images",
+    # )
     parser.add_argument(
         "-b", "--batch", type=int, required=True, metavar="", help="batch size"
     )
@@ -365,9 +327,9 @@ if __name__ == "__main__":
         help="whether or not to reconstruct validation and test images after training",
     )
 
-    parser.add_argument(
-        "-t", "--tag", type=str, help="give a tag to the model to be trained"
-    )
+    # parser.add_argument(
+    #     "-t", "--tag", type=str, help="give a tag to the model to be trained"
+    # )
 
     args = parser.parse_args()
     if tf.test.is_gpu_available():
