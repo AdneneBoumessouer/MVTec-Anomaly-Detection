@@ -340,15 +340,8 @@ if __name__ == "__main__":
     print("[INFO] Keras version: {} ...".format(keras.__version__))
     main(args)
 
-# Examples of commands to initiate training with resnet architecture
-
-# python3 train.py -d mvtec/capsule -a resnet -b 8 -l l2 -c rgb --inspect
-# python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l l2 -c grayscale --inspect
-
-# python3 train.py -d werkstueck/data_a30_nikon_schwarz_ooc_cut -a mvtec2 -b 4 -l ssim -c grayscale --inspect
-
-
 # Examples of commands to initiate training with mvtec architecture
 
 # python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale --inspect
-# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec2 -b 12 -l l2 -c grayscale --inspect
+
+# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec2 -b 8 -l l2 -c grayscale --inspect

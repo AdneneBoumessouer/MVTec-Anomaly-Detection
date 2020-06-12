@@ -17,7 +17,12 @@ import ktrain
 import numpy as np
 import pandas as pd
 
-import models
+from models import mvtec
+from models import mvtec_2
+from models import resnet
+
+# from modules.models import nasnet
+
 from modules import metrics as custom_metrics
 from modules import loss_functions as loss_functions
 
@@ -66,41 +71,41 @@ class AutoEncoder:
 
         # build model and preprocessing variables
         if architecture == "mvtec":
-            self.model = models.mvtec.build_model(color_mode)
-            self.rescale = models.mvtec.RESCALE
-            self.shape = models.mvtec.SHAPE
-            self.preprocessing_function = models.mvtec.PREPROCESSING_FUNCTION
-            self.preprocessing = models.mvtec.PREPROCESSING
-            self.vmin = models.mvtec.VMIN
-            self.vmax = models.mvtec.VMAX
-            self.dynamic_range = models.mvtec.DYNAMIC_RANGE
+            self.model = mvtec.build_model(color_mode)
+            self.rescale = mvtec.RESCALE
+            self.shape = mvtec.SHAPE
+            self.preprocessing_function = mvtec.PREPROCESSING_FUNCTION
+            self.preprocessing = mvtec.PREPROCESSING
+            self.vmin = mvtec.VMIN
+            self.vmax = mvtec.VMAX
+            self.dynamic_range = mvtec.DYNAMIC_RANGE
         elif architecture == "mvtec2":
-            self.model = models.mvtec_2.build_model(color_mode)
-            self.rescale = models.mvtec_2.RESCALE
-            self.shape = models.mvtec_2.SHAPE
-            self.preprocessing_function = models.mvtec_2.PREPROCESSING_FUNCTION
-            self.preprocessing = models.mvtec_2.PREPROCESSING
-            self.vmin = models.mvtec_2.VMIN
-            self.vmax = models.mvtec_2.VMAX
-            self.dynamic_range = models.mvtec_2.DYNAMIC_RANGE
+            self.model = mvtec_2.build_model(color_mode)
+            self.rescale = mvtec_2.RESCALE
+            self.shape = mvtec_2.SHAPE
+            self.preprocessing_function = mvtec_2.PREPROCESSING_FUNCTION
+            self.preprocessing = mvtec_2.PREPROCESSING
+            self.vmin = mvtec_2.VMIN
+            self.vmax = mvtec_2.VMAX
+            self.dynamic_range = mvtec_2.DYNAMIC_RANGE
         elif architecture == "resnet":
-            self.model = models.resnet.build_model()
-            self.rescale = models.resnet.RESCALE
-            self.shape = models.resnet.SHAPE
-            self.preprocessing_function = models.resnet.PREPROCESSING_FUNCTION
-            self.preprocessing = models.resnet.PREPROCESSING
-            self.vmin = models.resnet.VMIN
-            self.vmax = models.resnet.VMAX
-            self.dynamic_range = models.resnet.DYNAMIC_RANGE
+            self.model = resnet.build_model()
+            self.rescale = resnet.RESCALE
+            self.shape = resnet.SHAPE
+            self.preprocessing_function = resnet.PREPROCESSING_FUNCTION
+            self.preprocessing = resnet.PREPROCESSING
+            self.vmin = resnet.VMIN
+            self.vmax = resnet.VMAX
+            self.dynamic_range = resnet.DYNAMIC_RANGE
         elif architecture == "nasnet":
-            # self.model = models.nasnet.build_model()
-            self.rescale = models.nasnet.RESCALE
-            self.shape = models.nasnet.SHAPE
-            self.preprocessing_function = models.nasnet.PREPROCESSING_FUNCTION
-            self.preprocessing = models.nasnet.PREPROCESSING
-            self.vmin = models.nasnet.VMIN
-            self.vmax = models.nasnet.VMAX
-            self.dynamic_range = models.nasnet.DYNAMIC_RANGE
+            # self.model = nasnet.build_model()
+            # self.rescale = nasnet.RESCALE
+            # self.shape = nasnet.SHAPE
+            # self.preprocessing_function = nasnet.PREPROCESSING_FUNCTION
+            # self.preprocessing = nasnet.PREPROCESSING
+            # self.vmin = nasnet.VMIN
+            # self.vmax = nasnet.VMAX
+            # self.dynamic_range = nasnet.DYNAMIC_RANGE
             raise NotImplementedError("nasnet not yet implemented.")
 
         # set loss function
@@ -123,8 +128,9 @@ class AutoEncoder:
 
         # compile model
         optimizer = keras.optimizers.Adam(learning_rate=START_LR)
-        self.model.compile(loss=self.loss, optimizer=optimizer, metrics=self.metrics)
-
+        self.model.compile(
+            loss=self.loss_function, optimizer=optimizer, metrics=self.metrics
+        )
         return
 
     ### Methods for training =================================================
@@ -149,7 +155,7 @@ class AutoEncoder:
             lr_mult=1.01,
             max_epochs=LR_MAX_EPOCHS,
             stop_factor=stop_factor,
-            show_plot=False,
+            show_plot=True,  # False
         )
         losses = np.array(self.learner.lr_finder.losses)
         lrs = np.array(self.learner.lr_finder.lrs)
@@ -177,6 +183,7 @@ class AutoEncoder:
         print("[INFO] learning rate finder complete.")
         print(f"\tbase learning rate: {self.base_lr:.2E}")
         print(f"\toptimal learning rate: {self.opt_lr:.2E}")
+        self.lr_find_plot(save=True)
         return
 
     def fit(self):
@@ -188,6 +195,9 @@ class AutoEncoder:
             log_dir=self.log_dir, write_graph=True, update_freq="epoch"
         )
         # Print command to paste in browser for visualizing in Tensorboard
+        print(
+            "[info] run the following command in a seperate terminal to monitor training on tensorboard:"
+        )
         print("\ntensorboard --logdir={}\n".format(self.log_dir))
 
         # fit model using Cyclical Learning Rates
@@ -252,7 +262,7 @@ class AutoEncoder:
             json.dump(info, json_file, indent=4, sort_keys=False)
         # save training plots
         self.loss_plot(save=True)
-        self.lr_find_plot(save=True)
+        # self.lr_find_plot(save=True)
         self.lr_schedule_plot(save=True)
         # save training history
         hist_dict = self.get_history_dict()
