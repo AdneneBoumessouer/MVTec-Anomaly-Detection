@@ -1,12 +1,28 @@
 import tensorflow as tf
 from tensorflow import keras
 
+# Preprocessing variables
+RESCALE = 1.0 / 255
+SHAPE = (256, 256)
+PREPROCESSING_FUNCTION = None
+PREPROCESSING = None
+VMIN = 0.0
+VMAX = 1.0
+DYNAMIC_RANGE = VMAX - VMIN
 
-def build_model(channels=3):
+
+def build_model(color_mode):
     """Model mentionned in the MVTec Paper, originally proposed by Bergmann et Al. 
     Implemented here with an additional convolutional layer at the beginning to 
     accomodate the larger input size of 256 x 256 instead of 128 x 128.    
     Note: Using using Keras's sequential API """
+    # set channels
+    if color_mode == "grayscale":
+        channels = 1
+    elif color_mode == "rgb":
+        channels = 3
+
+    # define model
     conv_encoder = keras.models.Sequential(
         [
             # keras.layers.InputLayer(input_shape=(256, 256, channels)),

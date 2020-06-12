@@ -1,3 +1,5 @@
+import sys
+import os
 import argparse
 import json
 import pandas as pd
@@ -12,18 +14,16 @@ from modules import utils as utils
 from modules.utils import printProgressBar as printProgressBar
 from modules.resmaps import calculate_resmaps
 from skimage.util import img_as_ubyte
-import modules.models.resnet as resnet
-import modules.models.mvtec_2 as mvtec_2
-import modules.models.mvtec as mvtec
 from modules import metrics as custom_metrics
 from modules import loss_functions as loss_functions
 import keras.backend as K
 from tensorflow import keras
-import tensorflow as tf
-import sys
-import os
+
 import time
+from autoencoder import AutoEncoder
 import ktrain
+import models
+from preprocessing import Preprocessor
 
 """
 Created on Tue Dec 10 19:46:17 2019
@@ -49,22 +49,7 @@ Mode    ----------------+----------------+----------------+
 """
 
 
-def main(args):
-
-    # ========================= SETUP ==============================
-
-    # Get training data setup
-    directory = args.directory
-    train_data_dir = os.path.join(directory, "train")
-    nb_training_images_aug = args.nb_images
-    batch_size = args.batch
-    color_mode = args.color
-    loss = args.loss.upper()
-    validation_split = 0.1
-    architecture = args.architecture
-    tag = args.tag
-
-    # check input arguments
+def check_arguments(architecture, color_mode, loss):
     if architecture == "resnet" and color_mode == "grayscale":
         raise ValueError("ResNet expects rgb images")
     if architecture == "nasnet" and color_mode == "grayscale":
@@ -73,403 +58,83 @@ def main(args):
         raise ValueError("MSSIM works only with rgb images")
     if loss == "SSIM" and color_mode == "rgb":
         raise ValueError("SSIM works only with grayscale images")
+    return
 
-    # set channels
-    if color_mode == "grayscale":
-        channels = 1
-    elif color_mode == "rgb":
-        channels = 3
 
-    # build model
-    if architecture == "mvtec":
-        model = mvtec.build_model(channels)
-        dynamic_range = 1.0
-    elif architecture == "mvtec2":
-        model = mvtec_2.build_model(channels)
-        dynamic_range = 1.0
-    elif architecture == "resnet":
-        model, base_encoder = resnet.build_model()
-        dynamic_range = 2.0
-    elif architecture == "nasnet":
-        # model, base_encoder = models.build_nasnet()
-        # dynamic_range = 2
-        raise Exception("Nasnet ist not yet implemented.")
+def main(args):
 
-    # set metrics to monitor training
-    if color_mode == "grayscale":
-        metrics = [custom_metrics.ssim_metric(dynamic_range)]
-        hist_keys = ("loss", "val_loss", "ssim", "val_ssim")
-    elif color_mode == "rgb":
-        metrics = [custom_metrics.mssim_metric(dynamic_range)]
-        hist_keys = ("loss", "val_loss", "mssim", "val_mssim")
+    # get parsed arguments from user
+    input_directory = args.directory
+    train_data_dir = os.path.join(input_directory, "train")
+    batch_size = args.batch
+    color_mode = args.color
+    # loss = args.loss.upper()
+    loss = args.loss
+    architecture = args.architecture
+    tag = args.tag
 
-    # set loss function
-    if loss == "SSIM":
-        loss_function = loss_functions.ssim_loss(dynamic_range)
-    elif loss == "MSSIM":
-        loss_function = loss_functions.mssim_loss(dynamic_range)
-    elif loss == "L2":
-        loss_function = loss_functions.l2_loss
-    elif loss == "MSE":
-        loss_function = keras.losses.mean_squared_error
+    # check arguments
+    check_arguments(architecture, color_mode, loss)
 
-    # specify model name and directory to save model
-    now = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-    save_dir = os.path.join(
-        os.getcwd(), "saved_models", directory, architecture, loss, now
-    )
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-    model_name = "CAE_" + architecture + "_b{}".format(batch_size)
-    model_path = os.path.join(save_dir, model_name + ".h5")
-
-    # specify logging directory for tensorboard visualization
-    log_dir = os.path.join(save_dir, "logs")
-    if not os.path.isdir(log_dir):
-        os.makedirs(log_dir)
-
-    # set callbacks
-    early_stopping_cb = keras.callbacks.EarlyStopping(
-        monitor="val_loss", patience=12, mode="min", verbose=1,
-    )
-    checkpoint_cb = keras.callbacks.ModelCheckpoint(
-        filepath=model_path,
-        monitor="val_loss",
-        verbose=1,
-        save_best_only=False,  # True
-        save_weights_only=False,
-        period=1,
-    )
-    tensorboard_cb = keras.callbacks.TensorBoard(
-        log_dir=log_dir, write_graph=True, update_freq="epoch"
+    # get autoencoder
+    autoencoder = AutoEncoder(
+        input_directory, architecture, color_mode, loss, batch_size
     )
 
-    # ============================= PREPROCESSING ===============================
-
-    if architecture in ["mvtec", "mvtec2"]:
-        rescale = 1.0 / 255
-        shape = (256, 256)
-        preprocessing_function = None
-        preprocessing = None
-        vmin = 0.0
-        vmax = 1.0
-    elif architecture == "resnet":
-        rescale = None
-        shape = (299, 299)
-        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
-        preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
-        vmin = -1.0
-        vmax = 1.0
-    elif architecture == "nasnet":
-        rescale = None
-        shape = (224, 224)
-        preprocessing_function = keras.applications.nasnet.preprocess_input
-        preprocessing = "keras.applications.inception_resnet_v2.preprocess_input"
-        vmin = -1.0
-        vmax = 1.0
-
-    print("[INFO] Using Keras's flow_from_directory method...")
-    # This will do preprocessing and realtime data augmentation:
-    train_datagen = ImageDataGenerator(
-        # randomly rotate images in the range (degrees, 0 to 180)
-        rotation_range=5,
-        # randomly shift images horizontally (fraction of total width)
-        width_shift_range=0.05,
-        # randomly shift images vertically (fraction of total height)
-        height_shift_range=0.05,
-        # set mode for filling points outside the input boundaries
-        fill_mode="nearest",
-        # value used for fill_mode = "constant"
-        cval=0.0,
-        # randomly change brightness (darker < 1 < brighter)
-        brightness_range=[0.95, 1.05],
-        # set rescaling factor (applied before any other transformation)
-        rescale=rescale,
-        # set function that will be applied on each input
-        preprocessing_function=preprocessing_function,
-        # image data format, either "channels_first" or "channels_last"
-        data_format="channels_last",
-        # fraction of images reserved for validation (strictly between 0 and 1)
-        validation_split=validation_split,
+    # load data as generators that yield batches of preprocessed images
+    preprocessor = Preprocessor(
+        input_directory,
+        rescale=autoencoder.rescale,
+        shape=autoencoder.shape,
+        color_mode=autoencoder.color_mode,
+        preprocessing_function=autoencoder.preprocessing_function,
+    )
+    train_generator = preprocessor.get_train_generator(
+        batch_size=autoencoder.batch_size, shuffle=True
+    )
+    validation_generator = preprocessor.get_val_generator(
+        batch_size=autoencoder.batch_size, shuffle=True
     )
 
-    # For validation dataset, only rescaling
-    validation_datagen = ImageDataGenerator(
-        rescale=rescale,
-        data_format="channels_last",
-        validation_split=validation_split,
-        preprocessing_function=preprocessing_function,
-    )
+    # find best learning rates for training
+    autoencoder.find_opt_lr(train_generator, validation_generator)
 
-    # Generate training batches with datagen.flow_from_directory()
-    train_generator = train_datagen.flow_from_directory(
-        directory=train_data_dir,
-        target_size=shape,
-        color_mode=color_mode,
-        batch_size=batch_size,
-        class_mode="input",
-        subset="training",
-        shuffle=True,
-    )
+    # train
+    autoencoder.fit()
 
-    # Generate validation batches with datagen.flow_from_directory()
-    validation_generator = validation_datagen.flow_from_directory(
-        directory=train_data_dir,
-        target_size=shape,
-        color_mode=color_mode,
-        batch_size=batch_size,
-        class_mode="input",
-        subset="validation",
-        shuffle=True,
-    )
-
-    # Print command to paste in browser for visualizing in Tensorboard
-    print("\ntensorboard --logdir={}\n".format(log_dir))
-
-    # calculate epochs
-    epochs = nb_training_images_aug // train_generator.samples
-
-    # =============================== TRAINING =================================
-
-    # define configuration for LR_find
-    print("[INFO] initializing LR_find configuration...")
-    if loss in ["SSIM", "MSSIM"]:
-        stop_factor = -6
-    elif loss == "L2":
-        stop_factor = 6
-    max_epochs = 10
-    start_lr = 1e-7
-    plt.close("all")
-
-    if architecture in ["mvtec", "mvtec2"]:
-
-        # initialize the optimizer and compile model
-        print("[INFO] compiling model...")
-        optimizer = keras.optimizers.Adam(learning_rate=start_lr)
-        model.compile(
-            loss=loss_function, optimizer=optimizer, metrics=metrics,
-        )
-
-        # wrap model and data in ktrain.Learner object
-        learner = ktrain.get_learner(
-            model=model,
-            train_data=train_generator,
-            val_data=validation_generator,
-            # workers=8,
-            use_multiprocessing=False,
-            batch_size=batch_size,
-        )
-
-        # find good learning rate
-        learner.lr_find(
-            start_lr=start_lr,
-            lr_mult=1.01,
-            max_epochs=max_epochs,
-            stop_factor=stop_factor,
-            show_plot=False,
-            # callbacks=[early_stopping_cb]
-            verbose=1,
-        )
-        plt.figure()  # added
-        learner.lr_plot()
-        plt.savefig(os.path.join(save_dir, "lr_find_plot.png"))
-        plt.show(block=True)
-        plt.close()  # added
-        print("[INFO] learning rate finder complete")
-
-        # prompt user to enter max learning rate
-        print("[INFO] examine plot and choose max learning rates...")
-        max_lr = float(input("Enter max learning rate: "))
-
-        # start training
-        history = learner.fit_onecycle(
-            lr=max_lr,
-            epochs=epochs,
-            cycle_momentum=True,
-            max_momentum=0.95,
-            min_momentum=0.85,
-            verbose=1,
-        )
-
-        # setup and model configuration
-        setup = {
-            "data_setup": {
-                "directory": directory,
-                "nb_training_images": train_generator.samples,
-                "nb_validation_images": validation_generator.samples,
-            },
-            "preprocessing_setup": {
-                "rescale": rescale,
-                "shape": shape,
-                "preprocessing": preprocessing,
-            },
-            "lr_finder": {
-                "start_lr": start_lr,
-                "max_lr": max_lr,
-                "stop_factor": stop_factor,
-                "max_epochs": max_epochs,
-            },
-            "train_setup": {
-                "architecture": architecture,
-                "nb_training_images_aug": nb_training_images_aug,
-                "epochs": epochs,
-                "max_lr": max_lr,
-                "min_lr": max_lr / 10,
-                "batch_size": batch_size,
-                "loss": loss,
-                "dynamic_range": dynamic_range,
-                "color_mode": color_mode,
-                "channels": channels,
-                "validation_split": validation_split,
-            },
-            "tag": tag,
-        }
-
-    elif architecture in ["resnet", "nasnet"]:
-
-        # ------------------- PHASE 1 ---------------------
-
-        print("[INFO] PHASE 1: training base encoder...")
-        # freeze base
-        print("[INFO] freezing base encoder's layers...")
-        for layer in base_encoder.layers:
-            layer.trainable = False
-        epochs_1 = int(np.ceil(0.7 * epochs))
-
-        # initialize the optimizer and compile model
-        print("[INFO] compiling model...")
-        optimizer = keras.optimizers.Adam(learning_rate=start_lr)
-        model.compile(
-            loss=loss_function, optimizer=optimizer, metrics=metrics,
-        )
-
-        # wrap model and data in ktrain.Learner object
-        learner = ktrain.get_learner(
-            model=model,
-            train_data=train_generator,
-            val_data=validation_generator,
-            # workers=8,
-            use_multiprocessing=False,
-            batch_size=batch_size,
-        )
-
-        # find good learning rate
-        learner.lr_find(
-            start_lr=start_lr,
-            lr_mult=1.01,
-            max_epochs=max_epochs,
-            stop_factor=stop_factor,
-            show_plot=True,
-            verbose=1,
-        )
-        # plt.close("all")
-        # learner.lr_plot()
-        # plt.xscale("log")
-        plt.savefig(os.path.join(save_dir, "lr_find_plot_1.png"))
-        plt.close("all")
-        print("[INFO] learning rate finder for PHASE 1 complete")
-
-        # prompt user to enter max learning rate
-        print("[INFO] examine plot and choose max learning rates...")
-        max_lr_1 = float(input("Enter max learning rate: "))
-
-        # Phase 1: start training
-        history_1 = learner.fit_onecycle(
-            lr=max_lr_1,
-            epochs=epochs_1,
-            cycle_momentum=True,
-            max_momentum=0.95,
-            min_momentum=0.85,
-            # callbacks=[early_stopping_cb],
-            verbose=1,
-        )
-
-        # ------------------- PHASE 2 ---------------------
-
-        print("[INFO] PHASE 2: training entire model...")
-        print("[INFO] unfreezing base encoder's layers...")
-        for layer in base_encoder.layers:
-            layer.trainable = True
-        epochs_2 = epochs - epochs_1
-
-        # initialize the optimizer and compile model for Phase 2
-        print("[INFO] compiling model...")
-        optimizer = keras.optimizers.Adam(learning_rate=start_lr)
-        model.compile(
-            loss=loss_function, optimizer=optimizer, metrics=metrics,
-        )
-
-        # find good learning rate
-        learner.lr_find(
-            start_lr=start_lr,
-            lr_mult=1.01,
-            max_epochs=max_epochs,
-            stop_factor=stop_factor,
-            show_plot=False,
-            verbose=1,
-        )
-        # plt.close("all")
-        learner.lr_plot()
-        # plt.xscale("log")
-        plt.savefig(os.path.join(save_dir, "lr_find_plot_2.png"))
-        plt.close("all")
-        print("[INFO] learning rate finder for PHASE 2 complete")
-
-        # prompt user to enter max learning rate
-        print("[INFO] examine plot and choose max learning rates...")
-        max_lr_2 = float(input("Enter max learning rate: "))
-
-        # Phase 2: start training
-        history_2 = learner.fit_onecycle(
-            lr=max_lr_2,
-            epochs=epochs_2,
-            cycle_momentum=True,
-            max_momentum=0.95,
-            min_momentum=0.85,
-            # callbacks=[early_stopping_cb],
-            verbose=1,
-        )
-
-        # update history
-        history = utils.update_history(history_1, history_2)
-        learner.history = history
-
-        # setup and model configuration
-        setup = {
-            "data_setup": {
-                "directory": directory,
-                "nb_training_images": train_generator.samples,
-                "nb_validation_images": validation_generator.samples,
-            },
-            "preprocessing_setup": {
-                "rescale": rescale,
-                "shape": shape,
-                "preprocessing": preprocessing,
-            },
-            "lr_finder": {
-                "start_lr": start_lr,
-                "max_lr_1": max_lr_1,
-                "max_lr_2": max_lr_2,
-                "stop_factor": stop_factor,
-                "max_epochs": max_epochs,
-            },
-            "train_setup": {
-                "architecture": architecture,
-                "nb_training_images_aug": nb_training_images_aug,
-                "epochs": epochs,
-                "max_lr_1": max_lr_1,
-                "min_lr_1": max_lr_1 / 10,
-                "max_lr_2": max_lr_2,
-                "min_lr_2": max_lr_2 / 10,
-                "batch_size": batch_size,
-                "loss": loss,
-                "dynamic_range": dynamic_range,
-                "color_mode": color_mode,
-                "channels": channels,
-                "validation_split": validation_split,
-            },
-            "tag": tag,
-        }
+    # setup and model configuration
+    setup = {
+        "data_setup": {
+            "directory": directory,
+            "nb_training_images": train_generator.samples,
+            "nb_validation_images": validation_generator.samples,
+        },
+        "preprocessing_setup": {
+            "rescale": rescale,
+            "shape": shape,
+            "preprocessing": preprocessing,
+        },
+        "lr_finder": {
+            "start_lr": start_lr,
+            "max_lr": max_lr,
+            "stop_factor": stop_factor,
+            "max_epochs": max_epochs,
+        },
+        "train_setup": {
+            "architecture": architecture,
+            "nb_training_images_aug": nb_training_images_aug,
+            "epochs": epochs,
+            "max_lr": max_lr,
+            "min_lr": max_lr / 10,
+            "batch_size": batch_size,
+            "loss": loss,
+            "dynamic_range": dynamic_range,
+            "color_mode": color_mode,
+            "channels": channels,
+            "validation_split": validation_split,
+        },
+        "tag": tag,
+    }
 
     # save setup
     with open(os.path.join(save_dir, "setup.json"), "w") as json_file:
@@ -509,19 +174,11 @@ def main(args):
         inspection_val_dir = os.path.join(save_dir, "inspection_val")
         if not os.path.isdir(inspection_val_dir):
             os.makedirs(inspection_val_dir)
-
-        # create a generator that yields preprocessed validation images
-        inspection_val_generator = validation_datagen.flow_from_directory(
-            directory=train_data_dir,
-            target_size=shape,
-            color_mode=color_mode,
-            batch_size=validation_generator.samples,
-            class_mode=None,
-            subset="validation",
-            shuffle=False,
+        inspection_val_generator = preprocessor.get_val_generator(
+            batch_size=nb_validation_images, shuffle=False
         )
-        # imgs_val_input = inspection_val_generator.next()[0]
-        imgs_val_input = next(inspection_val_generator)
+        imgs_val_input = inspection_val_generator.next()[0]
+        # imgs_val_input = next(inspection_val_generator)
         filenames = inspection_val_generator.filenames
 
         # predict on validation images
@@ -596,26 +253,13 @@ def main(args):
         if not os.path.isdir(inspection_test_dir):
             os.makedirs(inspection_test_dir)
 
-        test_datagen = ImageDataGenerator(
-            rescale=rescale,
-            data_format="channels_last",
-            preprocessing_function=preprocessing_function,
-        )
-        test_data_dir = os.path.join(directory, "test")
-        total_number = utils.get_total_number_test_images(test_data_dir)
+        nb_test_images = utils.get_total_number_test_images(test_data_dir)
 
-        # retrieve preprocessed test images as a numpy array
-        inspection_test_generator = test_datagen.flow_from_directory(
-            directory=test_data_dir,
-            target_size=shape,
-            color_mode=color_mode,
-            batch_size=total_number,
-            shuffle=False,
-            class_mode=None,
+        inspection_test_generator = preprocessor.get_test_generator(
+            batch_size=nb_test_images, shuffle=False
         )
-        # imgs_test_input = inspection_test_generator.next()[0]
-        imgs_test_input = next(inspection_test_generator)
-        filenames = inspection_test_generator.filenames
+        imgs_test_input = inspection_val_generator.next()[0]
+        filenames = inspection_val_generator.filenames
 
         # predict on test images
         print("[INFO] reconstructing test images...")
