@@ -12,4 +12,5 @@ DYNAMIC_RANGE = VMAX - VMIN
 
 # (Doesn't work)
 def build_model():
-    return
+    message = "model not yet implemented"
+    return message

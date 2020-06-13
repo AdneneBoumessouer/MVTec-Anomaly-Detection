@@ -20,8 +20,7 @@ import pandas as pd
 from models import mvtec
 from models import mvtec_2
 from models import resnet
-
-# from modules.models import nasnet
+from models import nasnet
 
 from modules import metrics as custom_metrics
 from modules import loss_functions as loss_functions
@@ -98,14 +97,14 @@ class AutoEncoder:
             self.vmax = resnet.VMAX
             self.dynamic_range = resnet.DYNAMIC_RANGE
         elif architecture == "nasnet":
-            # self.model = nasnet.build_model()
-            # self.rescale = nasnet.RESCALE
-            # self.shape = nasnet.SHAPE
-            # self.preprocessing_function = nasnet.PREPROCESSING_FUNCTION
-            # self.preprocessing = nasnet.PREPROCESSING
-            # self.vmin = nasnet.VMIN
-            # self.vmax = nasnet.VMAX
-            # self.dynamic_range = nasnet.DYNAMIC_RANGE
+            self.model = nasnet.build_model()
+            self.rescale = nasnet.RESCALE
+            self.shape = nasnet.SHAPE
+            self.preprocessing_function = nasnet.PREPROCESSING_FUNCTION
+            self.preprocessing = nasnet.PREPROCESSING
+            self.vmin = nasnet.VMIN
+            self.vmax = nasnet.VMAX
+            self.dynamic_range = nasnet.DYNAMIC_RANGE
             raise NotImplementedError("nasnet not yet implemented.")
 
         # set loss function
@@ -219,6 +218,7 @@ class AutoEncoder:
         except KeyboardInterrupt:
             shutil.rmtree(self.save_dir)
             sys.exit("exiting script.")
+        return
 
     ### Methods to create directory structure and save (and load?) model =================
 
@@ -277,6 +277,7 @@ class AutoEncoder:
                 self.save_dir
             )
         )
+        return
 
     ### Methods for getting finished training process info =====================
 

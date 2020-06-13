@@ -15,14 +15,6 @@ from modules.utils import printProgressBar as printProgressBar
 from modules.resmaps import calculate_resmaps
 from skimage.util import img_as_ubyte
 
-# import numpy as np
-# from modules import utils as utils
-# from modules import metrics as custom_metrics
-# from modules import loss_functions as loss_functions
-# import keras.backend as K
-# import ktrain
-# import models
-
 
 """
 Created on Tue Dec 10 19:46:17 2019
@@ -289,14 +281,6 @@ if __name__ == "__main__":
         help="model to use in training",
     )
 
-    # parser.add_argument(
-    #     "-n",
-    #     "--nb-images",
-    #     type=int,
-    #     default=10000,
-    #     metavar="",
-    #     help="number of training images",
-    # )
     parser.add_argument(
         "-b", "--batch", type=int, required=True, metavar="", help="batch size"
     )
@@ -326,10 +310,6 @@ if __name__ == "__main__":
         action="store_true",
         help="whether or not to reconstruct validation and test images after training",
     )
-
-    # parser.add_argument(
-    #     "-t", "--tag", type=str, help="give a tag to the model to be trained"
-    # )
 
     args = parser.parse_args()
     if tf.test.is_gpu_available():
