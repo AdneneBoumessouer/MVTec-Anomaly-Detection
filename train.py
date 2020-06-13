@@ -182,7 +182,8 @@ def main(args):
         if not os.path.isdir(inspection_test_dir):
             os.makedirs(inspection_test_dir)
 
-        nb_test_images = utils.get_total_number_test_images(test_data_dir)
+        # nb_test_images = utils.get_total_number_test_images(test_data_dir)
+        nb_test_images = preprocessor.get_total_number_test_images()
 
         inspection_test_generator = preprocessor.get_test_generator(
             batch_size=nb_test_images, shuffle=False

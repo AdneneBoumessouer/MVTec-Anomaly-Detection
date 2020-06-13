@@ -11,28 +11,6 @@ from autoencoder import metrics
 from autoencoder import losses
 
 
-def load_SavedModel(model_path):
-    """Save model with SavedModel format.
-    This format seems to trigger an error message upon loading the model:
-    ValueError: An empty Model cannot be used as a Layer."""
-    # load model
-    model = tf.keras.models.load_model(model_path, compile=True)
-    # load training history
-    dir_name = os.path.dirname(model_path)
-    history = pd.read_csv(os.path.join(dir_name, "history.csv"))
-    # load training setup
-    with open(os.path.join(dir_name, "train_setup.json"), "r") as read_file:
-        train_setup = json.load(read_file)
-    return model, train_setup, history
-
-
-# def get_model_setup(model_path):
-#     dir_name = os.path.dirname(model_path)
-#     with open(os.path.join(dir_name, "setup.json"), "r") as read_file:
-#         setup = json.load(read_file)
-#     return setup
-
-
 def get_model_info(model_path):
     dir_name = os.path.dirname(model_path)
     with open(os.path.join(dir_name, "info.json"), "r") as read_file:
@@ -49,7 +27,7 @@ def load_model_HDF5(model_path):
     dir_name = os.path.dirname(model_path)
     info = get_model_info(model_path)
     loss = info["model"]["loss"]
-    dynamic_range = info["model"]["dynamic_range"]
+    dynamic_range = info["preprocessing"]["dynamic_range"]
 
     # load autoencoder
     if loss == "mssim":
@@ -139,25 +117,15 @@ def update_history(history1, history2):
     return history1
 
 
-def get_total_number_test_images(test_data_dir):
-    total_number = 0
-    sub_dir_names = os.listdir(test_data_dir)
-    for sub_dir_name in sub_dir_names:
-        sub_dir_path = os.path.join(test_data_dir, sub_dir_name)
-        filenames = os.listdir(sub_dir_path)
-        number = len(filenames)
-        total_number = total_number + number
-    return total_number
-
-
-def get_preprocessing_function(architecture):
-    if architecture in ["mvtec", "mvtec2"]:
-        preprocessing_function = None
-    elif architecture == "resnet":
-        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
-    elif architecture == "nasnet":
-        preprocessing_function = keras.applications.nasnet.preprocess_input
-    return preprocessing_function
+# def get_total_number_test_images(test_data_dir):
+#     total_number = 0
+#     sub_dir_names = os.listdir(test_data_dir)
+#     for sub_dir_name in sub_dir_names:
+#         sub_dir_path = os.path.join(test_data_dir, sub_dir_name)
+#         filenames = os.listdir(sub_dir_path)
+#         number = len(filenames)
+#         total_number = total_number + number
+#     return total_number
 
 
 def get_plot_name(filename, suffix):

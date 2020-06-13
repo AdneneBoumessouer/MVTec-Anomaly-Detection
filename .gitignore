@@ -8,6 +8,8 @@ train_resnet.py
 xyz.py
 .vscode/
 /report
+/results
+/saved_models
 
 # remove this line after finishing project to upload data
 # saved_models/

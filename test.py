@@ -5,26 +5,21 @@ from pathlib import Path
 
 from tensorflow import keras
 from processing.preprocessing import Preprocessor
+from processing.preprocessing import get_preprocessing_function
+from processing.resmaps import calculate_resmaps as calculate_resmaps
+from processing.cv import threshold_images as threshold_images
+from processing.cv import label_images as label_images
+
+from processing import utils as utils
+from processing.utils import printProgressBar as printProgressBar
 
 from sklearn.metrics import confusion_matrix
+from skimage.util import img_as_ubyte
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import json
-
-from processing.resmaps import calculate_resmaps as calculate_resmaps
-
-from skimage.util import img_as_ubyte
-from processing.cv import scale_pixel_values as scale_pixel_values
-from processing.cv import filter_gauss_images as filter_gauss_images
-from processing.cv import filter_median_images as filter_median_images
-from processing.cv import threshold_images as threshold_images
-from processing.cv import label_images as label_images
-from processing import utils as utils
-from processing.utils import printProgressBar as printProgressBar
-
-
 
 
 
@@ -97,30 +92,26 @@ def main(args):
         min_area = args.area
 
     # ============================= PREPROCESSING ===============================
+    # get the correct preprocessing function
+    preprocessing_function = get_preprocessing_function(architecture)
 
-    # This will do preprocessing
-    if architecture in ["mvtec", "mvtec2"]:
-        preprocessing_function = None
-    elif architecture == "resnet":
-        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
-    elif architecture == "nasnet":
-        preprocessing_function = keras.applications.nasnet.preprocess_input
-
-    nb_test_images = utils.get_total_number_test_images(test_data_dir)
-
+    # initialize preprocessor
     preprocessor = Preprocessor(
-        input_directory=info["data"]["input_directory"],
+        input_directory=input_directory,
         rescale=rescale,
         shape=shape,
         color_mode=color_mode,
         preprocessing_function=preprocessing_function,
     )
 
+    # get validation generator
+    # nb_test_images = utils.get_total_number_test_images(test_data_dir)
+    nb_test_images = preprocessor.get_total_number_test_images()
     test_generator = preprocessor.get_test_generator(
         batch_size=nb_test_images, shuffle=False
     )
 
-    # test_generator.batch_size = test_generator.samples
+    # retrieve validation images from generator
     imgs_test_input = test_generator.next()[0]
 
     # retrieve test image names

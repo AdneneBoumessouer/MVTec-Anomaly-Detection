@@ -5,6 +5,7 @@ from pathlib import Path
 import tensorflow as tf
 from tensorflow import keras
 from processing.preprocessing import Preprocessor
+from processing.preprocessing import get_preprocessing_function
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,7 +39,7 @@ def main(args):
     loss = info["model"]["loss"]
     rescale = info["preprocessing"]["rescale"]
     shape = info["preprocessing"]["shape"]
-    color_mode = info["model"]["color_mode"]
+    color_mode = info["preprocessing"]["color_mode"]
     nb_validation_images = info["data"]["nb_validation_images"]
 
     val_data_dir = os.path.join(input_directory, "train")
@@ -59,27 +60,24 @@ def main(args):
         os.makedirs(save_dir)
 
     # ============================= PREPROCESSING ===============================
+    # get the correct preprocessing function
+    preprocessing_function = get_preprocessing_function(architecture)
 
-    # This will do preprocessing
-    if architecture in ["mvtec", "mvtec2"]:
-        preprocessing_function = None
-    elif architecture == "resnet":
-        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
-    elif architecture == "nasnet":
-        preprocessing_function = keras.applications.nasnet.preprocess_input
-
+    # initialize preprocessor
     preprocessor = Preprocessor(
-        input_directory=info["data"]["input_directory"],
+        input_directory=input_directory,
         rescale=rescale,
         shape=shape,
         color_mode=color_mode,
         preprocessing_function=preprocessing_function,
     )
 
+    # get validation generator
     validation_generator = preprocessor.get_val_generator(
         batch_size=nb_validation_images, shuffle=True
     )
 
+    # retrieve validation images from generator
     imgs_val_input = validation_generator.next()[0]
 
     # retrieve validation image_names

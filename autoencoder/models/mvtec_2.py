@@ -64,8 +64,6 @@ def build_model(color_mode):
     )(x)
 
     model = keras.models.Model(input_img, decoded)
-    # keras.utils.plot_model(model, to_file="model.png")
-    # print(model.summary())
 
     return model
 

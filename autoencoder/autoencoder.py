@@ -29,7 +29,7 @@ from autoencoder import losses
 
 # Learning Rate Finder Parameters
 START_LR = 1e-5
-LR_MAX_EPOCHS = 20
+LR_MAX_EPOCHS = 10
 
 
 class AutoEncoder:
@@ -61,11 +61,13 @@ class AutoEncoder:
 
         # training attributes
         self.learner = None
-        self.verbose = verbose
 
         # results attributes
         self.hist = None
         self.epochs_trained = None
+
+        # verbosity
+        self.verbose = verbose
 
         # build model and preprocessing variables
         if architecture == "mvtec":
@@ -137,9 +139,6 @@ class AutoEncoder:
     ### Methods for training =================================================
 
     def find_opt_lr(self, train_generator, validation_generator):
-        # # create directory to save model and logs
-        # self.create_save_dir()
-
         # initialize learner object
         self.learner = ktrain.get_learner(
             model=self.model,
@@ -161,11 +160,12 @@ class AutoEncoder:
                 lr_mult=1.01,
                 max_epochs=LR_MAX_EPOCHS,
                 stop_factor=stop_factor,
+                verbose=self.verbose,
                 show_plot=True,  # False
             )
         except Exception:
             shutil.rmtree(self.save_dir)
-            sys.exit("exiting script.")
+            sys.exit("\nexiting script.")
 
         losses = np.array(self.learner.lr_finder.losses)
         lrs = np.array(self.learner.lr_finder.lrs)
@@ -179,7 +179,7 @@ class AutoEncoder:
         max_loss = np.amax(segment)
 
         # compute optimal loss
-        optimal_loss = max_loss - 0.85 * (max_loss - min_loss)
+        optimal_loss = max_loss - 0.92 * (max_loss - min_loss)
 
         # get index corresponding to optimal loss
         self.opt_lr_i = np.argwhere(segment < optimal_loss)[0][0]
@@ -197,8 +197,6 @@ class AutoEncoder:
         return
 
     def fit(self):
-        # # create directory to save model and logs
-        # self.create_save_dir()
         # create tensorboard callback to monitor training
         tensorboard_cb = keras.callbacks.TensorBoard(
             log_dir=self.log_dir, write_graph=True, update_freq="epoch"
@@ -214,20 +212,20 @@ class AutoEncoder:
             self.hist = self.learner.autofit(
                 self.opt_lr,
                 epochs=None,
-                early_stopping=20,
-                reduce_on_plateau=5,
+                early_stopping=6,
+                reduce_on_plateau=3,
                 reduce_factor=2,
                 cycle_momentum=True,
                 max_momentum=0.95,
                 min_momentum=0.85,
                 monitor="val_loss",  # Check this
                 checkpoint_folder=None,
-                verbose=1,
+                verbose=self.verbose,
                 callbacks=[tensorboard_cb],
             )
         except Exception:
             shutil.rmtree(self.save_dir)
-            sys.exit("exiting script.")
+            sys.exit("\nexiting script.")
         return
 
     ### Methods to create directory structure and save (and load?) model =================
@@ -260,7 +258,7 @@ class AutoEncoder:
         model_name = (
             "CAE_"
             + self.architecture
-            + "_b_{}_e_{}.hdf5".format(self.batch_size, epochs_trained)
+            + "_b{}_e{}.hdf5".format(self.batch_size, epochs_trained)
         )
         # model_path = os.path.join(save_dir, model_name + ".h5")
         return model_name
@@ -306,24 +304,21 @@ class AutoEncoder:
                 "input_directory": self.input_directory,
                 "nb_training_images": self.learner.train_data.samples,
                 "nb_validation_images": self.learner.val_data.samples,
+                "validation_split": self.learner.train_data.image_data_generator._validation_split,
             },
-            "model": {
-                "architecture": self.architecture,
-                "color_mode": self.color_mode,
-                "loss": self.loss,
-                "batch_size": self.batch_size,
-                "dynamic_range": self.dynamic_range,
-            },
+            "model": {"architecture": self.architecture, "loss": self.loss,},
             "preprocessing": {
+                "color_mode": self.color_mode,
                 "rescale": self.rescale,
                 "shape": self.shape,
+                "dynamic_range": self.dynamic_range,
                 "preprocessing": self.preprocessing,
             },
             "lr_finder": {"base_lr": self.base_lr, "opt_lr": self.opt_lr,},
-            "train": {
-                "validation_split": self.learner.train_data.image_data_generator._validation_split,
+            "training": {
+                "batch_size": self.batch_size,
                 "epochs_trained": self.get_best_epoch(),
-                "nb_train_images_total": len(self.hist.history["lr"]) * self.batch_size,
+                "nb_train_images_total": self.get_total_nb_training_images(),
             },
         }
         return info
@@ -335,7 +330,7 @@ class AutoEncoder:
         during training because of the use of Early Stopping Callback.
         """
         hist_dict = self.get_history_dict()
-        best_epoch = np.argmin(np.array(hist_dict["val_loss"]))
+        best_epoch = int(np.argmin(np.array(hist_dict["val_loss"])))
         return best_epoch
 
     def get_best_val_loss(self):
@@ -346,6 +341,11 @@ class AutoEncoder:
         epochs_trained = np.argmin(np.array(hist_dict["val_loss"]))
         best_val_loss = np.array(hist_dict["val_loss"])[epochs_trained]
         return best_val_loss
+
+    def get_total_nb_training_images(self):
+        epochs_trained = self.get_best_epoch()
+        total_nb = int(epochs_trained * self.learner.train_data.samples)
+        return total_nb
 
     ### Methods for plotting ============================================
 

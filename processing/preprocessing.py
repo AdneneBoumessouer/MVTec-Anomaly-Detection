@@ -115,3 +115,23 @@ class Preprocessor:
             shuffle=False,
         )
         return test_generator
+
+    def get_total_number_test_images(self):
+        total_number = 0
+        sub_dir_names = os.listdir(self.test_data_dir)
+        for sub_dir_name in sub_dir_names:
+            sub_dir_path = os.path.join(self.test_data_dir, sub_dir_name)
+            filenames = os.listdir(sub_dir_path)
+            number = len(filenames)
+            total_number = total_number + number
+        return total_number
+
+
+def get_preprocessing_function(architecture):
+    if architecture in ["mvtec", "mvtec2"]:
+        preprocessing_function = None
+    elif architecture == "resnet":
+        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
+    elif architecture == "nasnet":
+        preprocessing_function = keras.applications.nasnet.preprocess_input
+    return preprocessing_function
