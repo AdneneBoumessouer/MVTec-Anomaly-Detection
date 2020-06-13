@@ -9,6 +9,7 @@ import os
 import shutil
 import datetime
 import json
+from pathlib import Path
 
 import tensorflow as tf
 from tensorflow import keras
@@ -16,16 +17,14 @@ import ktrain
 
 import numpy as np
 import pandas as pd
-
-from models import mvtec
-from models import mvtec_2
-from models import resnet
-from models import nasnet
-
-from modules import metrics as custom_metrics
-from modules import loss_functions as loss_functions
-
 import matplotlib.pyplot as plt
+
+from autoencoder.models import mvtec
+from autoencoder.models import mvtec_2
+from autoencoder.models import resnet
+from autoencoder.models import nasnet
+from autoencoder import metrics
+from autoencoder import losses
 
 
 # Learning Rate Finder Parameters
@@ -109,21 +108,24 @@ class AutoEncoder:
 
         # set loss function
         if loss == "ssim":
-            self.loss_function = loss_functions.ssim_loss(self.dynamic_range)
+            self.loss_function = losses.ssim_loss(self.dynamic_range)
         elif loss == "mssim":
-            self.loss_function = loss_functions.mssim_loss(self.dynamic_range)
+            self.loss_function = losses.mssim_loss(self.dynamic_range)
         elif loss == "l2":
-            self.loss_function = loss_functions.l2_loss
+            self.loss_function = losses.l2_loss
         elif loss == "mse":
             self.loss_function = keras.losses.mean_squared_error
 
         # set metrics to monitor training
         if color_mode == "grayscale":
-            self.metrics = [custom_metrics.ssim_metric(self.dynamic_range)]
+            self.metrics = [metrics.ssim_metric(self.dynamic_range)]
             self.hist_keys = ("loss", "val_loss", "ssim", "val_ssim")
         elif color_mode == "rgb":
-            self.metrics = [custom_metrics.mssim_metric(self.dynamic_range)]
+            self.metrics = [metrics.mssim_metric(self.dynamic_range)]
             self.hist_keys = ("loss", "val_loss", "mssim", "val_mssim")
+
+        # create directory to save model and logs
+        self.create_save_dir()
 
         # compile model
         optimizer = keras.optimizers.Adam(learning_rate=START_LR)
@@ -135,6 +137,9 @@ class AutoEncoder:
     ### Methods for training =================================================
 
     def find_opt_lr(self, train_generator, validation_generator):
+        # # create directory to save model and logs
+        # self.create_save_dir()
+
         # initialize learner object
         self.learner = ktrain.get_learner(
             model=self.model,
@@ -149,13 +154,19 @@ class AutoEncoder:
             stop_factor = 6
 
         # simulate training while recording learning rate and loss
-        self.learner.lr_find(
-            start_lr=START_LR,
-            lr_mult=1.01,
-            max_epochs=LR_MAX_EPOCHS,
-            stop_factor=stop_factor,
-            show_plot=True,  # False
-        )
+        print("[INFO] initiating learning rate finder to determine best learning rate.")
+        try:
+            self.learner.lr_find(
+                start_lr=START_LR,
+                lr_mult=1.01,
+                max_epochs=LR_MAX_EPOCHS,
+                stop_factor=stop_factor,
+                show_plot=True,  # False
+            )
+        except Exception:
+            shutil.rmtree(self.save_dir)
+            sys.exit("exiting script.")
+
         losses = np.array(self.learner.lr_finder.losses)
         lrs = np.array(self.learner.lr_finder.lrs)
 
@@ -186,16 +197,15 @@ class AutoEncoder:
         return
 
     def fit(self):
-        # create directory to save model and logs
-        self.create_save_dir()
-
+        # # create directory to save model and logs
+        # self.create_save_dir()
         # create tensorboard callback to monitor training
         tensorboard_cb = keras.callbacks.TensorBoard(
             log_dir=self.log_dir, write_graph=True, update_freq="epoch"
         )
         # Print command to paste in browser for visualizing in Tensorboard
         print(
-            "[info] run the following command in a seperate terminal to monitor training on tensorboard:"
+            "[INFO] run the following command in a seperate terminal to monitor training on tensorboard:"
         )
         print("\ntensorboard --logdir={}\n".format(self.log_dir))
 
@@ -215,7 +225,7 @@ class AutoEncoder:
                 verbose=1,
                 callbacks=[tensorboard_cb],
             )
-        except KeyboardInterrupt:
+        except Exception:
             shutil.rmtree(self.save_dir)
             sys.exit("exiting script.")
         return
@@ -225,7 +235,9 @@ class AutoEncoder:
     def create_save_dir(self):
         # create a directory to save model
         now = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+        # root_dir = str(Path(os.getcwd()).parent)
         save_dir = os.path.join(
+            # root_dir,
             os.getcwd(),
             "saved_models",
             self.input_directory,
@@ -256,6 +268,9 @@ class AutoEncoder:
     def save(self):
         # save model
         self.model.save(os.path.join(self.save_dir, self.create_model_name()))
+        # tf.keras.models.save_model(
+        #     model, model_path, include_optimizer=True, save_format="h5"
+        # )
         # save trainnig info
         info = self.get_info()
         with open(os.path.join(self.save_dir, "info.json"), "w") as json_file:
@@ -270,10 +285,10 @@ class AutoEncoder:
         hist_csv_file = os.path.join(self.save_dir, "history.csv")
         with open(hist_csv_file, mode="w") as csv_file:
             hist_df.to_csv(csv_file)
-        # print("[info] training history has been successfully saved as csv file at %s " % hist_csv_file)
-        print("[info] training history has been successfully saved as csv file.")
+        # print("[INFO] training history has been successfully saved as csv file at %s " % hist_csv_file)
+        print("[INFO] training history has been successfully saved as csv file.")
         print(
-            "[info] all files have been successfully saved at: \n{}".format(
+            "[INFO] all files have been successfully saved at: \n{}".format(
                 self.save_dir
             )
         )
@@ -359,7 +374,7 @@ class AutoEncoder:
                 markersize=10,
                 marker="o",
                 color="red",
-                abel="opt_lr",
+                label="opt_lr",
             )
             plt.title(
                 f"Learning Rate Plot \nbase learning rate: {lrs[j]:.2E}\noptimal learning rate: {lrs[i]:.2E}"
@@ -369,9 +384,9 @@ class AutoEncoder:
         if save:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "lr_plot.png"))
-            print("[info] lr_plot.png successfully saved.")
-        print(f"[info] base learning rate: {lrs[j]:.2E}")
-        print(f"[info] optimal learning rate: {lrs[i]:.2E}")
+            print("[INFO] lr_plot.png successfully saved.")
+        print(f"[INFO] base learning rate: {lrs[j]:.2E}")
+        print(f"[INFO] optimal learning rate: {lrs[i]:.2E}")
         return
 
     def lr_schedule_plot(self, save=False):
@@ -383,7 +398,7 @@ class AutoEncoder:
         if save:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "lr_schedule_plot.png"))
-            print("[info] lr_schedule_plot.png successfully saved.")
+            print("[INFO] lr_schedule_plot.png successfully saved.")
             # return fig
         return
 
@@ -397,7 +412,7 @@ class AutoEncoder:
         if save:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "loss_plot.png"))
-            print("[info] loss_plot.png successfully saved.")
+            print("[INFO] loss_plot.png successfully saved.")
         return
 
     ### Methods to load model (and data?) =================

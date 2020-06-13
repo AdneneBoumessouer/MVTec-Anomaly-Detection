@@ -5,14 +5,14 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from autoencoder import AutoEncoder
-from preprocessing import Preprocessor
+from autoencoder.autoencoder import AutoEncoder
 import tensorflow as tf
 from tensorflow import keras
 
-from modules import utils
-from modules.utils import printProgressBar as printProgressBar
-from modules.resmaps import calculate_resmaps
+from processing.preprocessing import Preprocessor
+from processing import utils
+from processing.utils import printProgressBar as printProgressBar
+from processing.resmaps import calculate_resmaps
 from skimage.util import img_as_ubyte
 
 
@@ -62,7 +62,6 @@ def main(args):
     # loss = args.loss.upper()
     loss = args.loss
     architecture = args.architecture
-    # tag = args.tag
 
     # check arguments
     check_arguments(architecture, color_mode, loss)
@@ -74,7 +73,7 @@ def main(args):
 
     # load data as generators that yield batches of preprocessed images
     preprocessor = Preprocessor(
-        input_directory,
+        input_directory=input_directory,
         rescale=autoencoder.rescale,
         shape=autoencoder.shape,
         color_mode=autoencoder.color_mode,

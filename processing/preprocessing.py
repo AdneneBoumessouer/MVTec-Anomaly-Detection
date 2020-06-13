@@ -15,13 +15,7 @@ VAL_SPLIT = 0.1
 
 class Preprocessor:
     def __init__(
-        self,
-        input_directory,
-        rescale,
-        shape,
-        color_mode,
-        # batch_size,
-        preprocessing_function,
+        self, input_directory, rescale, shape, color_mode, preprocessing_function,
     ):
         self.input_directory = input_directory
         self.train_data_dir = os.path.join(input_directory, "train")
@@ -29,7 +23,6 @@ class Preprocessor:
         self.rescale = rescale
         self.shape = shape
         self.color_mode = color_mode
-        # self.batch_size = batch_size
         self.preprocessing_function = preprocessing_function
         self.validation_split = VAL_SPLIT
 

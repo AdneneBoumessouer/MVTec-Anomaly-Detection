@@ -1,25 +1,14 @@
+import os
+import json
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+
 import tensorflow as tf
 from tensorflow import keras
-import numpy as np
-from modules import loss_functions as loss_functions
-from modules import metrics as custom_metrics
-import os
-import csv
-import pandas as pd
-import json
-from copy import deepcopy
 
-"""
-SAVE AND LOAD LINKS:
-https://www.tensorflow.org/tutorials/keras/save_and_load#hdf5_format
-https://www.tensorflow.org/api_docs/python/tf/keras/models/save_model
-https://www.tensorflow.org/api_docs/python/tf/saved_model/save
-https://www.tensorflow.org/api_docs/python/tf/keras/models/load_model
-
-
-https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
-"""
+from autoencoder import metrics
+from autoencoder import losses
 
 
 def load_SavedModel(model_path):
@@ -37,11 +26,18 @@ def load_SavedModel(model_path):
     return model, train_setup, history
 
 
-def get_model_setup(model_path):
+# def get_model_setup(model_path):
+#     dir_name = os.path.dirname(model_path)
+#     with open(os.path.join(dir_name, "setup.json"), "r") as read_file:
+#         setup = json.load(read_file)
+#     return setup
+
+
+def get_model_info(model_path):
     dir_name = os.path.dirname(model_path)
-    with open(os.path.join(dir_name, "setup.json"), "r") as read_file:
-        setup = json.load(read_file)
-    return setup
+    with open(os.path.join(dir_name, "info.json"), "r") as read_file:
+        info = json.load(read_file)
+    return info
 
 
 def load_model_HDF5(model_path):
@@ -51,29 +47,29 @@ def load_model_HDF5(model_path):
 
     # load loss function used in training
     dir_name = os.path.dirname(model_path)
-    setup = get_model_setup(model_path)
-    loss = setup["train_setup"]["loss"]
-    dynamic_range = setup["train_setup"]["dynamic_range"]
+    info = get_model_info(model_path)
+    loss = info["model"]["loss"]
+    dynamic_range = info["model"]["dynamic_range"]
 
     # load autoencoder
-    if loss == "MSSIM":
+    if loss == "mssim":
         model = keras.models.load_model(
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "loss": loss_functions.mssim_loss(dynamic_range),
-                "mssim": custom_metrics.mssim_metric(dynamic_range),
+                "loss": losses.mssim_loss(dynamic_range),
+                "mssim": metrics.mssim_metric(dynamic_range),
             },
             compile=True,
         )
 
-    elif loss == "SSIM":
+    elif loss == "ssim":
         model = keras.models.load_model(
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "loss": loss_functions.ssim_loss(dynamic_range),
-                "ssim": custom_metrics.ssim_metric(dynamic_range),
+                "loss": losses.ssim_loss(dynamic_range),
+                "ssim": metrics.ssim_metric(dynamic_range),
             },
             compile=True,
         )
@@ -83,9 +79,9 @@ def load_model_HDF5(model_path):
             filepath=model_path,
             custom_objects={
                 "LeakyReLU": keras.layers.LeakyReLU,
-                "l2_loss": loss_functions.l2_loss,
-                "ssim": loss_functions.ssim_loss(dynamic_range),
-                "mssim": custom_metrics.mssim_metric(dynamic_range),
+                "l2_loss": losses.l2_loss,
+                "ssim": losses.ssim_loss(dynamic_range),
+                "mssim": metrics.mssim_metric(dynamic_range),
             },
             compile=True,
         )
@@ -93,7 +89,7 @@ def load_model_HDF5(model_path):
     # load training history
     history = pd.read_csv(os.path.join(dir_name, "history.csv"))
 
-    return model, setup, history
+    return model, info, history
 
 
 def save_np(arr, save_dir, filename):
@@ -224,3 +220,15 @@ def save_dataframe_as_text_file(df, save_dir, filename):
     with open(os.path.join(save_dir, filename), "w+") as f:
         f.write(df.to_string(header=True, index=True))
         print("[INFO] validation_results.txt saved at {}".format(save_dir))
+
+
+"""
+SAVE AND LOAD LINKS:
+https://www.tensorflow.org/tutorials/keras/save_and_load#hdf5_format
+https://www.tensorflow.org/api_docs/python/tf/keras/models/save_model
+https://www.tensorflow.org/api_docs/python/tf/saved_model/save
+https://www.tensorflow.org/api_docs/python/tf/keras/models/load_model
+
+
+https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
+"""

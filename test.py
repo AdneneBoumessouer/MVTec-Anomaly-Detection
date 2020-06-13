@@ -1,30 +1,31 @@
-import os
 import sys
+import os
+import argparse
 from pathlib import Path
 
-import tensorflow as tf
 from tensorflow import keras
+from processing.preprocessing import Preprocessor
 
-from modules import utils as utils
-from modules.utils import printProgressBar as printProgressBar
-from keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import confusion_matrix
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import json
 
-from modules.resmaps import calculate_resmaps as calculate_resmaps
+from processing.resmaps import calculate_resmaps as calculate_resmaps
 
 from skimage.util import img_as_ubyte
-from modules.cv import scale_pixel_values as scale_pixel_values
-from modules.cv import filter_gauss_images as filter_gauss_images
-from modules.cv import filter_median_images as filter_median_images
-from modules.cv import threshold_images as threshold_images
-from modules.cv import label_images as label_images
+from processing.cv import scale_pixel_values as scale_pixel_values
+from processing.cv import filter_gauss_images as filter_gauss_images
+from processing.cv import filter_median_images as filter_median_images
+from processing.cv import threshold_images as threshold_images
+from processing.cv import label_images as label_images
+from processing import utils as utils
+from processing.utils import printProgressBar as printProgressBar
 
-import argparse
-import time
+
+
 
 
 def is_defective(areas, min_area):
@@ -50,37 +51,30 @@ def main(args):
 
     # ========================= LOAD SETUP ==============================
 
-    # load model, setup and history
-    model, setup, history = utils.load_model_HDF5(model_path)
+    # load model and info
+    model, info, _ = utils.load_model_HDF5(model_path)
 
-    # data setup
-    directory = setup["data_setup"]["directory"]
-    test_data_dir = os.path.join(directory, "test")
-    nb_training_images = setup["data_setup"]["nb_training_images"]
-    nb_validation_images = setup["data_setup"]["nb_validation_images"]
+    input_directory = info["data"]["input_directory"]
+    architecture = info["model"]["architecture"]
+    loss = info["model"]["loss"]
+    rescale = info["preprocessing"]["rescale"]
+    shape = info["preprocessing"]["shape"]
+    color_mode = info["model"]["color_mode"]
+    nb_validation_images = info["data"]["nb_validation_images"]
 
-    # preprocessing_setup
-    rescale = setup["preprocessing_setup"]["rescale"]
-    shape = setup["preprocessing_setup"]["shape"]
-    preprocessing = setup["preprocessing_setup"]["preprocessing"]
-
-    # train_setup
-    color_mode = setup["train_setup"]["color_mode"]
-    nb_training_images_aug = setup["train_setup"]["nb_training_images_aug"]
-    epochs = setup["train_setup"]["epochs"]
-    batch_size = setup["train_setup"]["batch_size"]
-    channels = setup["train_setup"]["channels"]
-    validation_split = setup["train_setup"]["validation_split"]
-    architecture = setup["train_setup"]["architecture"]
-    loss = setup["train_setup"]["loss"]
-
-    tag = setup["tag"]
+    test_data_dir = os.path.join(input_directory, "train")
 
     # create directory to save test results
     model_dir_name = os.path.basename(str(Path(model_path).parent))
 
     save_dir = os.path.join(
-        os.getcwd(), "results", directory, architecture, loss, model_dir_name, "test",
+        os.getcwd(),
+        "results",
+        input_directory,
+        architecture,
+        loss,
+        model_dir_name,
+        "test",
     )
 
     if not os.path.isdir(save_dir):
@@ -112,24 +106,22 @@ def main(args):
     elif architecture == "nasnet":
         preprocessing_function = keras.applications.nasnet.preprocess_input
 
-    test_datagen = ImageDataGenerator(
+    nb_test_images = utils.get_total_number_test_images(test_data_dir)
+
+    preprocessor = Preprocessor(
+        input_directory=info["data"]["input_directory"],
         rescale=rescale,
-        data_format="channels_last",
+        shape=shape,
+        color_mode=color_mode,
         preprocessing_function=preprocessing_function,
     )
 
-    total_number = utils.get_total_number_test_images(test_data_dir)
-
-    # retrieve preprocessed test images as a numpy array
-    test_generator = test_datagen.flow_from_directory(
-        directory=test_data_dir,
-        target_size=shape,
-        color_mode=color_mode,
-        batch_size=total_number,
-        shuffle=False,
-        class_mode=None,
+    test_generator = preprocessor.get_test_generator(
+        batch_size=nb_test_images, shuffle=False
     )
-    imgs_test_input = next(test_generator)
+
+    # test_generator.batch_size = test_generator.samples
+    imgs_test_input = test_generator.next()[0]
 
     # retrieve test image names
     filenames = test_generator.filenames
@@ -167,10 +159,14 @@ def main(args):
     N = y_true.count(0)
 
     # true positive (TP)
-    TP = np.sum([1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(total_number)])
+    TP = np.sum(
+        [1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(nb_test_images)]
+    )
 
     # true negative (TN)
-    TN = np.sum([1 if y_pred[i] == y_true[i] == 0 else 0 for i in range(total_number)])
+    TN = np.sum(
+        [1 if y_pred[i] == y_true[i] == 0 else 0 for i in range(nb_test_images)]
+    )
 
     # sensitivity, recall, hit rate, or true positive rate (TPR)
     TPR = TP / P
