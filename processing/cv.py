@@ -1,5 +1,5 @@
 import numpy as np
-import cv2 as cv
+import cv2
 from skimage import data
 from skimage.filters import threshold_otsu
 from skimage.segmentation import clear_border
@@ -21,7 +21,7 @@ def scale_pixel_values(architecture, resmaps):
 def equalize_images(images):
     """
     Performs Histograms Equalization on images.
-    https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_histograms/py_histogram_equalization/py_histogram_equalization.html
+    https://opencv2-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_histograms/py_histogram_equalization/py_histogram_equalization.html
 
     Parameters
     ----------
@@ -36,7 +36,7 @@ def equalize_images(images):
     """
     images_equalized = np.zeros(shape=images.shape, dtype="uint8")
     for i, image in enumerate(images):
-        image_equalized = cv.equalizeHist(image)
+        image_equalized = cv2.equalizeHist(image)
         image_equalized = np.expand_dims(image_equalized, axis=-1)
         images_equalized[i] = image_equalized
     return images_equalized
@@ -46,7 +46,7 @@ def filter_gauss_images(images, kernel_size=5):
     images_filtered = np.zeros(shape=images.shape, dtype="uint8")
     kernel = (kernel_size, kernel_size)
     for i, image in enumerate(images):
-        image_filtered = cv.GaussianBlur(image, kernel, 0)
+        image_filtered = cv2.GaussianBlur(image, kernel, 0)
         image_filtered = np.expand_dims(image_filtered, axis=-1)
         images_filtered[i] = image_filtered
     return images_filtered
@@ -55,7 +55,7 @@ def filter_gauss_images(images, kernel_size=5):
 def filter_median_images(images, kernel_size=3):
     """
     Filter images according to Median Filtering.
-    https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_filtering/py_filtering.html
+    https://opencv2-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_filtering/py_filtering.html
 
     Parameters
     ----------
@@ -72,7 +72,7 @@ def filter_median_images(images, kernel_size=3):
     """
     images_filtered = np.zeros(shape=images.shape, dtype="uint8")
     for i, image in enumerate(images):
-        image_filtered = cv.medianBlur(image, kernel_size)
+        image_filtered = cv2.medianBlur(image, kernel_size)
         image_filtered = np.expand_dims(image_filtered, axis=-1)
         images_filtered[i] = image_filtered
     return images_filtered
@@ -84,7 +84,7 @@ def threshold_images(images, threshold):
     """
     images_th = np.zeros(shape=images.shape, dtype="uint8")
     for i, image in enumerate(images):
-        image_th = cv.threshold(image, threshold, 255, cv.THRESH_BINARY)[1]
+        image_th = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)[1]
         image_th = np.expand_dims(image_th, axis=-1)
         images_th[i] = image_th.astype("uint8")
     return images_th
