@@ -311,6 +311,8 @@ class AutoEncoder:
                 "color_mode": self.color_mode,
                 "rescale": self.rescale,
                 "shape": self.shape,
+                "vmin": self.vmin,
+                "vmax": self.vmax,
                 "dynamic_range": self.dynamic_range,
                 "preprocessing": self.preprocessing,
             },

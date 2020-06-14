@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 import tensorflow as tf
-from tensorflow import keras
+
 from processing.preprocessing import Preprocessor
 from processing.preprocessing import get_preprocessing_function
 
@@ -40,6 +40,8 @@ def main(args):
     rescale = info["preprocessing"]["rescale"]
     shape = info["preprocessing"]["shape"]
     color_mode = info["preprocessing"]["color_mode"]
+    vmin = info["preprocessing"]["vmin"]
+    vmax = info["preprocessing"]["vmax"]
     nb_validation_images = info["data"]["nb_validation_images"]
 
     val_data_dir = os.path.join(input_directory, "train")

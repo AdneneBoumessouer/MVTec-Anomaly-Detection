@@ -128,12 +128,6 @@ def update_history(history1, history2):
 #     return total_number
 
 
-def get_plot_name(filename, suffix):
-    filename_new, ext = os.path.splitext(filename)
-    filename_new = "_".join(filename_new.split("/")) + "_" + suffix + ext
-    return filename_new
-
-
 def save_images(save_dir, imgs, filenames, color_mode, suffix):
     filenames_new = []
     for filename in filenames:

@@ -8,11 +8,14 @@ train_resnet.py
 xyz.py
 .vscode/
 /report
-/results
-/saved_models
+
+check_resmaps.ipynb
 
 # remove this line after finishing project to upload data
 # saved_models/
+/saved_models
+/finetuning
+/results
 
 # numpy arrays
 saved_models/**/*.npy
