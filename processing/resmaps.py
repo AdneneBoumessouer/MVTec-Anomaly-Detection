@@ -10,6 +10,22 @@ from processing.utils import printProgressBar as printProgressBar
 import matplotlib.pyplot as plt
 from skimage.util import img_as_ubyte
 
+# Segmentation Parameters
+
+# float + SSIM
+THRESH_MIN_FLOAT_SSIM = 0.35
+THRESH_STEP_FLOAT_SSIM = 0.002
+
+# float + L2
+THRESH_MIN_FLOAT_L2 = 0.01
+THRESH_STEP_FLOAT_L2 = 0.0005
+
+# uint8 + SSIM
+THRESH_MIN_UINT8_SSIM = 90
+THRESH_STEP_UINT8_SSIM = 1
+
+# uint8 + L2 are incompatible
+
 
 class TensorImages:
     def __init__(
@@ -19,13 +35,14 @@ class TensorImages:
         vmin,
         vmax,
         method,
-        datatype="float",
+        dtype="float64",
         filenames=None,
     ):
         assert imgs_input.ndim == 3
         assert imgs_pred.ndim == 3
         self.imgs_input = imgs_input
         self.imgs_pred = imgs_pred
+        self.dtype = dtype
 
         # pixel min and max values depend on preprocessing function,
         # which in turn depends on the model used for training.
@@ -33,22 +50,32 @@ class TensorImages:
         self.vmax = vmax
 
         # compute resmaps
-        assert datatype in ["float", "uint8"]
+        assert dtype in ["float64", "uint8"]
         assert method in ["L2", "SSIM"]
-        self.resmaps = calculate_resmaps(self.imgs_input, self.imgs_pred, method)
-        if datatype == "float":
-            self.vmin_resmap = 0.0
-            self.vmax_resmap = 1.0
+        self.resmaps = calculate_resmaps(self.imgs_input, self.imgs_pred, method, dtype)
+        if dtype == "float64":
             if method == "SSIM":
-                self.step_seg = 1 / 255  # ~0.0039215
+                self.thresh_min = THRESH_MIN_FLOAT_SSIM
+                self.step = THRESH_STEP_FLOAT_SSIM
+                self.vmin_resmap = 0.0
+                self.vmax_resmap = 1.0
             elif method == "L2":
-                self.step_seg = 1e-4  # ADJUST
-        elif datatype == "uint8":
-            self.step_seg = 1
-            self.vmin_resmap = 0
-            self.vmax_resmap = 255
+                self.thresh_min = THRESH_MIN_FLOAT_L2
+                self.step = THRESH_STEP_FLOAT_L2
+                self.vmin_resmap = None
+                self.vmax_resmap = None
+        elif dtype == "uint8":
+            if method == "SSIM":
+                self.thresh_min = THRESH_MIN_UINT8_SSIM
+                self.step = THRESH_STEP_UINT8_SSIM
+                self.vmin_resmap = 0
+                self.vmax_resmap = 255
+            elif method == "L2":
+                raise Exception("L2 Resmaps are incompatible with uint8 dtype.")
             # Convert to 8-bit unsigned int
             self.resmaps = img_as_ubyte(self.resmaps)
+        self.thresh_max = np.amax(self.resmaps)
+        # self.n_steps = (self.thresh_max - self.thresh_min) // self.step
         self.method = method
         self.filenames = filenames
 
@@ -108,15 +135,21 @@ class TensorImages:
         if plot_type == "input":
             image = self.imgs_input[index]
             cmap = "gray"
+            vmin = self.vmin
+            vmax = self.vmax
         elif plot_type == "pred":
             image = self.imgs_pred[index]
             cmap = "gray"
+            vmin = self.vmin
+            vmax = self.vmax
         elif plot_type == "resmap":
             image = self.resmaps[index]
             cmap = "inferno"
+            vmin = self.vmin_resmap
+            vmax = self.vmax_resmap
         # plot image
         fig, ax = plt.subplots(figsize=(5, 3))
-        im = ax.imshow(image, cmap=cmap)
+        im = ax.imshow(image, cmap=cmap, vmin=vmin, vmax=vmax)
         ax.set_axis_off()
         fig.colorbar(im)
         title = plot_type + "\n" + self.filenames[index]
@@ -124,16 +157,18 @@ class TensorImages:
         plt.show()
 
 
-### Image Processing Functions
+#### Image Processing Functions
+
+## Functions for generating Resmaps
 
 
-def calculate_resmaps(imgs_input, imgs_pred, method):
+def calculate_resmaps(imgs_input, imgs_pred, method, dtype="float64"):
     if method == "L2":
         resmaps = resmaps_l2(imgs_input, imgs_pred)
     elif method == "SSIM":
         resmaps = resmaps_ssim(imgs_input, imgs_pred)
-    elif method == "MSSIM":
-        resmaps = resmaps_mssim(imgs_input, imgs_pred)
+    if dtype == "uint8":
+        resmaps = img_as_ubyte(resmaps)
     return resmaps
 
 
@@ -156,29 +191,13 @@ def resmaps_ssim(imgs_input, imgs_pred):
     return resmaps
 
 
-def resmaps_mssim(imgs_input, imgs_pred):
-    # NOT TESTED YET
-    resmaps = np.zeros(shape=imgs_input.shape, dtype="float64")
-    for index in range(len(imgs_input)):
-        img_input = imgs_input[index]
-        img_pred = imgs_pred[index]
-        _, resmap = ssim(
-            img_input,
-            img_pred,
-            multichannel=True,
-            win_size=11,
-            gaussian_weights=True,
-            sigma=1.5,
-            full=True,
-        )
-        resmaps[index] = 1 - resmap
-    resmaps = np.clip(resmaps, a_min=-1, amax=1)
-    return resmaps
-
-
 def resmaps_l2(imgs_input, imgs_pred):
     resmaps = (imgs_input - imgs_pred) ** 2
     return resmaps
+
+
+def segment_resmaps(resmaps, threshold):
+    return resmaps > threshold
 
 
 ### utilitary functions

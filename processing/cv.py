@@ -8,15 +8,6 @@ from skimage.morphology import closing, square
 from skimage.color import label2rgb
 
 
-def scale_pixel_values(architecture, resmaps):
-    if architecture in ["mvtec", "mvtec2"]:
-        resmaps = resmaps / 2 + 1 / 2
-    elif architecture == "resnet":
-        resmaps = resmaps / 4 + 1 / 2
-    elif architecture == "nasnet":
-        raise Exception("Not yet implemented")
-    return resmaps
-
 
 def equalize_images(images):
     """

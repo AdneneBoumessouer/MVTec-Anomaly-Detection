@@ -16,18 +16,21 @@ import time
 
 from skimage.util import img_as_ubyte
 
-from processing import utils as utils
-from processing.resmaps import calculate_resmaps as calculate_resmaps
-from processing.cv import threshold_images as threshold_images
-from processing.cv import label_images as label_images
-from processing.utils import printProgressBar as printProgressBar
+from processing import utils
+
+# from processing.resmaps import calculate_resmaps as calculate_resmaps
+from processing import resmaps
+from processing.cv import threshold_images
+from processing.cv import label_images
+from processing.utils import printProgressBar
 
 
 def main(args):
     # Get validation arguments
     model_path = args.path
-    save = args.save
     min_area = args.area
+    dtype = args.dtype
+    save = args.save
 
     # ========================= SETUP ==============================
 
@@ -88,33 +91,40 @@ def main(args):
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
 
-    # compute residual maps on validation dataset
-    resmaps_val = calculate_resmaps(imgs_val_input, imgs_val_pred, method="SSIM")
-
+    # convert to grayscale if RGB
     if color_mode == "rgb":
-        resmaps_val = tf.image.rgb_to_grayscale(resmaps_val)
+        imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input).numpy()
+        imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred).numpy()
 
-    if args.area is None:
-        print("[INFO] exiting")
-        exit()
+    imgs_val_input = imgs_val_input[:, :, :, 0]
+    imgs_val_pred = imgs_val_pred[:, :, :, 0]
 
-    # Convert to 8-bit unsigned int
-    resmaps_val = img_as_ubyte(resmaps_val)
+    # dtype = "float64"  ## input argument
+    tensor_val = resmaps.TensorImages(
+        imgs_val_input,
+        imgs_val_pred,
+        vmin,
+        vmax,
+        method="SSIM",
+        dtype=dtype,
+        filenames=filenames,
+    )
 
     # ========================= VALIDATION ALGORITHM ==============================
 
     # set threshold boundaries
-    threshold_min = 160  # np.amin(resmaps_val) + 1
-    threshold_max = np.amax(resmaps_val)
-    thresholds = list(range(threshold_min, threshold_max + 1))
+    threshold = tensor_val.thresh_min
+    index = 0
+    # threshold_max = tensor_val.thresh_max
+    n_steps = (tensor_val.thresh_max - tensor_val.thresh_min) // tensor_val.step
 
     # initialize progress bar
-    l = len(thresholds)
-    printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
+    printProgressBar(0, n_steps, prefix="Progress:", suffix="Complete", length=50)
 
-    for i, threshold in enumerate(thresholds):
+    # for i, threshold in enumerate(thresholds):
+    while True:
         # threshold residual maps
-        resmaps_th = threshold_images(resmaps_val, threshold)[:, :, :, 0]
+        resmaps_th = tensor_val.resmaps > threshold
 
         # compute connected components
         resmaps_labeled, areas_all = label_images(resmaps_th)
@@ -125,14 +135,24 @@ def main(args):
         try:
             if min_area > areas_all_flat[0]:
                 time.sleep(0.1)
-                printProgressBar(l, l, prefix="Progress:", suffix="Complete", length=50)
+                printProgressBar(
+                    n_steps, n_steps, prefix="Progress:", suffix="Complete", length=50
+                )
                 break
         except IndexError:
             continue
 
+        if threshold > tensor_val.thresh_max:
+            break
+
+        threshold = threshold + tensor_val.step
+        index = index + 1
+
         # print progress bar
         time.sleep(0.1)
-        printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
+        printProgressBar(
+            index, n_steps, prefix="Progress:", suffix="Complete", length=50
+        )
 
     # save area and threshold pair
     validation_result = {"min_area": min_area, "threshold": threshold}
@@ -165,6 +185,14 @@ if __name__ == "__main__":
         required=True,
         metavar="",
         help="minimum area for a connected component to be classified as anomalous",
+    )
+
+    parser.add_argument(
+        "-t",
+        "--dtype",
+        required=False,
+        default="float64",
+        help="datatype for image processing: float64 or uint8",
     )
 
     parser.add_argument(
