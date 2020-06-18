@@ -1,42 +1,76 @@
 import os
-import sys
+import argparse
 from pathlib import Path
-
+import time
+import json
 import tensorflow as tf
-
+from processing import utils
+from processing import resmaps
 from processing.preprocessing import Preprocessor
 from processing.preprocessing import get_preprocessing_function
-
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import json
-import argparse
-import time
-
-from skimage.util import img_as_ubyte
-
-from processing import utils
-
-# from processing.resmaps import calculate_resmaps as calculate_resmaps
-from processing import resmaps
-from processing.cv import threshold_images
 from processing.cv import label_images
 from processing.utils import printProgressBar
+from skimage.util import img_as_ubyte
+
+
+def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
+
+    # set initial threshold, counter and max number of steps
+    threshold = thresh_min
+    index = 0
+    n_steps = (thresh_max - thresh_min) // thresh_step
+
+    # initialize progress bar
+    printProgressBar(0, n_steps, prefix="Progress:", suffix="Complete", length=50)
+
+    while True:
+        # segment (threshold) residual maps
+        resmaps_th = resmaps > threshold
+
+        # compute labeled connected components
+        resmaps_labeled, areas_all = label_images(resmaps_th)
+
+        # check if area of largest anomalous region is below the minimum area
+        areas_all_flat = [item for sublist in areas_all for item in sublist]
+        areas_all_flat.sort(reverse=True)
+        try:
+            if min_area > areas_all_flat[0]:
+                time.sleep(0.1)
+                printProgressBar(
+                    n_steps, n_steps, prefix="Progress:", suffix="Complete", length=50
+                )
+                break
+        except IndexError:
+            continue
+
+        if threshold > thresh_max:
+            break
+
+        threshold = threshold + thresh_step
+        index = index + 1
+
+        # print progress bar
+        time.sleep(0.1)
+        printProgressBar(
+            index, n_steps, prefix="Progress:", suffix="Complete", length=50
+        )
+
+    return threshold
 
 
 def main(args):
     # Get validation arguments
     model_path = args.path
-    min_area = args.area
+    method = args.method
     dtype = args.dtype
+    min_area = args.area
     save = args.save
 
-    # ========================= SETUP ==============================
+    # =================== LOAD MODEL AND CONFIGURATION =========================
 
     # load model and info
     model, info, _ = utils.load_model_HDF5(model_path)
-
+    # set parameters
     input_directory = info["data"]["input_directory"]
     architecture = info["model"]["architecture"]
     loss = info["model"]["loss"]
@@ -47,24 +81,8 @@ def main(args):
     vmax = info["preprocessing"]["vmax"]
     nb_validation_images = info["data"]["nb_validation_images"]
 
-    val_data_dir = os.path.join(input_directory, "train")
+    # =========================== PREPROCESSING ===============================
 
-    # create a results directory if not existent
-    model_dir_name = os.path.basename(str(Path(model_path).parent))
-
-    save_dir = os.path.join(
-        os.getcwd(),
-        "results",
-        input_directory,
-        architecture,
-        loss,
-        model_dir_name,
-        "validation",
-    )
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-
-    # ============================= PREPROCESSING ===============================
     # get the correct preprocessing function
     preprocessing_function = get_preprocessing_function(architecture)
 
@@ -79,7 +97,7 @@ def main(args):
 
     # get validation generator
     validation_generator = preprocessor.get_val_generator(
-        batch_size=nb_validation_images, shuffle=True
+        batch_size=nb_validation_images, shuffle=False
     )
 
     # retrieve validation images from generator
@@ -96,66 +114,56 @@ def main(args):
         imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input).numpy()
         imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred).numpy()
 
+    # remove last channel since images are grayscale
     imgs_val_input = imgs_val_input[:, :, :, 0]
     imgs_val_pred = imgs_val_pred[:, :, :, 0]
 
-    # dtype = "float64"  ## input argument
+    # ======================== COMPUTE THRESHOLD ===========================
+
+    # instantiate TensorImages object
     tensor_val = resmaps.TensorImages(
-        imgs_val_input,
-        imgs_val_pred,
-        vmin,
-        vmax,
-        method="SSIM",
+        imgs_input=imgs_val_input,
+        imgs_pred=imgs_val_pred,
+        vmin=vmin,
+        vmax=vmax,
+        method=method,
         dtype=dtype,
         filenames=filenames,
     )
 
-    # ========================= VALIDATION ALGORITHM ==============================
+    # validation algorithm
+    threshold = determine_threshold(
+        resmaps=tensor_val.resmaps,
+        min_area=min_area,
+        thresh_min=tensor_val.thresh_min,
+        thresh_max=tensor_val.thresh_max,
+        thresh_step=tensor_val.thresh_step,
+    )
 
-    # set threshold boundaries
-    threshold = tensor_val.thresh_min
-    index = 0
-    # threshold_max = tensor_val.thresh_max
-    n_steps = (tensor_val.thresh_max - tensor_val.thresh_min) // tensor_val.step
+    # ===================== SAVE VALIDATION RESULTS ========================
 
-    # initialize progress bar
-    printProgressBar(0, n_steps, prefix="Progress:", suffix="Complete", length=50)
+    # create a results directory if not existent
+    model_dir_name = os.path.basename(str(Path(model_path).parent))
 
-    # for i, threshold in enumerate(thresholds):
-    while True:
-        # threshold residual maps
-        resmaps_th = tensor_val.resmaps > threshold
-
-        # compute connected components
-        resmaps_labeled, areas_all = label_images(resmaps_th)
-
-        # check if area of largest anomalous region is below the minimum area
-        areas_all_flat = [item for sublist in areas_all for item in sublist]
-        areas_all_flat.sort(reverse=True)
-        try:
-            if min_area > areas_all_flat[0]:
-                time.sleep(0.1)
-                printProgressBar(
-                    n_steps, n_steps, prefix="Progress:", suffix="Complete", length=50
-                )
-                break
-        except IndexError:
-            continue
-
-        if threshold > tensor_val.thresh_max:
-            break
-
-        threshold = threshold + tensor_val.step
-        index = index + 1
-
-        # print progress bar
-        time.sleep(0.1)
-        printProgressBar(
-            index, n_steps, prefix="Progress:", suffix="Complete", length=50
-        )
+    save_dir = os.path.join(
+        os.getcwd(),
+        "results",
+        input_directory,
+        architecture,
+        loss,
+        model_dir_name,
+        "validation",
+    )
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
 
     # save area and threshold pair
-    validation_result = {"min_area": min_area, "threshold": threshold}
+    validation_result = {
+        "min_area": min_area,
+        "threshold": threshold,
+        "method": method,
+        "dtype": dtype,
+    }
     print("[INFO] validation results: {}".format(validation_result))
 
     # save validation result
@@ -180,7 +188,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-a",
         "--area",
-        # nargs="+",
         type=int,
         required=True,
         metavar="",
@@ -188,9 +195,19 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "-m",
+        "--method",
+        required=False,
+        choices=["SSIM", "L2"],
+        default="SSIM",
+        help="method for computing resmaps",
+    )
+
+    parser.add_argument(
         "-t",
         "--dtype",
         required=False,
+        choices=["float64", "uint8"],
         default="float64",
         help="datatype for image processing: float64 or uint8",
     )
@@ -206,6 +223,9 @@ if __name__ == "__main__":
 
     main(args)
 
-# Example of command to initiate validation
+# Example of command to initiate validation with different resmap processing arguments (best combination: -m SSIM -t float64)
 
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -a 10
+# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -a 150 -m SSIM -t float64
+# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -a 150 -m SSIM -t uint8
+# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -a 150 -m L2 -t float64
+# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -a 150 -m L2 -t uint8

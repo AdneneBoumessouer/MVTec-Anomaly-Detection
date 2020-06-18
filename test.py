@@ -2,25 +2,25 @@ import sys
 import os
 import argparse
 from pathlib import Path
-
-from tensorflow import keras
+import time
+import json
+import tensorflow as tf
+from processing import utils
+from processing import resmaps
 from processing.preprocessing import Preprocessor
 from processing.preprocessing import get_preprocessing_function
-from processing.resmaps import calculate_resmaps as calculate_resmaps
-from processing.cv import threshold_images as threshold_images
-from processing.cv import label_images as label_images
-
-from processing import utils as utils
-from processing.utils import printProgressBar as printProgressBar
-
-from sklearn.metrics import confusion_matrix
+from processing.cv import label_images
+from processing.utils import printProgressBar
 from skimage.util import img_as_ubyte
-
-import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 import numpy as np
 import pandas as pd
-import json
 
+
+def get_true_classes(filenames):
+    # retrieve ground truth
+    y_true = [1 if "good" not in filename.split("/") else 0 for filename in filenames]
+    return y_true
 
 
 def is_defective(areas, min_area):
@@ -31,11 +31,14 @@ def is_defective(areas, min_area):
     return 0
 
 
-def classify(areas_all, min_area):
-    """Decides if images are defective given the areas of their connected components"""
-    y_pred = []
-    for areas in areas_all:
-        y_pred.append(is_defective(areas, min_area))
+def predict_classes(resmaps, min_area, threshold):
+    # threshold residual maps with the given threshold
+    resmaps_th = resmaps > threshold
+    # compute connected components
+    resmaps_labeled, areas_all = label_images(resmaps_th)
+    # Decides if images are defective given the areas of their connected components
+    y_pred = [is_defective(areas, min_area) for areas in areas_all]
+
     return y_pred
 
 
@@ -44,54 +47,49 @@ def main(args):
     model_path = args.path
     save = args.save
 
-    # ========================= LOAD SETUP ==============================
+    # =================== LOAD MODEL AND CONFIGURATION =========================
 
     # load model and info
     model, info, _ = utils.load_model_HDF5(model_path)
-
+    # set parameters
     input_directory = info["data"]["input_directory"]
     architecture = info["model"]["architecture"]
     loss = info["model"]["loss"]
     rescale = info["preprocessing"]["rescale"]
     shape = info["preprocessing"]["shape"]
-    color_mode = info["model"]["color_mode"]
+    color_mode = info["preprocessing"]["color_mode"]
+    vmin = info["preprocessing"]["vmin"]
+    vmax = info["preprocessing"]["vmax"]
     nb_validation_images = info["data"]["nb_validation_images"]
 
-    test_data_dir = os.path.join(input_directory, "train")
+    # =================== LOAD VALIDATION PARAMETERS =========================
 
-    # create directory to save test results
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-
-    save_dir = os.path.join(
+    val_dir = os.path.join(
         os.getcwd(),
         "results",
         input_directory,
         architecture,
         loss,
         model_dir_name,
-        "test",
+        "validation",
     )
 
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-
-    if args.adopt_validation:
-        print("[INFO] adopting min_area and threshold yielded during validation...")
-        # load area and corresponding threshold from validation json file
-        parent_dir = str(Path(save_dir).parent)
-        val_dir = os.path.join(parent_dir, "validation")
+    # print("[INFO] adopting min_area and threshold yielded during validation...")
+    try:
         with open(os.path.join(val_dir, "validation_result.json"), "r") as read_file:
             validation_result = json.load(read_file)
+    except FileNotFoundError:
+        print("run validatte.py before testing.")
+        sys.exit("[WARNING] run validate.py before testing.\nexiting script.")
 
-        min_area = validation_result["min_area"]
-        threshold = validation_result["threshold"]
-
-    else:
-        print("[INFO] adopting user passed min_area and threshold...")
-        threshold = args.threshold
-        min_area = args.area
+    min_area = validation_result["min_area"]
+    threshold = validation_result["threshold"]
+    method = validation_result["method"]
+    dtype = validation_result["dtype"]
 
     # ============================= PREPROCESSING ===============================
+
     # get the correct preprocessing function
     preprocessing_function = get_preprocessing_function(architecture)
 
@@ -105,6 +103,7 @@ def main(args):
     )
 
     # get validation generator
+    # test_data_dir = os.path.join(input_directory, "train")
     # nb_test_images = utils.get_total_number_test_images(test_data_dir)
     nb_test_images = preprocessor.get_total_number_test_images()
     test_generator = preprocessor.get_test_generator(
@@ -120,62 +119,60 @@ def main(args):
     # predict on test images
     imgs_test_pred = model.predict(imgs_test_input)
 
-    # calculate residual maps on test set
-    resmaps_test = calculate_resmaps(imgs_test_input, imgs_test_pred, method="SSIM")
+    # convert to grayscale if RGB
+    if color_mode == "rgb":
+        imgs_test_input = tf.image.rgb_to_grayscale(imgs_val_input).numpy()
+        imgs_test_pred = tf.image.rgb_to_grayscale(imgs_val_pred).numpy()
 
-    # Convert to 8-bit unsigned int
-    resmaps_test = img_as_ubyte(resmaps_test)
+    # remove last channel since images are grayscale
+    imgs_test_input = imgs_test_input[:, :, :, 0]
+    imgs_test_pred = imgs_test_pred[:, :, :, 0]
 
-    # ====================== Classification ==========================
+    # instantiate TensorImages object
+    tensor_test = resmaps.TensorImages(
+        imgs_input=imgs_test_input,
+        imgs_pred=imgs_test_pred,
+        vmin=vmin,
+        vmax=vmax,
+        method=method,
+        dtype=dtype,
+        filenames=filenames,
+    )
 
-    # initialize dictionary to store test results
-    test_result = {"min_area": [], "threshold": [], "TPR": [], "TNR": []}
-
-    # threshold residual maps with the given threshold
-    resmaps_th = threshold_images(resmaps_test, threshold)[:, :, :, 0]
-
-    # compute connected components
-    resmaps_labeled, areas_all = label_images(resmaps_th)
-
-    # classify images
-    y_pred = classify(areas_all, min_area)
+    # ====================== CLASSIFICATION ==========================
 
     # retrieve ground truth
-    y_true = [1 if "good" not in filename.split("/") else 0 for filename in filenames]
+    y_true = get_true_classes(filenames)
 
-    # condition positive (P)
-    P = y_true.count(1)
-
-    # condition negative (N)
-    N = y_true.count(0)
-
-    # true positive (TP)
-    TP = np.sum(
-        [1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(nb_test_images)]
+    # predict classes on test images
+    y_pred = predict_classes(
+        resmaps=tensor_test.resmaps, min_area=min_area, threshold=threshold
     )
-
-    # true negative (TN)
-    TN = np.sum(
-        [1 if y_pred[i] == y_true[i] == 0 else 0 for i in range(nb_test_images)]
-    )
-
-    # sensitivity, recall, hit rate, or true positive rate (TPR)
-    TPR = TP / P
-
-    # specificity, selectivity or true negative rate (TNR)
-    TNR = TN / N
 
     # confusion matrix
     conf_matrix = confusion_matrix(y_true, y_pred, normalize="true")
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, normalize="true").ravel()
+    tnr, fp, fn, tpr = confusion_matrix(y_true, y_pred, normalize="true").ravel()
 
-    # append test results to dictionary
-    test_result["min_area"].append(min_area)
-    test_result["threshold"].append(threshold)
-    test_result["TPR"].append(TPR)
-    test_result["TNR"].append(TNR)
+    # initialize dictionary to store test results
+    test_result = {"min_area": min_area, "threshold": threshold, "TPR": tpr, "TNR": tnr}
 
-    # save validation result
+    # ====================== SAVE TEST RESULTS =========================
+
+    # create directory to save test results
+    save_dir = os.path.join(
+        os.getcwd(),
+        "results",
+        input_directory,
+        architecture,
+        loss,
+        model_dir_name,
+        "test",
+    )
+
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    # save test result
     with open(os.path.join(save_dir, "test_result.json"), "w") as json_file:
         json.dump(test_result, json_file, indent=4, sort_keys=False)
 
@@ -188,7 +185,11 @@ def main(args):
     }
     df_clf = pd.DataFrame.from_dict(classification)
     with open(os.path.join(save_dir, "classification.txt"), "w") as f:
-        f.write("min_area = {}, threshold = {}\n\n".format(min_area, threshold))
+        f.write(
+            "min_area = {}, threshold = {}, method = {}, dtype = {}\n\n".format(
+                min_area, threshold, method, dtype
+            )
+        )
         f.write(df_clf.to_string(header=True, index=True))
 
     # print classification results to console
@@ -212,20 +213,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--adopt-validation",
-        action="store_true",
-        help="whether or not to (min_area, threshold) value pairs during validation",
-    )
-
-    parser.add_argument(
-        "-t", "--threshold", type=int, default=220, metavar="", help="threshold(s)",
-    )
-
-    parser.add_argument(
-        "-a", "--area", type=int, default=80, metavar="", help="area(s)",
-    )
-
-    parser.add_argument(
         "-s",
         "--save",
         action="store_true",
@@ -237,11 +224,4 @@ if __name__ == "__main__":
     main(args)
 
 # Examples of command to initiate testing
-
-# using threshold and area from validation results:
-# python3 test.py -p saved_models/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
-
-# using passed arguments for threshold and area
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 --adopt-validation
-
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -a 10 -t 200
+# python3 test.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5

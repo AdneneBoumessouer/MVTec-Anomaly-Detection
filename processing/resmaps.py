@@ -24,7 +24,9 @@ THRESH_STEP_FLOAT_L2 = 0.0005
 THRESH_MIN_UINT8_SSIM = 90
 THRESH_STEP_UINT8_SSIM = 1
 
-# uint8 + L2 are incompatible
+# uint8 + L2 (generally uneffective combination)
+THRESH_MIN_UINT8_L2 = 5
+THRESH_STEP_UINT8_L2 = 1
 
 
 class TensorImages:
@@ -56,24 +58,29 @@ class TensorImages:
         if dtype == "float64":
             if method == "SSIM":
                 self.thresh_min = THRESH_MIN_FLOAT_SSIM
-                self.step = THRESH_STEP_FLOAT_SSIM
+                self.thresh_step = THRESH_STEP_FLOAT_SSIM
                 self.vmin_resmap = 0.0
                 self.vmax_resmap = 1.0
             elif method == "L2":
                 self.thresh_min = THRESH_MIN_FLOAT_L2
-                self.step = THRESH_STEP_FLOAT_L2
+                self.thresh_step = THRESH_STEP_FLOAT_L2
                 self.vmin_resmap = None
                 self.vmax_resmap = None
         elif dtype == "uint8":
             if method == "SSIM":
                 self.thresh_min = THRESH_MIN_UINT8_SSIM
-                self.step = THRESH_STEP_UINT8_SSIM
+                self.thresh_step = THRESH_STEP_UINT8_SSIM
                 self.vmin_resmap = 0
                 self.vmax_resmap = 255
             elif method == "L2":
-                raise Exception("L2 Resmaps are incompatible with uint8 dtype.")
+                self.thresh_min = THRESH_MIN_UINT8_L2
+                self.thresh_step = THRESH_STEP_UINT8_L2
+                self.vmin_resmap = 0
+                self.vmax_resmap = 255
             # Convert to 8-bit unsigned int
             self.resmaps = img_as_ubyte(self.resmaps)
+
+        # compute maximal threshold based on resmaps
         self.thresh_max = np.amax(self.resmaps)
         # self.n_steps = (self.thresh_max - self.thresh_min) // self.step
         self.method = method
@@ -196,8 +203,8 @@ def resmaps_l2(imgs_input, imgs_pred):
     return resmaps
 
 
-def segment_resmaps(resmaps, threshold):
-    return resmaps > threshold
+# def segment_resmaps(resmaps, threshold):
+#     return resmaps > threshold
 
 
 ### utilitary functions

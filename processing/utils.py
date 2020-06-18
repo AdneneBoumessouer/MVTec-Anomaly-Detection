@@ -24,7 +24,6 @@ def load_model_HDF5(model_path):
     but works good enough for one training round."""
 
     # load loss function used in training
-    dir_name = os.path.dirname(model_path)
     info = get_model_info(model_path)
     loss = info["model"]["loss"]
     dynamic_range = info["preprocessing"]["dynamic_range"]
@@ -65,6 +64,7 @@ def load_model_HDF5(model_path):
         )
 
     # load training history
+    dir_name = os.path.dirname(model_path)
     history = pd.read_csv(os.path.join(dir_name, "history.csv"))
 
     return model, info, history
