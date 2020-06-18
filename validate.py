@@ -14,7 +14,6 @@ from skimage.util import img_as_ubyte
 
 
 def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
-
     # set initial threshold, counter and max number of steps
     threshold = thresh_min
     index = 0
@@ -26,10 +25,8 @@ def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
     while True:
         # segment (threshold) residual maps
         resmaps_th = resmaps > threshold
-
         # compute labeled connected components
         resmaps_labeled, areas_all = label_images(resmaps_th)
-
         # check if area of largest anomalous region is below the minimum area
         areas_all_flat = [item for sublist in areas_all for item in sublist]
         areas_all_flat.sort(reverse=True)
@@ -54,7 +51,6 @@ def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
         printProgressBar(
             index, n_steps, prefix="Progress:", suffix="Complete", length=50
         )
-
     return threshold
 
 
@@ -66,7 +62,7 @@ def main(args):
     min_area = args.area
     save = args.save
 
-    # =================== LOAD MODEL AND CONFIGURATION =========================
+    # ============= LOAD MODEL AND PREPROCESSING CONFIGURATION ================
 
     # load model and info
     model, info, _ = utils.load_model_HDF5(model_path)
@@ -81,7 +77,7 @@ def main(args):
     vmax = info["preprocessing"]["vmax"]
     nb_validation_images = info["data"]["nb_validation_images"]
 
-    # =========================== PREPROCESSING ===============================
+    # ==================== PREPROCESS VALIDATION IMAGES ========================
 
     # get the correct preprocessing function
     preprocessing_function = get_preprocessing_function(architecture)

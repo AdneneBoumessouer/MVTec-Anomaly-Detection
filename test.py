@@ -47,7 +47,7 @@ def main(args):
     model_path = args.path
     save = args.save
 
-    # =================== LOAD MODEL AND CONFIGURATION =========================
+    # ============= LOAD MODEL AND PREPROCESSING CONFIGURATION ================
 
     # load model and info
     model, info, _ = utils.load_model_HDF5(model_path)
@@ -88,7 +88,7 @@ def main(args):
     method = validation_result["method"]
     dtype = validation_result["dtype"]
 
-    # ============================= PREPROCESSING ===============================
+    # ====================== PREPROCESS TEST IMAGES ==========================
 
     # get the correct preprocessing function
     preprocessing_function = get_preprocessing_function(architecture)
@@ -102,15 +102,13 @@ def main(args):
         preprocessing_function=preprocessing_function,
     )
 
-    # get validation generator
-    # test_data_dir = os.path.join(input_directory, "train")
-    # nb_test_images = utils.get_total_number_test_images(test_data_dir)
+    # get test generator
     nb_test_images = preprocessor.get_total_number_test_images()
     test_generator = preprocessor.get_test_generator(
         batch_size=nb_test_images, shuffle=False
     )
 
-    # retrieve validation images from generator
+    # retrieve test images from generator
     imgs_test_input = test_generator.next()[0]
 
     # retrieve test image names
