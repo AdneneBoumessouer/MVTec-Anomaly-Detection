@@ -211,7 +211,7 @@ def main(args):
     length = len(min_areas)
 
     for i, min_area in enumerate(min_areas):
-        print("step {}/{}\t |\t current min_area = {}".format(i + 1, length, min_area))
+        print("step {}/{} | current min_area = {}".format(i + 1, length, min_area))
         # compute threshold corresponding to current min_area
         threshold = determine_threshold(
             resmaps=tensor_val.resmaps,
@@ -242,8 +242,8 @@ def main(args):
 
     # get min_area, threshold pair corresponding to best score
     max_score_i = np.argmax(dict_finetune["score"])
-    best_min_area = dict_finetune["min_area"][max_score_i]
-    best_threshold = dict_finetune["threshold"][max_score_i]
+    best_min_area = int(dict_finetune["min_area"][max_score_i])
+    best_threshold = float(dict_finetune["threshold"][max_score_i])
 
     # ===================== SAVE VALIDATION RESULTS ========================
 
@@ -298,7 +298,7 @@ def plot_min_area_threshold(finetuning_result, index_best=None, save=False):
         plt.show()
     if save:
         plt.close()
-        fig.savefig(os.path.join(self.save_dir, "min_area_threshold_plot.png"))
+        fig.savefig(os.path.join(save_dir, "min_area_threshold_plot.png"))
     return
 
 
@@ -317,7 +317,7 @@ def plot_scores(finetuning_result, index_best=None, save=False):
         plt.show()
     if save:
         plt.close()
-        fig.savefig(os.path.join(self.save_dir, "scores_plot.png"))
+        fig.savefig(os.path.join(save_dir, "scores_plot.png"))
     return
 
 
@@ -328,15 +328,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
     )
-
-    # parser.add_argument(
-    #     "-a",
-    #     "--area",
-    #     type=int,
-    #     required=True,
-    #     metavar="",
-    #     help="minimum area for a connected component to be classified as anomalous",
-    # )
 
     parser.add_argument(
         "-m",
@@ -355,13 +346,6 @@ if __name__ == "__main__":
         default="float64",
         help="datatype for image processing: float64 or uint8",
     )
-
-    # parser.add_argument(
-    #     "-s",
-    #     "--save",
-    #     action="store_true",
-    #     help="save inputs, predictions and reconstructions of validation dataset",
-    # )
 
     args = parser.parse_args()
 

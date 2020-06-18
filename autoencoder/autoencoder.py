@@ -266,9 +266,6 @@ class AutoEncoder:
     def save(self):
         # save model
         self.model.save(os.path.join(self.save_dir, self.create_model_name()))
-        # tf.keras.models.save_model(
-        #     model, model_path, include_optimizer=True, save_format="h5"
-        # )
         # save trainnig info
         info = self.get_info()
         with open(os.path.join(self.save_dir, "info.json"), "w") as json_file:
