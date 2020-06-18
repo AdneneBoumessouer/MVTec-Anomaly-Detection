@@ -148,7 +148,6 @@ def main(args):
     )
 
     # confusion matrix
-    conf_matrix = confusion_matrix(y_true, y_pred, normalize="true")
     tnr, fp, fn, tpr = confusion_matrix(y_true, y_pred, normalize="true").ravel()
 
     # initialize dictionary to store test results

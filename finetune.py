@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import time
 import json
+import numpy as np
 import tensorflow as tf
 from processing import utils
 from processing import resmaps
@@ -11,6 +12,10 @@ from processing.preprocessing import get_preprocessing_function
 from processing.cv import label_images
 from processing.utils import printProgressBar
 from skimage.util import img_as_ubyte
+
+from sklearn.model_selection import train_test_split
+
+FINETUNE_SPLIT = 0.2
 
 
 def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
@@ -91,6 +96,8 @@ def main(args):
         preprocessing_function=preprocessing_function,
     )
 
+    # -------------------------------------------------------------------
+
     # get validation generator
     validation_generator = preprocessor.get_val_generator(
         batch_size=nb_validation_images, shuffle=False
@@ -100,7 +107,7 @@ def main(args):
     imgs_val_input = validation_generator.next()[0]
 
     # retrieve validation image_names
-    filenames = validation_generator.filenames
+    filenames_val = validation_generator.filenames_val
 
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
@@ -114,9 +121,7 @@ def main(args):
     imgs_val_input = imgs_val_input[:, :, :, 0]
     imgs_val_pred = imgs_val_pred[:, :, :, 0]
 
-    # ======================== COMPUTE THRESHOLD ===========================
-
-    # instantiate TensorImages object
+    # instantiate TensorImages object to compute validation resmaps
     tensor_val = resmaps.TensorImages(
         imgs_input=imgs_val_input,
         imgs_pred=imgs_val_pred,
@@ -124,17 +129,103 @@ def main(args):
         vmax=vmax,
         method=method,
         dtype=dtype,
+        filenames=filenames_val,
+    )
+
+    # -------------------------------------------------------------------
+
+    # get finetuning generator
+    nb_test_images = preprocessor.get_total_number_test_images()
+    # nb_finetuning_images = int(FINETUNE_SPLIT * nb_test_images)  # CHANGE
+
+    finetuning_generator = preprocessor.get_finetuning_generator(
+        batch_size=nb_test_images, shuffle=False
+    )
+
+    assert "good" in finetuning_generator.class_indices
+
+    # select a representative subset of test images for finetuning (stratified sampling)
+    index_array = finetuning_generator.index_array
+    classes = finetuning_generator.classes
+    _, index_array_ft, _, classes_ft = train_test_split(
+        index_array,
+        classes,
+        test_size=FINETUNE_SPLIT,
+        random_state=42,
+        stratify=classes,
+    )
+
+    # get correct classes corresponding to selected images
+    good_class_i = finetuning_generator.class_indices["good"]
+    y_ft_true = np.array(
+        [0 if class_i == good_class_i else 1 for class_i in classes_ft]
+    )
+
+    # select test images for finetuninig
+    imgs_ft_input = finetuning_generator.next()[0][index_array_ft]
+    # imgs_ft_input = imgs_ft_input[index_array_ft]
+
+    # get reconstructed images (i.e predictions) on validation dataset
+    imgs_ft_pred = model.predict(imgs_ft_input)
+
+    # convert to grayscale if RGB
+    if color_mode == "rgb":
+        imgs_ft_input = tf.image.rgb_to_grayscale(imgs_ft_input).numpy()
+        imgs_ft_pred = tf.image.rgb_to_grayscale(imgs_ft_pred).numpy()
+
+    # remove last channel since images are grayscale
+    imgs_ft_input = imgs_ft_input[:, :, :, 0]
+    imgs_ft_pred = imgs_ft_pred[:, :, :, 0]
+
+    # instantiate TensorImages object to compute finetuning resmaps
+    tensor_ft = resmaps.TensorImages(
+        imgs_input=imgs_ft_input,
+        imgs_pred=imgs_ft_pred,
+        vmin=vmin,
+        vmax=vmax,
+        method=method,
+        dtype=dtype,
         filenames=filenames,
     )
 
-    # validation algorithm
-    threshold = determine_threshold(
-        resmaps=tensor_val.resmaps,
-        min_area=min_area,
-        thresh_min=tensor_val.thresh_min,
-        thresh_max=tensor_val.thresh_max,
-        thresh_step=tensor_val.thresh_step,
-    )
+    # ======================== COMPUTE THRESHOLD ===========================
+
+    # initialize finetuning dictionary
+    dict_finetune = {"min_area": [], "threshold": [], "TPR": [], "TNR": [], "score": []}
+
+    # create discrete min_area values
+    min_areas = np.arange(start=5, stop=505, step=5)
+    length = len(min_areas)
+
+    for i, min_area in enumerate(min_areas):
+        # compute threshold corresponding to current min_area
+        threshold = determine_threshold(
+            resmaps=tensor_val.resmaps,
+            min_area=min_area,
+            thresh_min=tensor_val.thresh_min,
+            thresh_max=tensor_val.thresh_max,
+            thresh_step=tensor_val.thresh_step,
+        )
+
+        # apply the min_area, threshold pair to finetuning images
+        y_ft_pred = predict_classes(
+            resmaps=tensor_ft.resmaps, min_area=min_area, threshold=threshold
+        )
+
+        # confusion matrix
+        tnr, fp, fn, tpr = confusion_matrix(y_true, y_pred, normalize="true").ravel()
+
+        # record finetuning results
+        dict_finetune["min_area"].append(min_area)
+        dict_finetune["threshold"].append(threshold)
+        dict_finetune["TPR"].append(tpr)
+        dict_finetune["TNR"].append(tnr)
+        dict_finetune["score"].append(np.mean(tpr, tnr))
+
+    # get min_area, threshold pair corresponding to best score
+    max_score_i = np.argmax(dict_finetune["score"])
+    best_min_area = dict_finetune["min_area"][max_score_i]
+    best_threshold = dict_finetune["threshold"][max_score_i]
 
     # ===================== SAVE VALIDATION RESULTS ========================
 
