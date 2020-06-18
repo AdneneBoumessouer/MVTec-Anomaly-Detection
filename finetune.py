@@ -4,6 +4,8 @@ from pathlib import Path
 import time
 import json
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from processing import utils
 from processing import resmaps
@@ -12,8 +14,10 @@ from processing.preprocessing import get_preprocessing_function
 from processing.cv import label_images
 from processing.utils import printProgressBar
 from skimage.util import img_as_ubyte
-
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+
+from test import predict_classes
 
 FINETUNE_SPLIT = 0.2
 
@@ -64,8 +68,8 @@ def main(args):
     model_path = args.path
     method = args.method
     dtype = args.dtype
-    min_area = args.area
-    save = args.save
+    # min_area = args.area
+    # save = args.save
 
     # ============= LOAD MODEL AND PREPROCESSING CONFIGURATION ================
 
@@ -107,7 +111,7 @@ def main(args):
     imgs_val_input = validation_generator.next()[0]
 
     # retrieve validation image_names
-    filenames_val = validation_generator.filenames_val
+    filenames_val = validation_generator.filenames
 
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_val_pred = model.predict(imgs_val_input)
@@ -141,10 +145,12 @@ def main(args):
     finetuning_generator = preprocessor.get_finetuning_generator(
         batch_size=nb_test_images, shuffle=False
     )
-
-    assert "good" in finetuning_generator.class_indices
+    imgs_ft_input = finetuning_generator.next()[0]
+    filenames = finetuning_generator.filenames
+    # imgs_ft_input = imgs_ft_input[index_array_ft]
 
     # select a representative subset of test images for finetuning (stratified sampling)
+    assert "good" in finetuning_generator.class_indices
     index_array = finetuning_generator.index_array
     classes = finetuning_generator.classes
     _, index_array_ft, _, classes_ft = train_test_split(
@@ -154,7 +160,6 @@ def main(args):
         random_state=42,
         stratify=classes,
     )
-
     # get correct classes corresponding to selected images
     good_class_i = finetuning_generator.class_indices["good"]
     y_ft_true = np.array(
@@ -162,8 +167,8 @@ def main(args):
     )
 
     # select test images for finetuninig
-    imgs_ft_input = finetuning_generator.next()[0][index_array_ft]
-    # imgs_ft_input = imgs_ft_input[index_array_ft]
+    imgs_ft_input = imgs_ft_input[index_array_ft]
+    filenames_ft = list(np.array(filenames)[index_array_ft])
 
     # get reconstructed images (i.e predictions) on validation dataset
     imgs_ft_pred = model.predict(imgs_ft_input)
@@ -185,19 +190,28 @@ def main(args):
         vmax=vmax,
         method=method,
         dtype=dtype,
-        filenames=filenames,
+        filenames=filenames_ft,
     )
 
     # ======================== COMPUTE THRESHOLD ===========================
 
     # initialize finetuning dictionary
-    dict_finetune = {"min_area": [], "threshold": [], "TPR": [], "TNR": [], "score": []}
+    dict_finetune = {
+        "min_area": [],
+        "threshold": [],
+        "TPR": [],
+        "TNR": [],
+        "FPR": [],
+        "FNR": [],
+        "score": [],
+    }
 
     # create discrete min_area values
     min_areas = np.arange(start=5, stop=505, step=5)
     length = len(min_areas)
 
     for i, min_area in enumerate(min_areas):
+        print("step {}/{}\t |\t current min_area = {}".format(i + 1, length, min_area))
         # compute threshold corresponding to current min_area
         threshold = determine_threshold(
             resmaps=tensor_val.resmaps,
@@ -213,14 +227,18 @@ def main(args):
         )
 
         # confusion matrix
-        tnr, fp, fn, tpr = confusion_matrix(y_true, y_pred, normalize="true").ravel()
+        tnr, fpr, fnr, tpr = confusion_matrix(
+            y_ft_true, y_ft_pred, normalize="true"
+        ).ravel()
 
         # record finetuning results
         dict_finetune["min_area"].append(min_area)
         dict_finetune["threshold"].append(threshold)
         dict_finetune["TPR"].append(tpr)
         dict_finetune["TNR"].append(tnr)
-        dict_finetune["score"].append(np.mean(tpr, tnr))
+        dict_finetune["FPR"].append(fpr)
+        dict_finetune["FNR"].append(fnr)
+        dict_finetune["score"].append((tpr + tnr) / 2)
 
     # get min_area, threshold pair corresponding to best score
     max_score_i = np.argmax(dict_finetune["score"])
@@ -239,29 +257,68 @@ def main(args):
         architecture,
         loss,
         model_dir_name,
-        "validation",
+        "finetuning",
     )
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
     # save area and threshold pair
-    validation_result = {
-        "min_area": min_area,
-        "threshold": threshold,
+    finetuning_result = {
+        "best_min_area": best_min_area,
+        "best_threshold": best_threshold,
         "method": method,
         "dtype": dtype,
     }
-    print("[INFO] validation results: {}".format(validation_result))
+    print("[INFO] finetuning results: {}".format(finetuning_result))
 
     # save validation result
-    with open(os.path.join(save_dir, "validation_result.json"), "w") as json_file:
-        json.dump(validation_result, json_file, indent=4, sort_keys=False)
-    print("[INFO] validation results saved at {}".format(save_dir))
+    with open(os.path.join(save_dir, "finetuning_result.json"), "w") as json_file:
+        json.dump(finetuning_result, json_file, indent=4, sort_keys=False)
+    print("[INFO] finetuning results saved at {}".format(save_dir))
 
+    # save finetuning plots
+    plot_min_area_threshold(finetuning_result, save=True)
+    plot_scores(finetuning_result, index_best=None, save=True)
+
+
+def plot_min_area_threshold(finetuning_result, index_best=None, save=False):
+    df_finetune = pd.DataFrame.from_dict(dict_finetune)
+    with plt.style.context("seaborn-darkgrid"):
+        fig = df_finetune.plot(
+            x="min_area", y=["threshold"], figsize=(12, 8)
+        ).get_figure()
+        if index_best:
+            x = finetuning_result["min_area"][index_best]
+            y = finetuning_result["score"][index_best]
+            plt.axvline(x, 0, y, linestyle="dashed")
+            plt.axhline(y, 0, x, linestyle="dashed")
+            label_marker = "best min_area / threshold pair"
+            plt.plot(x, y, markersize=10, marker="o", color="red", label=label_marker)
+        plt.title("min_area_threshold plot")
+        plt.show()
     if save:
-        utils.save_np(imgs_val_input, save_dir, "imgs_val_input.npy")
-        utils.save_np(imgs_val_pred, save_dir, "imgs_val_pred.npy")
-        utils.save_np(resmaps_val, save_dir, "resmaps_val.npy")
+        plt.close()
+        fig.savefig(os.path.join(self.save_dir, "min_area_threshold_plot.png"))
+    return
+
+
+def plot_scores(finetuning_result, index_best=None, save=False):
+    df_finetune = pd.DataFrame.from_dict(dict_finetune)
+    with plt.style.context("seaborn-darkgrid"):
+        fig = df_finetune.plot(
+            x="min_area", y=["TPR", "TNR", "score"], figsize=(12, 8)
+        ).get_figure()
+        if index_best:
+            x = finetuning_result["min_area"][index_best]
+            y = finetuning_result["score"][index_best]
+            plt.axvline(x, 0, 1, linestyle="dashed")  # label='best_scores'
+            plt.plot(x, y, markersize=10, marker="o", color="red", label="best score")
+        plt.title("scores plot")
+        plt.show()
+    if save:
+        plt.close()
+        fig.savefig(os.path.join(self.save_dir, "scores_plot.png"))
+    return
 
 
 if __name__ == "__main__":
@@ -272,14 +329,14 @@ if __name__ == "__main__":
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
     )
 
-    parser.add_argument(
-        "-a",
-        "--area",
-        type=int,
-        required=True,
-        metavar="",
-        help="minimum area for a connected component to be classified as anomalous",
-    )
+    # parser.add_argument(
+    #     "-a",
+    #     "--area",
+    #     type=int,
+    #     required=True,
+    #     metavar="",
+    #     help="minimum area for a connected component to be classified as anomalous",
+    # )
 
     parser.add_argument(
         "-m",
@@ -299,12 +356,12 @@ if __name__ == "__main__":
         help="datatype for image processing: float64 or uint8",
     )
 
-    parser.add_argument(
-        "-s",
-        "--save",
-        action="store_true",
-        help="save inputs, predictions and reconstructions of validation dataset",
-    )
+    # parser.add_argument(
+    #     "-s",
+    #     "--save",
+    #     action="store_true",
+    #     help="save inputs, predictions and reconstructions of validation dataset",
+    # )
 
     args = parser.parse_args()
 
@@ -312,7 +369,7 @@ if __name__ == "__main__":
 
 # Example of command to initiate validation with different resmap processing arguments (best combination: -m SSIM -t float64)
 
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -a 150 -m SSIM -t float64
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -a 150 -m SSIM -t uint8
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -a 150 -m L2 -t float64
-# python3 validate.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -a 150 -m L2 -t uint8
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m SSIM -t float64
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m SSIM -t uint8
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m L2 -t float64
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m L2 -t uint8
