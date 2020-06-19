@@ -124,7 +124,7 @@ def main(args):
             imgs_pred=imgs_val_pred,
             vmin=autoencoder.vmin,
             vmax=autoencoder.vmax,
-            method="SSIM",
+            method=autoencoder.loss,
             dtype="float64",
             filenames=filenames_val,
         )
@@ -170,7 +170,7 @@ def main(args):
             imgs_pred=imgs_test_pred,
             vmin=autoencoder.vmin,
             vmax=autoencoder.vmax,
-            method="SSIM",
+            method=autoencoder.loss,
             dtype="float64",
             filenames=filenames_test,
         )
@@ -215,7 +215,7 @@ if __name__ == "__main__":
         type=str,
         required=True,
         metavar="",
-        choices=["mssim", "ssim", "l2", "mse"],
+        choices=["mssim", "ssim", "l2"],
         help="loss function used during training",
     )
 

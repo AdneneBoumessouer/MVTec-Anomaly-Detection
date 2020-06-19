@@ -56,26 +56,26 @@ class TensorImages:
 
         # compute resmaps
         assert dtype in ["float64", "uint8"]
-        assert method in ["L2", "SSIM"]
+        assert method in ["l2", "ssim"]
         self.resmaps = calculate_resmaps(self.imgs_input, self.imgs_pred, method, dtype)
         if dtype == "float64":
-            if method == "SSIM":
+            if method == "ssim":
                 self.thresh_min = THRESH_MIN_FLOAT_SSIM
                 self.thresh_step = THRESH_STEP_FLOAT_SSIM
                 self.vmin_resmap = 0.0
                 self.vmax_resmap = 1.0
-            elif method == "L2":
+            elif method == "l2":
                 self.thresh_min = THRESH_MIN_FLOAT_L2
                 self.thresh_step = THRESH_STEP_FLOAT_L2
                 self.vmin_resmap = None
                 self.vmax_resmap = None
         elif dtype == "uint8":
-            if method == "SSIM":
+            if method == "ssim":
                 self.thresh_min = THRESH_MIN_UINT8_SSIM
                 self.thresh_step = THRESH_STEP_UINT8_SSIM
                 self.vmin_resmap = 0
                 self.vmax_resmap = 255
-            elif method == "L2":
+            elif method == "l2":
                 self.thresh_min = THRESH_MIN_UINT8_L2
                 self.thresh_step = THRESH_STEP_UINT8_L2
                 self.vmin_resmap = 0
@@ -183,9 +183,9 @@ def get_plot_name(filename, suffix):
 
 
 def calculate_resmaps(imgs_input, imgs_pred, method, dtype="float64"):
-    if method == "L2":
+    if method == "l2":
         resmaps = resmaps_l2(imgs_input, imgs_pred)
-    elif method == "SSIM":
+    elif method == "ssim":
         resmaps = resmaps_ssim(imgs_input, imgs_pred)
     if dtype == "uint8":
         resmaps = img_as_ubyte(resmaps)

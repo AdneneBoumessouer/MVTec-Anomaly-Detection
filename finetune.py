@@ -346,8 +346,8 @@ if __name__ == "__main__":
         "-m",
         "--method",
         required=False,
-        choices=["SSIM", "L2"],
-        default="SSIM",
+        choices=["ssim", "l2"],
+        default="ssim",
         help="method for computing resmaps",
     )
 
@@ -364,9 +364,9 @@ if __name__ == "__main__":
 
     main(args)
 
-# Example of command to initiate validation with different resmap processing arguments (best combination: -m SSIM -t float64)
+# Example of command to initiate validation with different resmap processing arguments (best combination: -m ssim -t float64)
 
-# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m SSIM -t float64
-# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m SSIM -t uint8
-# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m L2 -t float64
-# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m L2 -t uint8
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m ssim -t float64
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m ssim -t uint8
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m l2 -t float64
+# python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m l2 -t uint8
