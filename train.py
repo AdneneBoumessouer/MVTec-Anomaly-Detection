@@ -16,7 +16,7 @@ from processing import resmaps
 
 
 """
-Valid input arguments for color_mode and loss:
+Valid combinations for input arguments for architecture, color_mode and loss:
 
                         +----------------+----------------+
                         |       Model Architecture        |
@@ -24,11 +24,11 @@ Valid input arguments for color_mode and loss:
                         | mvtec, mvtec2  | Resnet, Nasnet |
 ========================+================+================+
         ||              |                |                |
-        ||   grayscale  |    SSIM, L2    |   Not Valid    |
+        ||   grayscale  |    ssim, l2    |   Not Valid    |
 Color   ||              |                |                |
 Mode    ----------------+----------------+----------------+
         ||              |                |                |
-        ||      RGB     |    MSSIM, L2   |    MSSIM, L2   |
+        ||      RGB     |    mssim, l2   |    mssim, l2   |
         ||              |                |                |
 --------+---------------+----------------+----------------+
 """

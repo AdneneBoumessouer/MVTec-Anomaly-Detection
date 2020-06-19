@@ -11,11 +11,10 @@ from processing import utils
 from processing import resmaps
 from processing.preprocessing import Preprocessor
 from processing.preprocessing import get_preprocessing_function
-from processing.cv import label_images
+from processing.resmaps import label_images
 from processing.utils import printProgressBar
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
-
 from test import predict_classes
 
 FINETUNE_SPLIT = 0.2
