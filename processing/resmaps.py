@@ -1,12 +1,9 @@
 import os
 import time
-
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
-
 from processing import utils
 from processing.utils import printProgressBar as printProgressBar
-
 import matplotlib.pyplot as plt
 from skimage.util import img_as_ubyte
 
@@ -46,8 +43,9 @@ class TensorImages:
         self.imgs_pred = imgs_pred
         self.dtype = dtype
 
-        # pixel min and max values depend on preprocessing function,
-        # which in turn depends on the model used for training.
+        # pixel min and max values of input and reconstruction (pred)
+        # depend on preprocessing function, which in turn depends on
+        # the model used for training.
         self.vmin = vmin
         self.vmax = vmax
 
@@ -88,13 +86,16 @@ class TensorImages:
 
     def generate_inspection_plots(self, group, save_dir=None):
         assert group in ["validation", "test"]
+        print("[INFO] generating inspection plots on " + group + " images...")
         l = len(self.filenames)
         printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
         for i in range(len(self.imgs_input)):
-            self.plot_input_pred_resmap(i, group, save_dir)
+            self.plot_input_pred_resmap(index=i, group=group, save_dir=save_dir)
             # print progress bar
             time.sleep(0.1)
             printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
+        if save_dir is not None:
+            print("[INFO] all generated files are saved at: \n{}".format(save_dir))
         return
 
     ### plottings methods for inspection
@@ -124,7 +125,7 @@ class TensorImages:
             vmin=self.vmin_resmap,
             vmax=self.vmax_resmap,
         )
-        axarr[2].set_title("resmap_" + self.method)
+        axarr[2].set_title("resmap_" + self.method + "_" + self.dtype)
         axarr[2].set_axis_off()
         fig.colorbar(im20, ax=axarr[2])
 
@@ -134,7 +135,7 @@ class TensorImages:
             plot_name = get_plot_name(self.filenames[index], suffix="inspection")
             fig.savefig(os.path.join(save_dir, plot_name))
             plt.close(fig=fig)
-        # return fig
+        return
 
     def plot_image(self, plot_type, index):
         assert plot_type in ["input", "pred", "resmap"]
@@ -162,6 +163,7 @@ class TensorImages:
         title = plot_type + "\n" + self.filenames[index]
         plt.title(title)
         plt.show()
+        return
 
 
 #### Image Processing Functions
@@ -201,10 +203,6 @@ def resmaps_ssim(imgs_input, imgs_pred):
 def resmaps_l2(imgs_input, imgs_pred):
     resmaps = (imgs_input - imgs_pred) ** 2
     return resmaps
-
-
-# def segment_resmaps(resmaps, threshold):
-#     return resmaps > threshold
 
 
 ### utilitary functions

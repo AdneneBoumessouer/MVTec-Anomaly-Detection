@@ -13,13 +13,13 @@ from processing.preprocessing import Preprocessor
 from processing.preprocessing import get_preprocessing_function
 from processing.cv import label_images
 from processing.utils import printProgressBar
-from skimage.util import img_as_ubyte
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 
 from test import predict_classes
 
 FINETUNE_SPLIT = 0.2
+STEP_MIN_AREA = 50  # 5
 
 
 def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
@@ -207,7 +207,7 @@ def main(args):
     }
 
     # create discrete min_area values
-    min_areas = np.arange(start=5, stop=505, step=5)
+    min_areas = np.arange(start=5, stop=505, step=STEP_MIN_AREA)
     length = len(min_areas)
 
     for i, min_area in enumerate(min_areas):
@@ -277,45 +277,47 @@ def main(args):
     print("[INFO] finetuning results saved at {}".format(save_dir))
 
     # save finetuning plots
-    plot_min_area_threshold(finetuning_result, save=True)
-    plot_scores(finetuning_result, index_best=None, save=True)
+    plot_min_area_threshold(dict_finetune, save_dir=save_dir)
+    plot_scores(dict_finetune, index_best=None, save_dir=save_dir)
+
+    return
 
 
-def plot_min_area_threshold(finetuning_result, index_best=None, save=False):
+def plot_min_area_threshold(dict_finetune, index_best=None, save_dir=None):
     df_finetune = pd.DataFrame.from_dict(dict_finetune)
     with plt.style.context("seaborn-darkgrid"):
         fig = df_finetune.plot(
             x="min_area", y=["threshold"], figsize=(12, 8)
         ).get_figure()
         if index_best:
-            x = finetuning_result["min_area"][index_best]
-            y = finetuning_result["score"][index_best]
+            x = dict_finetune["min_area"][index_best]
+            y = dict_finetune["score"][index_best]
             plt.axvline(x, 0, y, linestyle="dashed")
             plt.axhline(y, 0, x, linestyle="dashed")
             label_marker = "best min_area / threshold pair"
             plt.plot(x, y, markersize=10, marker="o", color="red", label=label_marker)
         plt.title("min_area_threshold plot")
         plt.show()
-    if save:
+    if save_dir is not None:
         plt.close()
         fig.savefig(os.path.join(save_dir, "min_area_threshold_plot.png"))
     return
 
 
-def plot_scores(finetuning_result, index_best=None, save=False):
+def plot_scores(dict_finetune, index_best=None, save_dir=None):
     df_finetune = pd.DataFrame.from_dict(dict_finetune)
     with plt.style.context("seaborn-darkgrid"):
         fig = df_finetune.plot(
             x="min_area", y=["TPR", "TNR", "score"], figsize=(12, 8)
         ).get_figure()
         if index_best:
-            x = finetuning_result["min_area"][index_best]
-            y = finetuning_result["score"][index_best]
+            x = dict_finetune["min_area"][index_best]
+            y = dict_finetune["score"][index_best]
             plt.axvline(x, 0, 1, linestyle="dashed")  # label='best_scores'
             plt.plot(x, y, markersize=10, marker="o", color="red", label="best score")
         plt.title("scores plot")
         plt.show()
-    if save:
+    if save_dir is not None:
         plt.close()
         fig.savefig(os.path.join(save_dir, "scores_plot.png"))
     return

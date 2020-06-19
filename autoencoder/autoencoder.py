@@ -66,9 +66,6 @@ class AutoEncoder:
         self.hist = None
         self.epochs_trained = None
 
-        # verbosity
-        self.verbose = verbose
-
         # build model and preprocessing variables
         if architecture == "mvtec":
             self.model = mvtec.build_model(color_mode)
@@ -108,6 +105,11 @@ class AutoEncoder:
             self.dynamic_range = nasnet.DYNAMIC_RANGE
             raise NotImplementedError("nasnet not yet implemented.")
 
+        # verbosity
+        self.verbose = verbose
+        if verbose:
+            self.model.summary()
+
         # set loss function
         if loss == "ssim":
             self.loss_function = losses.ssim_loss(self.dynamic_range)
@@ -115,8 +117,6 @@ class AutoEncoder:
             self.loss_function = losses.mssim_loss(self.dynamic_range)
         elif loss == "l2":
             self.loss_function = losses.l2_loss
-        elif loss == "mse":
-            self.loss_function = keras.losses.mean_squared_error
 
         # set metrics to monitor training
         if color_mode == "grayscale":
@@ -149,7 +149,7 @@ class AutoEncoder:
 
         if self.loss in ["ssim", "mssim"]:
             stop_factor = -6
-        elif self.loss == ["l2", "mse"]:
+        elif self.loss == "l2":
             stop_factor = 6
 
         # simulate training while recording learning rate and loss
@@ -280,10 +280,9 @@ class AutoEncoder:
         hist_csv_file = os.path.join(self.save_dir, "history.csv")
         with open(hist_csv_file, mode="w") as csv_file:
             hist_df.to_csv(csv_file)
-        # print("[INFO] training history has been successfully saved as csv file at %s " % hist_csv_file)
         print("[INFO] training history has been successfully saved as csv file.")
         print(
-            "[INFO] all files have been successfully saved at: \n{}".format(
+            "[INFO] training files have been successfully saved at: \n{}".format(
                 self.save_dir
             )
         )
