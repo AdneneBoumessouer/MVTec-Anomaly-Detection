@@ -1,3 +1,9 @@
+"""
+Created on Tue Dec 10 19:46:17 2019
+
+@author: Adnene Boumessouer
+"""
+
 import os
 import argparse
 import tensorflow as tf
@@ -10,11 +16,6 @@ from processing import resmaps
 
 
 """
-Created on Tue Dec 10 19:46:17 2019
-
-@author: adnene33
-
-
 Valid input arguments for color_mode and loss:
 
                         +----------------+----------------+
