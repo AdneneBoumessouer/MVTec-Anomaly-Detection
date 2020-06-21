@@ -9,7 +9,7 @@ from processing import utils
 from processing import resmaps
 from processing.preprocessing import Preprocessor
 from processing.preprocessing import get_preprocessing_function
-from processing.cv import label_images
+from processing.resmaps import label_images
 from processing.utils import printProgressBar
 from skimage.util import img_as_ubyte
 from sklearn.metrics import confusion_matrix
@@ -35,17 +35,16 @@ def predict_classes(resmaps, min_area, threshold):
     # threshold residual maps with the given threshold
     resmaps_th = resmaps > threshold
     # compute connected components
-    resmaps_labeled, areas_all = label_images(resmaps_th)
+    _, areas_all = label_images(resmaps_th)
     # Decides if images are defective given the areas of their connected components
     y_pred = [is_defective(areas, min_area) for areas in areas_all]
-
     return y_pred
 
 
 def main(args):
     # parse arguments
     model_path = args.path
-    save = args.save
+    # save = args.save
 
     # ============= LOAD MODEL AND PREPROCESSING CONFIGURATION ================
 
@@ -65,26 +64,28 @@ def main(args):
     # =================== LOAD VALIDATION PARAMETERS =========================
 
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-    val_dir = os.path.join(
+    finetune_dir = os.path.join(
         os.getcwd(),
         "results",
         input_directory,
         architecture,
         loss,
         model_dir_name,
-        "validation",
+        "finetuning",
     )
 
     # print("[INFO] adopting min_area and threshold yielded during validation...")
     try:
-        with open(os.path.join(val_dir, "validation_result.json"), "r") as read_file:
+        with open(
+            os.path.join(finetune_dir, "finetuning_result.json"), "r"
+        ) as read_file:
             validation_result = json.load(read_file)
     except FileNotFoundError:
-        print("run validatte.py before testing.")
+        print("run finetune.py before testing.")
         sys.exit("[WARNING] run validate.py before testing.\nexiting script.")
 
-    min_area = validation_result["min_area"]
-    threshold = validation_result["threshold"]
+    min_area = validation_result["best_min_area"]
+    threshold = validation_result["best_threshold"]
     method = validation_result["method"]
     dtype = validation_result["dtype"]
 
@@ -148,7 +149,6 @@ def main(args):
     )
 
     # confusion matrix
-    conf_matrix = confusion_matrix(y_true, y_pred, normalize="true")
     tnr, fp, fn, tpr = confusion_matrix(y_true, y_pred, normalize="true").ravel()
 
     # initialize dictionary to store test results
@@ -197,24 +197,12 @@ def main(args):
     # print test_results to console
     print("[INFO] test results: {}".format(test_result))
 
-    if save:
-        utils.save_np(imgs_val_input, save_dir, "imgs_test_input.npy")
-        utils.save_np(imgs_val_pred, save_dir, "imgs_test_pred.npy")
-        utils.save_np(resmaps_val, save_dir, "resmaps_test.npy")
-
 
 if __name__ == "__main__":
     # create parser
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
-    )
-
-    parser.add_argument(
-        "-s",
-        "--save",
-        action="store_true",
-        help="save inputs, predictions and reconstructions of validation dataset",
     )
 
     args = parser.parse_args()

@@ -1,14 +1,16 @@
 import os
 import time
-
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
-
 from processing import utils
 from processing.utils import printProgressBar as printProgressBar
-
 import matplotlib.pyplot as plt
 from skimage.util import img_as_ubyte
+from skimage.segmentation import clear_border
+from skimage.measure import label, regionprops
+from skimage.morphology import closing, square
+from skimage.color import label2rgb
+import cv2
 
 # Segmentation Parameters
 
@@ -46,33 +48,34 @@ class TensorImages:
         self.imgs_pred = imgs_pred
         self.dtype = dtype
 
-        # pixel min and max values depend on preprocessing function,
-        # which in turn depends on the model used for training.
+        # pixel min and max values of input and reconstruction (pred)
+        # depend on preprocessing function, which in turn depends on
+        # the model used for training.
         self.vmin = vmin
         self.vmax = vmax
 
         # compute resmaps
         assert dtype in ["float64", "uint8"]
-        assert method in ["L2", "SSIM"]
+        assert method in ["l2", "ssim"]
         self.resmaps = calculate_resmaps(self.imgs_input, self.imgs_pred, method, dtype)
         if dtype == "float64":
-            if method == "SSIM":
+            if method == "ssim":
                 self.thresh_min = THRESH_MIN_FLOAT_SSIM
                 self.thresh_step = THRESH_STEP_FLOAT_SSIM
                 self.vmin_resmap = 0.0
                 self.vmax_resmap = 1.0
-            elif method == "L2":
+            elif method == "l2":
                 self.thresh_min = THRESH_MIN_FLOAT_L2
                 self.thresh_step = THRESH_STEP_FLOAT_L2
                 self.vmin_resmap = None
                 self.vmax_resmap = None
         elif dtype == "uint8":
-            if method == "SSIM":
+            if method == "ssim":
                 self.thresh_min = THRESH_MIN_UINT8_SSIM
                 self.thresh_step = THRESH_STEP_UINT8_SSIM
                 self.vmin_resmap = 0
                 self.vmax_resmap = 255
-            elif method == "L2":
+            elif method == "l2":
                 self.thresh_min = THRESH_MIN_UINT8_L2
                 self.thresh_step = THRESH_STEP_UINT8_L2
                 self.vmin_resmap = 0
@@ -82,19 +85,21 @@ class TensorImages:
 
         # compute maximal threshold based on resmaps
         self.thresh_max = np.amax(self.resmaps)
-        # self.n_steps = (self.thresh_max - self.thresh_min) // self.step
         self.method = method
         self.filenames = filenames
 
     def generate_inspection_plots(self, group, save_dir=None):
         assert group in ["validation", "test"]
+        print("[INFO] generating inspection plots on " + group + " images...")
         l = len(self.filenames)
         printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
         for i in range(len(self.imgs_input)):
-            self.plot_input_pred_resmap(i, group, save_dir)
+            self.plot_input_pred_resmap(index=i, group=group, save_dir=save_dir)
             # print progress bar
             time.sleep(0.1)
             printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
+        if save_dir is not None:
+            print("[INFO] all generated files are saved at: \n{}".format(save_dir))
         return
 
     ### plottings methods for inspection
@@ -124,7 +129,7 @@ class TensorImages:
             vmin=self.vmin_resmap,
             vmax=self.vmax_resmap,
         )
-        axarr[2].set_title("resmap_" + self.method)
+        axarr[2].set_title("resmap_" + self.method + "_" + self.dtype)
         axarr[2].set_axis_off()
         fig.colorbar(im20, ax=axarr[2])
 
@@ -134,7 +139,7 @@ class TensorImages:
             plot_name = get_plot_name(self.filenames[index], suffix="inspection")
             fig.savefig(os.path.join(save_dir, plot_name))
             plt.close(fig=fig)
-        # return fig
+        return
 
     def plot_image(self, plot_type, index):
         assert plot_type in ["input", "pred", "resmap"]
@@ -162,6 +167,13 @@ class TensorImages:
         title = plot_type + "\n" + self.filenames[index]
         plt.title(title)
         plt.show()
+        return
+
+
+def get_plot_name(filename, suffix):
+    filename_new, ext = os.path.splitext(filename)
+    filename_new = "_".join(filename_new.split("/")) + "_" + suffix + ext
+    return filename_new
 
 
 #### Image Processing Functions
@@ -170,9 +182,9 @@ class TensorImages:
 
 
 def calculate_resmaps(imgs_input, imgs_pred, method, dtype="float64"):
-    if method == "L2":
+    if method == "l2":
         resmaps = resmaps_l2(imgs_input, imgs_pred)
-    elif method == "SSIM":
+    elif method == "ssim":
         resmaps = resmaps_ssim(imgs_input, imgs_pred)
     if dtype == "uint8":
         resmaps = img_as_ubyte(resmaps)
@@ -203,14 +215,114 @@ def resmaps_l2(imgs_input, imgs_pred):
     return resmaps
 
 
-# def segment_resmaps(resmaps, threshold):
-#     return resmaps > threshold
+## functions for processing resmaps
 
 
-### utilitary functions
+def label_images(images_th):
+    """
+    Segments images into images of connected components (regions).
+    Returns segmented images and a list of lists, whereby each list 
+    contains the areas of the regions of the corresponding image. 
+    
+    Parameters
+    ----------
+    images_th : array of uint8
+        Thresholded residual maps.
+    kernel_size : int, optional
+        Size of the kernel window. The default is 3.
+
+    Returns
+    -------
+    images_labeled : array of uint8
+        Labeled images.
+    areas_all : list of lists
+        List of lists, whereby each list contains the areas of the regions of the corresponding image.
+
+    """
+    images_labeled = np.zeros(shape=images_th.shape)
+    areas_all = []
+    for i, image_th in enumerate(images_th):
+        # close small holes with binary closing
+        bw = closing(image_th, square(3))
+
+        # remove artifacts connected to image border
+        cleared = clear_border(bw)
+
+        # label image regions
+        image_labeled = label(cleared)
+
+        # image_labeled = label(image_th)
+
+        # append image
+        images_labeled[i] = image_labeled
+
+        # compute areas of anomalous regions in the current image
+        regions = regionprops(image_labeled)
+        areas = [region.area for region in regions]
+        areas_all.append(areas)
+
+    return images_labeled, areas_all
 
 
-def get_plot_name(filename, suffix):
-    filename_new, ext = os.path.splitext(filename)
-    filename_new = "_".join(filename_new.split("/")) + "_" + suffix + ext
-    return filename_new
+# currently unused -----------------------------------------------
+
+
+def equalize_images(images):
+    """
+    Performs Histograms Equalization on images.
+    https://opencv2-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_histograms/py_histogram_equalization/py_histogram_equalization.html
+
+    Parameters
+    ----------
+    images : array of uint8
+        Residual maps.
+
+    Returns
+    -------
+    images_equalized : array of uint8
+        Equalized images.
+
+    """
+    images_equalized = np.zeros(shape=images.shape, dtype="uint8")
+    for i, image in enumerate(images):
+        image_equalized = cv2.equalizeHist(image)
+        image_equalized = np.expand_dims(image_equalized, axis=-1)
+        images_equalized[i] = image_equalized
+    return images_equalized
+
+
+def filter_gauss_images(images, kernel_size=5):
+    images_filtered = np.zeros(shape=images.shape, dtype="uint8")
+    kernel = (kernel_size, kernel_size)
+    for i, image in enumerate(images):
+        image_filtered = cv2.GaussianBlur(image, kernel, 0)
+        image_filtered = np.expand_dims(image_filtered, axis=-1)
+        images_filtered[i] = image_filtered
+    return images_filtered
+
+
+def filter_median_images(images, kernel_size=3):
+    """
+    Filter images according to Median Filtering.
+    https://opencv2-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_filtering/py_filtering.html
+
+    Parameters
+    ----------
+    images : array of uint8
+        Thresholded residual maps.
+    kernel_size : int, optional
+        Size of the kernel window. The default is 3.
+
+    Returns
+    -------
+    images_filtered : array of uint8
+        Filtered images.
+
+    """
+    images_filtered = np.zeros(shape=images.shape, dtype="uint8")
+    for i, image in enumerate(images):
+        image_filtered = cv2.medianBlur(image, kernel_size)
+        image_filtered = np.expand_dims(image_filtered, axis=-1)
+        images_filtered[i] = image_filtered
+    return images_filtered
+

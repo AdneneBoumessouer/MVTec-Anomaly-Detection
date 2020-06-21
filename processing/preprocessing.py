@@ -112,9 +112,33 @@ class Preprocessor:
             color_mode=self.color_mode,
             batch_size=batch_size,
             class_mode="input",
-            shuffle=False,
+            shuffle=shuffle,
         )
         return test_generator
+
+    def get_finetuning_generator(self, batch_size, shuffle=False):
+        """
+        For training, pass autoencoder.batch_size as batch size.
+        For validation, pass nb_validation_images as batch size.
+        For test, pass nb_test_images as batch size.
+        """
+        # For test dataset, only rescaling
+        test_datagen = ImageDataGenerator(
+            rescale=self.rescale,
+            data_format="channels_last",
+            preprocessing_function=self.preprocessing_function,
+        )
+
+        # Generate validation batches with datagen.flow_from_directory()
+        finetuning_generator = test_datagen.flow_from_directory(
+            directory=self.test_data_dir,
+            target_size=self.shape,
+            color_mode=self.color_mode,
+            batch_size=batch_size,
+            class_mode="input",
+            shuffle=shuffle,
+        )
+        return finetuning_generator
 
     def get_total_number_test_images(self):
         total_number = 0
