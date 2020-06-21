@@ -8,7 +8,7 @@ This project aims at developping a Deep Learning model using an unsupervided met
 ![Image of Yaktocat](overview.png)
 
 The method being used in this project is inspired to a great extent by the papers [MVTec AD — A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf) and [Improving Unsupervised Defect Segmentation by Applying Structural Similarity to Autoencoders](https://arxiv.org/abs/1807.02011).
-The method is devided in 3 steps: training, validating and testing.
+The method is devided in 3 steps: training, finetuning and testing.
 
 ## Dataset
 
@@ -21,7 +21,7 @@ Libraries and packages used in this project:
 * `tensorflow-gpu 2.1.0`
 * `Keras 2.3.1`
 * `ktrain 0.13.0`
-* `scikit-image 0.16.2`
+* `scikit-image 0.17.2`
 * `opencv-python 4.2.0.34`
 * `pandas 1.0.3`
 * `numpy 1.18.1`
@@ -32,7 +32,7 @@ Libraries and packages used in this project:
 1. Download the mvtec dataset [here](https://www.mvtec.com/company/research/datasets/mvtec-ad/) and save it to a directory of your choice (e.g in /Downloads)
 2. Extract the compressed files.
 3. Create a folder named **mvtec** in the project directory.
-4. Move the extracted files (contaied in folders) to the **mvtec** folder.
+4. Move the extracted files to the **mvtec** folder.
 
 
 Directory Structure using mvtec dataset
@@ -40,41 +40,42 @@ Directory Structure using mvtec dataset
 For the scripts to work propoerly, it is required to have a specific directory structure. 
 In the case of using the *mvtec* dataset, here is an example of how the directory stucture should look like:
 
-    ├── bottle
-    │   ├── ground_truth
-    │   │   ├── broken_large
-    │   │   ├── broken_small
-    │   │   └── contamination
-    │   ├── test
-    │   │   ├── broken_large
-    │   │   ├── broken_small
-    │   │   ├── contamination
-    │   │   └── good
-    │   └── train
-    │       └── good
-    ├── cable
-    │   ├── ground_truth
-    │   │   ├── bent_wire
-    │   │   ├── cable_swap
-    │   │   ├── combined
-    │   │   ├── cut_inner_insulation
-    │   │   ├── cut_outer_insulation
-    │   │   ├── missing_cable
-    │   │   ├── missing_wire
-    │   │   └── poke_insulation
-    │   ├── test
-    │   │   ├── bent_wire
-    │   │   ├── cable_swap
-    │   │   ├── combined
-    │   │   ├── cut_inner_insulation
-    │   │   ├── cut_outer_insulation
-    │   │   ├── good
-    │   │   ├── missing_cable
-    │   │   ├── missing_wire
-    │   │   └── poke_insulation
-    │   └── train
-    │       └── good
-    ...
+mvtec
+├── bottle
+│   ├── ground_truth
+│   │   ├── broken_large
+│   │   ├── broken_small
+│   │   └── contamination
+│   ├── test
+│   │   ├── broken_large
+│   │   ├── broken_small
+│   │   ├── contamination
+│   │   └── good
+│   └── train
+│       └── good
+├── cable
+│   ├── ground_truth
+│   │   ├── bent_wire
+│   │   ├── cable_swap
+│   │   ├── combined
+│   │   ├── cut_inner_insulation
+│   │   ├── cut_outer_insulation
+│   │   ├── missing_cable
+│   │   ├── missing_wire
+│   │   └── poke_insulation
+│   ├── test
+│   │   ├── bent_wire
+│   │   ├── cable_swap
+│   │   ├── combined
+│   │   ├── cut_inner_insulation
+│   │   ├── cut_outer_insulation
+│   │   ├── good
+│   │   ├── missing_cable
+│   │   ├── missing_wire
+│   │   └── poke_insulation
+│   └── train
+│       └── good
+...
 
 
 --------
@@ -83,81 +84,90 @@ Directory Structure using your own dataset
 ------------
 To train with your own dataset, you need to have a comparable directory structure. For example:
 
-    ├── class1
-    │   ├── test
-    │   │   ├── good
-    │   │   ├── defect
-    │   └── train
-    │       └── good
-    ├── class2
-    │   ├── test
-    │   │   ├── good
-    │   │   ├── defect
-    │   └── train
-    │       └── good
-    ...
+dataset
+├── class1
+│   ├── test
+│   │   ├── good
+│   │   ├── defect
+│   └── train
+│       └── good
+├── class2
+│   ├── test
+│   │   ├── good
+│   │   ├── defect
+│   └── train
+│       └── good
+...
 
 
 --------
 
 ## Training (`train.py`)
 
+### Description
 The method uses a Convolutional Auto-Encoder (CAE). There are two proposed variants:
 * CAE proposed in the paper [MVTec AD — A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf)
 * CAE that uses Keras's inception_resnet_v2 CNN-model pretrained on imagenet as the Encoder. 
-The Decoder is inspired by the paper [Anomaly Detection and Localization in Images using Guided Attention](https://openreview.net/forum?id=B1gikpEtwH)
+The Decoder is inspired by the paper [Anomaly Detection and Localization in Images using Guided Attention](https://openreview.net/forum?id=B1gikpEtwH). NOTE: This model seems not to work properly at the moment and is still being tested.
 
-During training, the CAE trains exclusively on defect-free images and learns to reconstruct defect-free training samples.
+During training, the CAE trains exclusively on defect-free images and learns to reconstruct (predict) defect-free training samples.
 
-To initiate training, go to the project directory and run the following command in your terminal:
+### Usage
+usage: train.py [-h] -d  [-a] [-c] [-l] [-b] [-i]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -d , --input-dir      directory containing training images
+  -a , --architecture   architecture of the model to use for training: 'resnet', 'mvtec' or 'mvtec2'
+  -c , --color          color mode for preprocessing images before training: 'rgb' or 'grayscale'
+  -l , --loss           loss function to use for training: 'mssim', 'ssim' or 'l2'
+  -b , --batch          batch size to use for training
+  -i, --inspect         generate inspection plots after training
+
+Example usage:
 ```
-python3 train.py -d <direcroty containing training images> -n <number of training instances> -a <architecture of the model to use> -b <batch size> -l <loss function> -c <color mode> -t <tag>
+python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale
 ```
-Here is an example:
-```
-python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale -t "first model"
-```
-**NOTE:** The number of training epochs will be determined by the given argument `<number of training instances>` specified during the initiation of the training, devided by the actual number of images contained in the train folder of the chosen class.
-Example: if you passed `-n 10000` and the training directory contains `1000` images, then the number of epochs will be equal to `10`.
+**NOTE 1:** There is no need for the user to pass a number of epochs since the training process implements an Early Stopping strategy.
+
+**NOTE 2:** There is a total of 3 models implemented in this project: *resnet*, *mvtec* and *mvtec2*. *Resnet* seems not to be working properly at the moment and needs further investigation/testing. 
+
+**NOTE 3:** While *mvtec* and *mvtec2* are two slightly different variants of the same model, we **recommend** opting for mvtec2, as it has been tested extensively.
 
 
-## Validation (`validate.py`)
+## Finetuning (`finetune.py`)
+This script approximates a good value for minimum area and threshold pair of parameters that should be used during testing to obtain good classification results. It relies on 10% of the defect-freee validation images and 20% of the defect and defect-free test images.
 
-This script computes the threshold that must be used in classification during testing. It uses a small portion (10%) of defect-free training images (validation set). To determine the threshold, a minimum defect area must be passed as an argument.
+### Usage
+usage: finetune.py [-h] -p  [-m] [-t]
 
-To initiate validation, go to the project directory and run the following command in your terminal:
+optional arguments:
+  -h, --help      show this help message and exit
+  -p , --path     path to saved model
+  -m , --method   method for generating resmaps: 'ssim' or 'l2'
+  -t , --dtype    datatype for processing resmaps: 'float64' or 'uint8'
+
+Example usage:
 ```
-python3 validate.py -p <path to trained model> -a <minimum defective area>
-```
-Here is an example:
-```
-python3 validate.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -a 10
+python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m ssim -t float64
 ```
 
 ## Testing (`test.py`)
 
-During testing, the classification on the test images takes place using two input parameters, a threshold and a minimum defect area. You can either use the optimal (minimum area, threshold) pair that have been previously determined by the finetuning and validation step respectively by passing the flag `--adopt-validation` or pass your own pair of area and threshold values.
+This script classifies test images using the threshold and the minimum defect area that have been previously determined by finetuning.
 
-To initiate testing using the values gained from the validation step, go to the project directory and run the following command in your terminal:
+### Usage
+usage: test.py [-h] -p
+
+optional arguments:
+  -h, --help    show this help message and exit
+  -p , --path   path to saved model
+
+Example usage:
 ```
-python3 test.py -p <path to trained model> --adopt-validation
-```
-Example:
-```
-python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 --adopt-validation
-```
-To use your own pair of minimum area and threshold, use:
-```
-python3 test.py -p <path to trained model> -t <threshold> -a <area>
-```
-Example:
-```
-python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -t 28 -a 50
+python3 test.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5
 ```
 
-## Finetuning (`/finetuning`)
-
-This folder contains jupyter-notebooks, one per trained Model per Dataset, that aim to determine the best minimum area and threshold pair of values to obtain the best classification possible. They simulate the validation for a wide range of discrete minimum area values to obtain corresponding threshold values. The test algorithm is subseqently run using each minimum area and threshold pair, obtaining at each time a classification, their corresponding detection ratios and the score. At the end, the best minimum area and threshold pair, which yielded the best score, is chosen to obtain the best classification.
 
 Project Organization
 ------------
@@ -165,16 +175,15 @@ Project Organization
     ├── mvtec                       <- folder containing all mvtec classes.
     │   ├── bottle                  <- subfolder of a class (contains additional subfolders /train and /test).
     |   |── ...
-    ├── finetuning                  <- directory containing jupyter-notebooks for finetuning
-    ├── modules                     <- module containing model definitions, submodules for image processing and helper functions.
-    ├── results                     <- directory containing best validation and test results.
+    ├── autoencoder                 <- directory containing modules for training: autoencoder class and methods as well as custom losses and metrics.
+    ├── processing                  <- directory containing modules for preprocessing images and before training and processing images after training.
+    ├── results                     <- directory containing finetuning and test results.
     ├── readme.md                   <- readme file.
     ├── requirements.txt            <- requirement text file containing used libraries.
     ├── saved_models                <- directory containing saved models, training history, loss and learning plots and inspection images.
     ├── train.py                    <- training script to train the auto-encoder.
-    ├── finetune.ipynb              <- Jupyter-Notebook to approximate minimum area.
-    ├── validate.py                 <- validation script to determine classification threshold.
-    └── test.py                     <- test script to classify images of the test set.
+    ├── finetune.py                 <- approximates a good value for minimum area and threshold for classification.
+    └── test.py                     <- test script to classify images of the test set using finetuned parameters.
 
 
 --------
@@ -183,16 +192,14 @@ Project Organization
 
 * **Adnene Boumessouer** - (https://github.com/AdneneBoumessouer)
 
-See also the list of [contributors](https://github.com/AdneneBoumessouer/Anomaly-Detection/contributors) who participated in this project.
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 
-* Paul Bergmann
-* Aurélien Geron
-* François Chollet
-* Arun S. Maiya, author of [ktrain](https://github.com/amaiya/ktrain)
-* Adrian Rosebrock, author of the website [pyimagesearch](https://www.pyimagesearch.com/)
+* Paul Bergmann, the main author of the paper which this project relies on.
+* François Chollet, author of the Keras deep learning library.
+* Aurélien Géron, autor of the great book Hands on Machine Learning with Scikit-Learn, Keras and Tensorflow.
+* Arun S. Maiya, author of the [ktrain](https://github.com/amaiya/ktrain) library: a wrapper for TensorFlow Keras that makes deep learning and AI more accessible and easier to apply.
+* Adrian Rosebrock, author of the website [pyimagesearch](https://www.pyimagesearch.com/).

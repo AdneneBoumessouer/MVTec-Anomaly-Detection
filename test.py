@@ -44,7 +44,7 @@ def predict_classes(resmaps, min_area, threshold):
 def main(args):
     # parse arguments
     model_path = args.path
-    save = args.save
+    # save = args.save
 
     # ============= LOAD MODEL AND PREPROCESSING CONFIGURATION ================
 
@@ -81,7 +81,7 @@ def main(args):
         ) as read_file:
             validation_result = json.load(read_file)
     except FileNotFoundError:
-        print("run validatte.py before testing.")
+        print("run finetune.py before testing.")
         sys.exit("[WARNING] run validate.py before testing.\nexiting script.")
 
     min_area = validation_result["best_min_area"]
@@ -197,24 +197,12 @@ def main(args):
     # print test_results to console
     print("[INFO] test results: {}".format(test_result))
 
-    if save:
-        utils.save_np(imgs_val_input, save_dir, "imgs_test_input.npy")
-        utils.save_np(imgs_val_pred, save_dir, "imgs_test_pred.npy")
-        utils.save_np(resmaps_val, save_dir, "resmaps_test.npy")
-
 
 if __name__ == "__main__":
     # create parser
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
-    )
-
-    parser.add_argument(
-        "-s",
-        "--save",
-        action="store_true",
-        help="save inputs, predictions and reconstructions of validation dataset",
     )
 
     args = parser.parse_args()

@@ -10,6 +10,8 @@ xyz.py
 /report
 
 check_resmaps.ipynb
+demo.ipynb
+train_multiple.py
 
 # remove this line after finishing project to upload data
 # saved_models/

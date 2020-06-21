@@ -49,25 +49,24 @@ def check_arguments(architecture, color_mode, loss):
 def main(args):
 
     # get parsed arguments from user
-    input_directory = args.input_directory
-    train_data_dir = os.path.join(input_directory, "train")
-    batch_size = args.batch
-    color_mode = args.color
-    # loss = args.loss.upper()
-    loss = args.loss
+    input_dir = args.input_dir
     architecture = args.architecture
+    color_mode = args.color
+    loss = args.loss
+    batch_size = args.batch
+
+    # get dir path containing training images
+    train_data_dir = os.path.join(input_dir, "train")
 
     # check arguments
     check_arguments(architecture, color_mode, loss)
 
     # get autoencoder
-    autoencoder = AutoEncoder(
-        input_directory, architecture, color_mode, loss, batch_size
-    )
+    autoencoder = AutoEncoder(input_dir, architecture, color_mode, loss, batch_size)
 
     # load data as generators that yield batches of preprocessed images
     preprocessor = Preprocessor(
-        input_directory=input_directory,
+        input_directory=input_dir,
         rescale=autoencoder.rescale,
         shape=autoencoder.shape,
         color_mode=autoencoder.color_mode,
@@ -91,7 +90,7 @@ def main(args):
 
     if args.inspect:
         # -------------- INSPECTING VALIDATION IMAGES --------------
-        print("[INFO] inspecting validation images...")
+        print("[INFO] generating inspection plots of validation images...")
 
         # create a directory to save inspection plots
         inspection_val_dir = os.path.join(autoencoder.save_dir, "inspection_val")
@@ -135,7 +134,7 @@ def main(args):
         )
 
         # -------------- INSPECTING TEST IMAGES --------------
-        print("[INFO] inspecting test images...")
+        print("[INFO] generating inspection plots of test images...")
 
         # create a directory to save inspection plots
         inspection_test_dir = os.path.join(autoencoder.save_dir, "inspection_test")
@@ -186,54 +185,67 @@ def main(args):
 
 if __name__ == "__main__":
     # create parser
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Train an AutoEncoder on an image dataset.",
+        epilog="Example usage: python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale",
+    )
     parser.add_argument(
         "-d",
-        "--input-directory",
+        "--input-dir",
         type=str,
         required=True,
         metavar="",
-        help="training directory",
+        help="directory containing training images",
     )
 
     parser.add_argument(
         "-a",
         "--architecture",
         type=str,
-        required=True,
+        required=False,
         metavar="",
-        choices=["mvtec", "mvtec2", "resnet", "nasnet"],
-        help="model to use in training",
-    )
-
-    parser.add_argument(
-        "-b", "--batch", type=int, required=True, metavar="", help="batch size"
-    )
-    parser.add_argument(
-        "-l",
-        "--loss",
-        type=str,
-        required=True,
-        metavar="",
-        choices=["mssim", "ssim", "l2"],
-        help="loss function used during training",
+        choices=["mvtec", "mvtec2", "resnet"],
+        default="mvtec2",
+        help="architecture of the model to use for training: 'mvtec', 'mvtec2' or 'resnet'",
     )
 
     parser.add_argument(
         "-c",
         "--color",
         type=str,
-        required=True,
+        required=False,
         metavar="",
         choices=["rgb", "grayscale"],
-        help="color mode",
+        default="grayscale",
+        help="color mode for preprocessing images before training: 'rgb' or 'grayscale'",
+    )
+
+    parser.add_argument(
+        "-l",
+        "--loss",
+        type=str,
+        required=False,
+        metavar="",
+        choices=["mssim", "ssim", "l2"],
+        default="l2",
+        help="loss function to use for training: 'mssim', 'ssim' or 'l2'",
+    )
+
+    parser.add_argument(
+        "-b",
+        "--batch",
+        type=int,
+        required=False,
+        metavar="",
+        default=8,
+        help="batch size to use for training",
     )
 
     parser.add_argument(
         "-i",
         "--inspect",
         action="store_true",
-        help="whether or not to reconstruct validation and test images after training",
+        help="generate inspection plots after training",
     )
 
     args = parser.parse_args()

@@ -85,7 +85,6 @@ class TensorImages:
 
         # compute maximal threshold based on resmaps
         self.thresh_max = np.amax(self.resmaps)
-        # self.n_steps = (self.thresh_max - self.thresh_min) // self.step
         self.method = method
         self.filenames = filenames
 
@@ -219,7 +218,7 @@ def resmaps_l2(imgs_input, imgs_pred):
 ## functions for processing resmaps
 
 
-def label_images(images):
+def label_images(images_th):
     """
     Segments images into images of connected components (regions).
     Returns segmented images and a list of lists, whereby each list 
@@ -227,7 +226,7 @@ def label_images(images):
     
     Parameters
     ----------
-    images : array of uint8
+    images_th : array of uint8
         Thresholded residual maps.
     kernel_size : int, optional
         Size of the kernel window. The default is 3.
@@ -240,19 +239,19 @@ def label_images(images):
         List of lists, whereby each list contains the areas of the regions of the corresponding image.
 
     """
-    images_labeled = np.zeros(shape=images.shape)
+    images_labeled = np.zeros(shape=images_th.shape)
     areas_all = []
-    for i, image_th in enumerate(images):
-        # # close small holes with binary closing
-        # bw = closing(image_th, square(3))
+    for i, image_th in enumerate(images_th):
+        # close small holes with binary closing
+        bw = closing(image_th, square(3))
 
-        # # remove artifacts connected to image border
-        # cleared = clear_border(bw)
+        # remove artifacts connected to image border
+        cleared = clear_border(bw)
 
-        # # label image regions
-        # image_labeled = label(cleared)
+        # label image regions
+        image_labeled = label(cleared)
 
-        image_labeled = label(image_th)
+        # image_labeled = label(image_th)
 
         # append image
         images_labeled[i] = image_labeled
@@ -327,14 +326,3 @@ def filter_median_images(images, kernel_size=3):
         images_filtered[i] = image_filtered
     return images_filtered
 
-
-def threshold_images(images, threshold):
-    """
-    All pixel values < threshold  ==> 0, else ==> 255
-    """
-    images_th = np.zeros(shape=images.shape, dtype="uint8")
-    for i, image in enumerate(images):
-        image_th = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)[1]
-        image_th = np.expand_dims(image_th, axis=-1)
-        images_th[i] = image_th.astype("uint8")
-    return images_th

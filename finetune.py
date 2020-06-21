@@ -67,8 +67,6 @@ def main(args):
     model_path = args.path
     method = args.method
     dtype = args.dtype
-    # min_area = args.area
-    # save = args.save
 
     # ============= LOAD MODEL AND PREPROCESSING CONFIGURATION ================
 
@@ -85,10 +83,10 @@ def main(args):
     vmax = info["preprocessing"]["vmax"]
     nb_validation_images = info["data"]["nb_validation_images"]
 
-    # ==================== PREPROCESS VALIDATION IMAGES ========================
-
     # get the correct preprocessing function
     preprocessing_function = get_preprocessing_function(architecture)
+
+    # ========= LOAD AND PREPROCESS VALIDATION & FINETUNING IMAGES =============
 
     # initialize preprocessor
     preprocessor = Preprocessor(
@@ -106,13 +104,13 @@ def main(args):
         batch_size=nb_validation_images, shuffle=False
     )
 
-    # retrieve validation images from generator
+    # retrieve preprocessed validation images from generator
     imgs_val_input = validation_generator.next()[0]
 
     # retrieve validation image_names
     filenames_val = validation_generator.filenames
 
-    # get reconstructed images (i.e predictions) on validation dataset
+    # reconstruct (i.e predict) validation images
     imgs_val_pred = model.predict(imgs_val_input)
 
     # convert to grayscale if RGB
@@ -139,16 +137,17 @@ def main(args):
 
     # get finetuning generator
     nb_test_images = preprocessor.get_total_number_test_images()
-    # nb_finetuning_images = int(FINETUNE_SPLIT * nb_test_images)  # CHANGE
 
     finetuning_generator = preprocessor.get_finetuning_generator(
         batch_size=nb_test_images, shuffle=False
     )
-    imgs_ft_input = finetuning_generator.next()[0]
-    filenames = finetuning_generator.filenames
-    # imgs_ft_input = imgs_ft_input[index_array_ft]
 
-    # select a representative subset of test images for finetuning (stratified sampling)
+    # retrieve preprocessed test images from generator
+    imgs_test_input = finetuning_generator.next()[0]
+    filenames_test = finetuning_generator.filenames
+
+    # select a representative subset of test images for finetuning
+    #  using stratified sampling
     assert "good" in finetuning_generator.class_indices
     index_array = finetuning_generator.index_array
     classes = finetuning_generator.classes
@@ -159,6 +158,7 @@ def main(args):
         random_state=42,
         stratify=classes,
     )
+
     # get correct classes corresponding to selected images
     good_class_i = finetuning_generator.class_indices["good"]
     y_ft_true = np.array(
@@ -166,10 +166,10 @@ def main(args):
     )
 
     # select test images for finetuninig
-    imgs_ft_input = imgs_ft_input[index_array_ft]
-    filenames_ft = list(np.array(filenames)[index_array_ft])
+    imgs_ft_input = imgs_test_input[index_array_ft]
+    filenames_ft = list(np.array(filenames_test)[index_array_ft])
 
-    # get reconstructed images (i.e predictions) on validation dataset
+    # reconstruct (i.e predict) finetuning images
     imgs_ft_pred = model.predict(imgs_ft_input)
 
     # convert to grayscale if RGB
@@ -192,7 +192,7 @@ def main(args):
         filenames=filenames_ft,
     )
 
-    # ======================== COMPUTE THRESHOLD ===========================
+    # ======================== COMPUTE THRESHOLDS ===========================
 
     # initialize finetuning dictionary
     dict_finetune = {
@@ -230,7 +230,7 @@ def main(args):
             y_ft_true, y_ft_pred, normalize="true"
         ).ravel()
 
-        # record finetuning results
+        # record current results
         dict_finetune["min_area"].append(min_area)
         dict_finetune["threshold"].append(threshold)
         dict_finetune["TPR"].append(tpr)
@@ -241,6 +241,7 @@ def main(args):
 
     # get min_area, threshold pair corresponding to best score
     max_score_i = np.argmax(dict_finetune["score"])
+    max_score = float(dict_finetune["score"][max_score_i])
     best_min_area = int(dict_finetune["min_area"][max_score_i])
     best_threshold = float(dict_finetune["threshold"][max_score_i])
 
@@ -257,6 +258,7 @@ def main(args):
         loss,
         model_dir_name,
         "finetuning",
+        # "{}_{}".format(method, dtype),
     )
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
@@ -265,8 +267,10 @@ def main(args):
     finetuning_result = {
         "best_min_area": best_min_area,
         "best_threshold": best_threshold,
+        "best_score": max_score,
         "method": method,
         "dtype": dtype,
+        "split": FINETUNE_SPLIT,
     }
     print("[INFO] finetuning results: {}".format(finetuning_result))
 
@@ -287,10 +291,7 @@ def plot_min_area_threshold(dict_finetune, index_best=None, save_dir=None):
     min_areas = dict_finetune["min_area"]
     thresholds = dict_finetune["threshold"]
     with plt.style.context("seaborn-darkgrid"):
-        # plt.figure(figsize=(12, 8))
-        df_finetune.plot(
-            x="min_area", y=["threshold"], figsize=(12, 8)
-        )  # .get_figure()
+        df_finetune.plot(x="min_area", y=["threshold"], figsize=(12, 8))
         if index_best is not None:
             x = dict_finetune["min_area"][index_best]
             y = dict_finetune["threshold"][index_best]
@@ -298,13 +299,11 @@ def plot_min_area_threshold(dict_finetune, index_best=None, save_dir=None):
             plt.axhline(y, 0, x, linestyle="dashed", color="red", linewidth=0.5)
             label_marker = "best min_area / threshold pair"
             plt.plot(x, y, markersize=10, marker="o", color="red", label=label_marker)
-        # plt.title("min_area_threshold plot")
-        title = "Min_Area Threshold plot\nbest min_area = {}\nbest threshold = {}".format(
+        title = "Min_Area Threshold plot\nbest min_area = {}\nbest threshold = {:.4f}".format(
             x, y
         )
         plt.title(title)
         plt.show()
-
     if save_dir is not None:
         plt.savefig(os.path.join(save_dir, "min_area_threshold_plot.png"))
         print("min_area threshold plot successfully saved at:\n {}".format(save_dir))
@@ -315,17 +314,13 @@ def plot_min_area_threshold(dict_finetune, index_best=None, save_dir=None):
 def plot_scores(dict_finetune, index_best=None, save_dir=None):
     df_finetune = pd.DataFrame.from_dict(dict_finetune)
     with plt.style.context("seaborn-darkgrid"):
-        # plt.figure()
-        df_finetune.plot(
-            x="min_area", y=["TPR", "TNR", "score"], figsize=(12, 8)
-        )  # .get_figure()
+        df_finetune.plot(x="min_area", y=["TPR", "TNR", "score"], figsize=(12, 8))
         if index_best is not None:
             x = dict_finetune["min_area"][index_best]
             y = dict_finetune["score"][index_best]
             plt.axvline(x, 0, 1, linestyle="dashed", color="red", linewidth=0.5)
             plt.plot(x, y, markersize=10, marker="o", color="red", label="best score")
-        # plt.title("scores plot")
-        plt.title("Scores plot\nbest score = {}".format(y))
+        plt.title(f"Scores plot\nbest score = {y:.2E}")
         plt.show()
     if save_dir is not None:
         plt.savefig(os.path.join(save_dir, "scores_plot.png"))
@@ -337,7 +332,9 @@ def plot_scores(dict_finetune, index_best=None, save_dir=None):
 if __name__ == "__main__":
 
     # create parser
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Determine good values for minimum area and threshold for classification."
+    )
     parser.add_argument(
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
     )
@@ -346,25 +343,27 @@ if __name__ == "__main__":
         "-m",
         "--method",
         required=False,
+        metavar="",
         choices=["ssim", "l2"],
         default="ssim",
-        help="method for computing resmaps",
+        help="method for generating resmaps: 'ssim' or 'l2'",
     )
 
     parser.add_argument(
         "-t",
         "--dtype",
         required=False,
+        metavar="",
         choices=["float64", "uint8"],
         default="float64",
-        help="datatype for image processing: float64 or uint8",
+        help="datatype for processing resmaps: 'float64' or 'uint8'",
     )
 
     args = parser.parse_args()
 
     main(args)
 
-# Example of command to initiate validation with different resmap processing arguments (best combination: -m ssim -t float64)
+# Example of command to initiate finetuning with different resmap processing arguments (best combination: -m ssim -t float64)
 
 # python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m ssim -t float64
 # python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m ssim -t uint8
