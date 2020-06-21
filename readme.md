@@ -115,19 +115,19 @@ usage: train.py [-h] -d  [-a] [-c] [-l] [-b] [-i]
 
 optional arguments:
 
--h, --help            show this help message and exit
+  -h, --help            show this help message and exit
 
--d , --input-dir      directory containing training images
+  -d , --input-dir      directory containing training images
 
--a , --architecture   architecture of the model to use for training: 'resnet', 'mvtec' or 'mvtec2'
+  -a , --architecture   architecture of the model to use for training: 'resnet', 'mvtec' or 'mvtec2'
 
--c , --color          color mode for preprocessing images before training: 'rgb' or 'grayscale'
+  -c , --color          color mode for preprocessing images before training: 'rgb' or 'grayscale'
 
--l , --loss           loss function to use for training: 'mssim', 'ssim' or 'l2'
+  -l , --loss           loss function to use for training: 'mssim', 'ssim' or 'l2'
 
--b , --batch          batch size to use for training
+  -b , --batch          batch size to use for training
 
--i, --inspect         generate inspection plots after training
+  -i, --inspect         generate inspection plots after training
 
 
 Example usage:
@@ -149,13 +149,13 @@ usage: finetune.py [-h] -p  [-m] [-t]
 
 optional arguments:
 
--h, --help      show this help message and exit
+  -h, --help      show this help message and exit
 
--p , --path     path to saved model
+  -p , --path     path to saved model
 
--m , --method   method for generating resmaps: 'ssim' or 'l2'
+  -m , --method   method for generating resmaps: 'ssim' or 'l2'
 
--t , --dtype    datatype for processing resmaps: 'float64' or 'uint8'
+  -t , --dtype    datatype for processing resmaps: 'float64' or 'uint8'
 
 
 Example usage:
@@ -171,8 +171,11 @@ This script classifies test images using the threshold and the minimum defect ar
 usage: test.py [-h] -p
 
 optional arguments:
+
   -h, --help    show this help message and exit
+
   -p , --path   path to saved model
+
 
 Example usage:
 ```
