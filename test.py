@@ -1,30 +1,26 @@
-import os
 import sys
+import os
+import argparse
 from pathlib import Path
-
+import time
+import json
 import tensorflow as tf
-from tensorflow import keras
-
-from modules import utils as utils
-from modules.utils import printProgressBar as printProgressBar
-from keras.preprocessing.image import ImageDataGenerator
+from processing import utils
+from processing import resmaps
+from processing.preprocessing import Preprocessor
+from processing.preprocessing import get_preprocessing_function
+from processing.resmaps import label_images
+from processing.utils import printProgressBar
+from skimage.util import img_as_ubyte
 from sklearn.metrics import confusion_matrix
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
-import json
 
-from modules.resmaps import calculate_resmaps as calculate_resmaps
 
-from skimage.util import img_as_ubyte
-from modules.cv import scale_pixel_values as scale_pixel_values
-from modules.cv import filter_gauss_images as filter_gauss_images
-from modules.cv import filter_median_images as filter_median_images
-from modules.cv import threshold_images as threshold_images
-from modules.cv import label_images as label_images
-
-import argparse
-import time
+def get_true_classes(filenames):
+    # retrieve ground truth
+    y_true = [1 if "good" not in filename.split("/") else 0 for filename in filenames]
+    return y_true
 
 
 def is_defective(areas, min_area):
@@ -35,101 +31,86 @@ def is_defective(areas, min_area):
     return 0
 
 
-def classify(areas_all, min_area):
-    """Decides if images are defective given the areas of their connected components"""
-    y_pred = []
-    for areas in areas_all:
-        y_pred.append(is_defective(areas, min_area))
+def predict_classes(resmaps, min_area, threshold):
+    # threshold residual maps with the given threshold
+    resmaps_th = resmaps > threshold
+    # compute connected components
+    _, areas_all = label_images(resmaps_th)
+    # Decides if images are defective given the areas of their connected components
+    y_pred = [is_defective(areas, min_area) for areas in areas_all]
     return y_pred
 
 
 def main(args):
     # parse arguments
     model_path = args.path
-    save = args.save
+    # save = args.save
 
-    # ========================= LOAD SETUP ==============================
+    # ============= LOAD MODEL AND PREPROCESSING CONFIGURATION ================
 
-    # load model, setup and history
-    model, setup, history = utils.load_model_HDF5(model_path)
+    # load model and info
+    model, info, _ = utils.load_model_HDF5(model_path)
+    # set parameters
+    input_directory = info["data"]["input_directory"]
+    architecture = info["model"]["architecture"]
+    loss = info["model"]["loss"]
+    rescale = info["preprocessing"]["rescale"]
+    shape = info["preprocessing"]["shape"]
+    color_mode = info["preprocessing"]["color_mode"]
+    vmin = info["preprocessing"]["vmin"]
+    vmax = info["preprocessing"]["vmax"]
+    nb_validation_images = info["data"]["nb_validation_images"]
 
-    # data setup
-    directory = setup["data_setup"]["directory"]
-    test_data_dir = os.path.join(directory, "test")
-    nb_training_images = setup["data_setup"]["nb_training_images"]
-    nb_validation_images = setup["data_setup"]["nb_validation_images"]
+    # =================== LOAD VALIDATION PARAMETERS =========================
 
-    # preprocessing_setup
-    rescale = setup["preprocessing_setup"]["rescale"]
-    shape = setup["preprocessing_setup"]["shape"]
-    preprocessing = setup["preprocessing_setup"]["preprocessing"]
-
-    # train_setup
-    color_mode = setup["train_setup"]["color_mode"]
-    nb_training_images_aug = setup["train_setup"]["nb_training_images_aug"]
-    epochs = setup["train_setup"]["epochs"]
-    batch_size = setup["train_setup"]["batch_size"]
-    channels = setup["train_setup"]["channels"]
-    validation_split = setup["train_setup"]["validation_split"]
-    architecture = setup["train_setup"]["architecture"]
-    loss = setup["train_setup"]["loss"]
-
-    tag = setup["tag"]
-
-    # create directory to save test results
     model_dir_name = os.path.basename(str(Path(model_path).parent))
-
-    save_dir = os.path.join(
-        os.getcwd(), "results", directory, architecture, loss, model_dir_name, "test",
+    finetune_dir = os.path.join(
+        os.getcwd(),
+        "results",
+        input_directory,
+        architecture,
+        loss,
+        model_dir_name,
+        "finetuning",
     )
 
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-
-    if args.adopt_validation:
-        print("[INFO] adopting min_area and threshold yielded during validation...")
-        # load area and corresponding threshold from validation json file
-        parent_dir = str(Path(save_dir).parent)
-        val_dir = os.path.join(parent_dir, "validation")
-        with open(os.path.join(val_dir, "validation_result.json"), "r") as read_file:
+    # print("[INFO] adopting min_area and threshold yielded during validation...")
+    try:
+        with open(
+            os.path.join(finetune_dir, "finetuning_result.json"), "r"
+        ) as read_file:
             validation_result = json.load(read_file)
+    except FileNotFoundError:
+        print("run finetune.py before testing.")
+        sys.exit("[WARNING] run validate.py before testing.\nexiting script.")
 
-        min_area = validation_result["min_area"]
-        threshold = validation_result["threshold"]
+    min_area = validation_result["best_min_area"]
+    threshold = validation_result["best_threshold"]
+    method = validation_result["method"]
+    dtype = validation_result["dtype"]
 
-    else:
-        print("[INFO] adopting user passed min_area and threshold...")
-        threshold = args.threshold
-        min_area = args.area
+    # ====================== PREPROCESS TEST IMAGES ==========================
 
-    # ============================= PREPROCESSING ===============================
+    # get the correct preprocessing function
+    preprocessing_function = get_preprocessing_function(architecture)
 
-    # This will do preprocessing
-    if architecture in ["mvtec", "mvtec2"]:
-        preprocessing_function = None
-    elif architecture == "resnet":
-        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
-    elif architecture == "nasnet":
-        preprocessing_function = keras.applications.nasnet.preprocess_input
-
-    test_datagen = ImageDataGenerator(
+    # initialize preprocessor
+    preprocessor = Preprocessor(
+        input_directory=input_directory,
         rescale=rescale,
-        data_format="channels_last",
+        shape=shape,
+        color_mode=color_mode,
         preprocessing_function=preprocessing_function,
     )
 
-    total_number = utils.get_total_number_test_images(test_data_dir)
-
-    # retrieve preprocessed test images as a numpy array
-    test_generator = test_datagen.flow_from_directory(
-        directory=test_data_dir,
-        target_size=shape,
-        color_mode=color_mode,
-        batch_size=total_number,
-        shuffle=False,
-        class_mode=None,
+    # get test generator
+    nb_test_images = preprocessor.get_total_number_test_images()
+    test_generator = preprocessor.get_test_generator(
+        batch_size=nb_test_images, shuffle=False
     )
-    imgs_test_input = next(test_generator)
+
+    # retrieve test images from generator
+    imgs_test_input = test_generator.next()[0]
 
     # retrieve test image names
     filenames = test_generator.filenames
@@ -137,58 +118,59 @@ def main(args):
     # predict on test images
     imgs_test_pred = model.predict(imgs_test_input)
 
-    # calculate residual maps on test set
-    resmaps_test = calculate_resmaps(imgs_test_input, imgs_test_pred, method="SSIM")
+    # convert to grayscale if RGB
+    if color_mode == "rgb":
+        imgs_test_input = tf.image.rgb_to_grayscale(imgs_val_input).numpy()
+        imgs_test_pred = tf.image.rgb_to_grayscale(imgs_val_pred).numpy()
 
-    # Convert to 8-bit unsigned int
-    resmaps_test = img_as_ubyte(resmaps_test)
+    # remove last channel since images are grayscale
+    imgs_test_input = imgs_test_input[:, :, :, 0]
+    imgs_test_pred = imgs_test_pred[:, :, :, 0]
 
-    # ====================== Classification ==========================
+    # instantiate TensorImages object
+    tensor_test = resmaps.TensorImages(
+        imgs_input=imgs_test_input,
+        imgs_pred=imgs_test_pred,
+        vmin=vmin,
+        vmax=vmax,
+        method=method,
+        dtype=dtype,
+        filenames=filenames,
+    )
 
-    # initialize dictionary to store test results
-    test_result = {"min_area": [], "threshold": [], "TPR": [], "TNR": []}
-
-    # threshold residual maps with the given threshold
-    resmaps_th = threshold_images(resmaps_test, threshold)[:, :, :, 0]
-
-    # compute connected components
-    resmaps_labeled, areas_all = label_images(resmaps_th)
-
-    # classify images
-    y_pred = classify(areas_all, min_area)
+    # ====================== CLASSIFICATION ==========================
 
     # retrieve ground truth
-    y_true = [1 if "good" not in filename.split("/") else 0 for filename in filenames]
+    y_true = get_true_classes(filenames)
 
-    # condition positive (P)
-    P = y_true.count(1)
-
-    # condition negative (N)
-    N = y_true.count(0)
-
-    # true positive (TP)
-    TP = np.sum([1 if y_pred[i] == y_true[i] == 1 else 0 for i in range(total_number)])
-
-    # true negative (TN)
-    TN = np.sum([1 if y_pred[i] == y_true[i] == 0 else 0 for i in range(total_number)])
-
-    # sensitivity, recall, hit rate, or true positive rate (TPR)
-    TPR = TP / P
-
-    # specificity, selectivity or true negative rate (TNR)
-    TNR = TN / N
+    # predict classes on test images
+    y_pred = predict_classes(
+        resmaps=tensor_test.resmaps, min_area=min_area, threshold=threshold
+    )
 
     # confusion matrix
-    conf_matrix = confusion_matrix(y_true, y_pred, normalize="true")
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, normalize="true").ravel()
+    tnr, fp, fn, tpr = confusion_matrix(y_true, y_pred, normalize="true").ravel()
 
-    # append test results to dictionary
-    test_result["min_area"].append(min_area)
-    test_result["threshold"].append(threshold)
-    test_result["TPR"].append(TPR)
-    test_result["TNR"].append(TNR)
+    # initialize dictionary to store test results
+    test_result = {"min_area": min_area, "threshold": threshold, "TPR": tpr, "TNR": tnr}
 
-    # save validation result
+    # ====================== SAVE TEST RESULTS =========================
+
+    # create directory to save test results
+    save_dir = os.path.join(
+        os.getcwd(),
+        "results",
+        input_directory,
+        architecture,
+        loss,
+        model_dir_name,
+        "test",
+    )
+
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+    # save test result
     with open(os.path.join(save_dir, "test_result.json"), "w") as json_file:
         json.dump(test_result, json_file, indent=4, sort_keys=False)
 
@@ -201,7 +183,11 @@ def main(args):
     }
     df_clf = pd.DataFrame.from_dict(classification)
     with open(os.path.join(save_dir, "classification.txt"), "w") as f:
-        f.write("min_area = {}, threshold = {}\n\n".format(min_area, threshold))
+        f.write(
+            "min_area = {}, threshold = {}, method = {}, dtype = {}\n\n".format(
+                min_area, threshold, method, dtype
+            )
+        )
         f.write(df_clf.to_string(header=True, index=True))
 
     # print classification results to console
@@ -211,11 +197,6 @@ def main(args):
     # print test_results to console
     print("[INFO] test results: {}".format(test_result))
 
-    if save:
-        utils.save_np(imgs_val_input, save_dir, "imgs_test_input.npy")
-        utils.save_np(imgs_val_pred, save_dir, "imgs_test_pred.npy")
-        utils.save_np(resmaps_val, save_dir, "resmaps_test.npy")
-
 
 if __name__ == "__main__":
     # create parser
@@ -224,37 +205,9 @@ if __name__ == "__main__":
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
     )
 
-    parser.add_argument(
-        "--adopt-validation",
-        action="store_true",
-        help="whether or not to (min_area, threshold) value pairs during validation",
-    )
-
-    parser.add_argument(
-        "-t", "--threshold", type=int, default=220, metavar="", help="threshold(s)",
-    )
-
-    parser.add_argument(
-        "-a", "--area", type=int, default=80, metavar="", help="area(s)",
-    )
-
-    parser.add_argument(
-        "-s",
-        "--save",
-        action="store_true",
-        help="save inputs, predictions and reconstructions of validation dataset",
-    )
-
     args = parser.parse_args()
 
     main(args)
 
 # Examples of command to initiate testing
-
-# using threshold and area from validation results:
-# python3 test.py -p saved_models/MSE/25-02-2020_08-54-06/CAE_mvtec2_b12.h5
-
-# using passed arguments for threshold and area
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 --adopt-validation
-
-# python3 test.py -p saved_models/mvtec/capsule/mvtec2/SSIM/19-04-2020_14-14-36/CAE_mvtec2_b8.h5 -a 10 -t 200
+# python3 test.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5
