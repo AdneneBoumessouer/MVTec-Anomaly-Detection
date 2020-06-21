@@ -18,7 +18,7 @@ from sklearn.metrics import confusion_matrix
 from test import predict_classes
 
 FINETUNE_SPLIT = 0.2
-STEP_MIN_AREA = 50  # 5
+STEP_MIN_AREA = 5  # 5
 
 
 def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
@@ -33,8 +33,10 @@ def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
     while True:
         # segment (threshold) residual maps
         resmaps_th = resmaps > threshold
+
         # compute labeled connected components
         resmaps_labeled, areas_all = label_images(resmaps_th)
+
         # check if area of largest anomalous region is below the minimum area
         areas_all_flat = [item for sublist in areas_all for item in sublist]
         areas_all_flat.sort(reverse=True)
