@@ -18,7 +18,7 @@ from sklearn.metrics import confusion_matrix
 from test import predict_classes
 
 FINETUNE_SPLIT = 0.2
-STEP_MIN_AREA = 5  # 5
+STEP_MIN_AREA = 400  # 5
 
 
 def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
@@ -260,7 +260,7 @@ def main(args):
         loss,
         model_dir_name,
         "finetuning",
-        # "{}_{}".format(method, dtype),
+        "{}_{}".format(method, dtype),
     )
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)

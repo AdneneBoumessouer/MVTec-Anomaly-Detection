@@ -117,6 +117,7 @@ class AutoEncoder:
             self.loss_function = losses.mssim_loss(self.dynamic_range)
         elif loss == "l2":
             self.loss_function = losses.l2_loss
+            # self.loss_function = tf.keras.losses.MeanSquaredError()
 
         # set metrics to monitor training
         if color_mode == "grayscale":
