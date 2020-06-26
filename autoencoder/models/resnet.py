@@ -24,6 +24,9 @@ def build_model():
         pooling=None,
     )
 
+    for layer in base_encoder.layers:
+        layer.trainable = False
+
     encoder = keras.models.Sequential(
         [
             base_encoder,
@@ -51,11 +54,13 @@ def build_model():
     layer_5 = keras.layers.BatchNormalization()(layer_4)
     layer_6 = keras.layers.ReLU()(layer_5)
     ####
-    add_1 = keras.layers.Add()([layer_1, layer_6])
+    # add_1 = keras.layers.Add()([layer_1, layer_6])
     ####
     layer_7 = keras.layers.Conv2DTranspose(
         256, kernel_size=3, strides=2, padding="VALID", activation=None,
-    )(add_1)
+    )(
+        layer_6
+    )  # add_1
     layer_8 = keras.layers.BatchNormalization()(layer_7)
     layer_9 = keras.layers.ReLU()(layer_8)
     layer_10 = keras.layers.Conv2DTranspose(
@@ -64,11 +69,13 @@ def build_model():
     layer_11 = keras.layers.BatchNormalization()(layer_10)
     layer_12 = keras.layers.ReLU()(layer_11)
     ####
-    add_2 = keras.layers.Add()([layer_7, layer_12])
+    # add_2 = keras.layers.Add()([layer_7, layer_12])
     ####
     layer_13 = keras.layers.Conv2DTranspose(
         128, kernel_size=4, strides=2, padding="SAME", activation=None,
-    )(add_2)
+    )(
+        layer_12
+    )  # add_2
     layer_14 = keras.layers.BatchNormalization()(layer_13)
     layer_15 = keras.layers.ReLU()(layer_14)
     layer_16 = keras.layers.Conv2DTranspose(
@@ -77,11 +84,13 @@ def build_model():
     layer_17 = keras.layers.BatchNormalization()(layer_16)
     layer_18 = keras.layers.ReLU()(layer_17)
     ####
-    add_3 = keras.layers.Add()([layer_13, layer_18])
+    # add_3 = keras.layers.Add()([layer_13, layer_18])
     ####
     layer_19 = keras.layers.Conv2DTranspose(
         64, kernel_size=3, strides=2, padding="VALID", activation=None,
-    )(add_3)
+    )(
+        layer_18
+    )  # add_3
     layer_20 = keras.layers.BatchNormalization()(layer_19)
     layer_21 = keras.layers.ReLU()(layer_20)
     layer_22 = keras.layers.Conv2DTranspose(
@@ -90,7 +99,7 @@ def build_model():
     layer_23 = keras.layers.BatchNormalization()(layer_22)
     layer_24 = keras.layers.ReLU()(layer_23)
     ####
-    add_4 = keras.layers.Add()([layer_19, layer_24])
+    # add_4 = keras.layers.Add()([layer_19, layer_24])
     ####
     layer_25 = keras.layers.Conv2DTranspose(
         3,
@@ -98,14 +107,16 @@ def build_model():
         strides=2,
         padding="VALID",
         activation=keras.activations.sigmoid,
-    )(add_4)
+    )(
+        layer_24
+    )  # add_4
 
     decoder = keras.models.Model(inputs=inputs, outputs=layer_25)
 
     model = keras.models.Sequential([encoder, decoder])
     # keras.utils.plot_model(decoder, to_file="decoder_resnet.png")
 
-    return model, base_encoder
+    return model
 
 
 # ==================================================================

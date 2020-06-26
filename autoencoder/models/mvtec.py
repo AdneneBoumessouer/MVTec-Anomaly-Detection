@@ -12,10 +12,22 @@ DYNAMIC_RANGE = VMAX - VMIN
 
 
 def build_model(color_mode):
-    """Model mentionned in the MVTec Paper, originally proposed by Bergmann et Al. 
-    Implemented here with an additional convolutional layer at the beginning to 
-    accomodate the larger input size of 256 x 256 instead of 128 x 128.    
-    Note: Using using Keras's sequential API """
+    """
+    Model mentionned in the MVTec Paper, originally proposed by Bergmann et Al.
+    Implemented here with an additional convolutional layer at the beginning to
+    accomodate the larger input size of 256 x 256 instead of 128 x 128.
+    Note: Using using Keras's sequential API
+
+    Try:
+    - Max Pooling
+    
+    To combat vanishing gradients:
+    - Batch Normalization
+    - HE initialization with other activation functions (SELU, ELU, ...)
+
+    - Standarize images in ImageDataGenerator
+    
+    """
     # set channels
     if color_mode == "grayscale":
         channels = 1
@@ -196,3 +208,4 @@ def build_model(color_mode):
     model = keras.models.Sequential([conv_encoder, conv_decoder])
 
     return model
+

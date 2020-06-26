@@ -18,43 +18,36 @@ from sklearn.metrics import confusion_matrix
 from test import predict_classes
 
 FINETUNE_SPLIT = 0.2
-STEP_MIN_AREA = 400  # 5
+STEP_MIN_AREA = 5  # 5
 
 
 def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
     # set initial threshold, counter and max number of steps
-    threshold = thresh_min
-    index = 0
-    n_steps = (thresh_max - thresh_min) // thresh_step
+    n_steps = (thresh_max - thresh_min) // thresh_step + 1
+    thresholds = np.arange(
+        start=thresh_min, stop=thresh_max + thresh_step, step=thresh_step
+    )
 
     # initialize progress bar
     printProgressBar(0, n_steps, prefix="Progress:", suffix="Complete", length=50)
 
-    while True:
+    for index, threshold in enumerate(thresholds):
         # segment (threshold) residual maps
         resmaps_th = resmaps > threshold
 
         # compute labeled connected components
-        resmaps_labeled, areas_all = label_images(resmaps_th)
+        _, areas_all = label_images(resmaps_th)
 
         # check if area of largest anomalous region is below the minimum area
         areas_all_flat = [item for sublist in areas_all for item in sublist]
-        areas_all_flat.sort(reverse=True)
-        try:
-            if min_area > areas_all_flat[0]:
-                time.sleep(0.1)
-                printProgressBar(
-                    n_steps, n_steps, prefix="Progress:", suffix="Complete", length=50
-                )
-                break
-        except IndexError:
-            continue
+        largest_area = np.amax(np.array(areas_all_flat))
 
-        if threshold > thresh_max:
+        if min_area > largest_area:
+            time.sleep(0.1)
+            printProgressBar(
+                n_steps, n_steps, prefix="Progress:", suffix="Complete", length=50
+            )
             break
-
-        threshold = threshold + thresh_step
-        index = index + 1
 
         # print progress bar
         time.sleep(0.1)

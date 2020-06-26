@@ -204,7 +204,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         metavar="",
-        choices=["mvtec", "mvtec2", "resnet"],
+        choices=["mvtec", "mvtec2", "resnet", "nasnet"],
         default="mvtec2",
         help="architecture of the model to use for training: 'mvtec', 'mvtec2' or 'resnet'",
     )
@@ -227,7 +227,7 @@ if __name__ == "__main__":
         required=False,
         metavar="",
         choices=["mssim", "ssim", "l2"],
-        default="l2",
+        default="ssim",
         help="loss function to use for training: 'mssim', 'ssim' or 'l2'",
     )
 

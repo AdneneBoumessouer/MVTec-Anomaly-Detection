@@ -75,7 +75,7 @@ def main(args):
     subdirs = os.listdir(finetune_dir)
     for subdir in subdirs:
         print(
-            "[INFO] finetuning with parameters from \n{}...".format(
+            "[INFO] testing with finetuning parameters from \n{}...".format(
                 os.path.join(finetune_dir, subdir)
             )
         )

@@ -103,7 +103,7 @@ class AutoEncoder:
             self.vmin = nasnet.VMIN
             self.vmax = nasnet.VMAX
             self.dynamic_range = nasnet.DYNAMIC_RANGE
-            raise NotImplementedError("nasnet not yet implemented.")
+            # raise NotImplementedError("nasnet not yet implemented.")
 
         # verbosity
         self.verbose = verbose
@@ -180,7 +180,7 @@ class AutoEncoder:
         max_loss = np.amax(segment)
 
         # compute optimal loss
-        optimal_loss = max_loss - 0.92 * (max_loss - min_loss)
+        optimal_loss = max_loss - 0.88 * (max_loss - min_loss)
 
         # get index corresponding to optimal loss
         self.opt_lr_i = np.argwhere(segment < optimal_loss)[0][0]
@@ -213,8 +213,8 @@ class AutoEncoder:
             self.hist = self.learner.autofit(
                 self.opt_lr,
                 epochs=None,
-                early_stopping=6,
-                reduce_on_plateau=3,
+                early_stopping=10,
+                reduce_on_plateau=5,
                 reduce_factor=2,
                 cycle_momentum=True,
                 max_momentum=0.95,
@@ -414,4 +414,3 @@ class AutoEncoder:
             print("[INFO] loss_plot.png successfully saved.")
         return
 
-    ### Methods to load model (and data?) =================
