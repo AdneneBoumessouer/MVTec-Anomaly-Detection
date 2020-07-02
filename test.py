@@ -13,6 +13,7 @@ from processing.resmaps import label_images
 from processing.utils import printProgressBar
 from skimage.util import img_as_ubyte
 from sklearn.metrics import confusion_matrix
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -41,9 +42,25 @@ def predict_classes(resmaps, min_area, threshold):
     return y_pred
 
 
+def save_segmented_images(resmaps, threshold, filenames, save_dir):
+    # threshold residual maps with the given threshold
+    resmaps_th = resmaps > threshold
+    # create directory to save segmented resmaps
+    seg_dir = os.path.join(save_dir, "segmentation")
+    if not os.path.isdir(seg_dir):
+        os.makedirs(seg_dir)
+    # save segmented resmaps
+    for i, resmap_th in enumerate(resmaps_th):
+        fname = utils.generate_new_name(filenames[i], suffix="seg")
+        fpath = os.path.join(seg_dir, fname)
+        plt.imsave(fpath, resmap_th, cmap="gray")
+    return
+
+
 def main(args):
     # parse arguments
     model_path = args.path
+    save = args.save
 
     # ============= LOAD MODEL AND PREPROCESSING CONFIGURATION ================
 
@@ -85,8 +102,7 @@ def main(args):
             ) as read_file:
                 validation_result = json.load(read_file)
         except FileNotFoundError:
-            print("run finetune.py before testing.")
-            sys.exit("[WARNING] run validate.py before testing.\nexiting script.")
+            sys.exit("[WARNING] run finetune.py before testing.\nexiting script.")
 
         min_area = validation_result["best_min_area"]
         threshold = validation_result["best_threshold"]
@@ -207,6 +223,10 @@ def main(args):
         with pd.option_context("display.max_rows", None, "display.max_columns", None):
             print(df_clf)
 
+        # save segmented resmaps
+        if save:
+            save_segmented_images(tensor_test.resmaps, threshold, filenames, save_dir)
+
         # print test_results to console
         print("[INFO] test results: {}".format(test_result))
 
@@ -216,6 +236,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-p", "--path", type=str, required=True, metavar="", help="path to saved model"
+    )
+    parser.add_argument(
+        "-s", "--save", action="store_true", help="save segmented images",
     )
 
     args = parser.parse_args()

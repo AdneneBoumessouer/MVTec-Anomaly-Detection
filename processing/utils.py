@@ -117,15 +117,10 @@ def update_history(history1, history2):
     return history1
 
 
-# def get_total_number_test_images(test_data_dir):
-#     total_number = 0
-#     sub_dir_names = os.listdir(test_data_dir)
-#     for sub_dir_name in sub_dir_names:
-#         sub_dir_path = os.path.join(test_data_dir, sub_dir_name)
-#         filenames = os.listdir(sub_dir_path)
-#         number = len(filenames)
-#         total_number = total_number + number
-#     return total_number
+def generate_new_name(filename, suffix):
+    filename_new, ext = os.path.splitext(filename)
+    filename_new = "_".join(filename_new.split("/")) + "_" + suffix + ext
+    return filename_new
 
 
 def save_images(save_dir, imgs, filenames, color_mode, suffix):

@@ -44,7 +44,7 @@ def build_model(color_mode):
                 strides=2,
                 padding="SAME",
                 activation=keras.layers.LeakyReLU(0.2),
-                input_shape=(256, 256, channels),
+                input_shape=(*SHAPE, channels),
             ),
             keras.layers.BatchNormalization(),
             keras.layers.Conv2D(

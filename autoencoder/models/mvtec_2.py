@@ -19,7 +19,7 @@ def build_model(color_mode):
         channels = 3
 
     # define model
-    input_img = keras.layers.Input(shape=(256, 256, channels))
+    input_img = keras.layers.Input(shape=(*SHAPE, channels))
     # Encode-----------------------------------------------------------
     x = keras.layers.Conv2D(32, (4, 4), strides=2, activation="relu", padding="same")(
         input_img

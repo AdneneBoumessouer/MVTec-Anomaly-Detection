@@ -21,6 +21,8 @@ import matplotlib.pyplot as plt
 
 from autoencoder.models import mvtec
 from autoencoder.models import mvtec_2
+from autoencoder.models import baseline
+from autoencoder.models import inception
 from autoencoder.models import resnet
 from autoencoder.models import nasnet
 from autoencoder import metrics
@@ -30,6 +32,10 @@ from autoencoder import losses
 # Learning Rate Finder Parameters
 START_LR = 1e-5
 LR_MAX_EPOCHS = 10
+
+# Training Parameters
+EARLY_STOPPING = 16
+REDUCE_ON_PLATEAU = 8
 
 
 class AutoEncoder:
@@ -85,6 +91,24 @@ class AutoEncoder:
             self.vmin = mvtec_2.VMIN
             self.vmax = mvtec_2.VMAX
             self.dynamic_range = mvtec_2.DYNAMIC_RANGE
+        elif architecture == "baselineCAE":
+            self.model = baseline.build_model(color_mode)
+            self.rescale = baseline.RESCALE
+            self.shape = baseline.SHAPE
+            self.preprocessing_function = baseline.PREPROCESSING_FUNCTION
+            self.preprocessing = baseline.PREPROCESSING
+            self.vmin = baseline.VMIN
+            self.vmax = baseline.VMAX
+            self.dynamic_range = baseline.DYNAMIC_RANGE
+        elif architecture == "inceptionCAE":
+            self.model = inception.build_model(color_mode)
+            self.rescale = inception.RESCALE
+            self.shape = inception.SHAPE
+            self.preprocessing_function = inception.PREPROCESSING_FUNCTION
+            self.preprocessing = inception.PREPROCESSING
+            self.vmin = inception.VMIN
+            self.vmax = inception.VMAX
+            self.dynamic_range = inception.DYNAMIC_RANGE
         elif architecture == "resnet":
             self.model = resnet.build_model()
             self.rescale = resnet.RESCALE
@@ -213,13 +237,13 @@ class AutoEncoder:
             self.hist = self.learner.autofit(
                 self.opt_lr,
                 epochs=None,
-                early_stopping=10,
-                reduce_on_plateau=5,
+                early_stopping=EARLY_STOPPING,
+                reduce_on_plateau=REDUCE_ON_PLATEAU,
                 reduce_factor=2,
                 cycle_momentum=True,
                 max_momentum=0.95,
                 min_momentum=0.85,
-                monitor="val_loss",  # Check this
+                monitor="val_loss",
                 checkpoint_folder=None,
                 verbose=self.verbose,
                 callbacks=[tensorboard_cb],

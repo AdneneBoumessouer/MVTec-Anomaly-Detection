@@ -204,7 +204,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         metavar="",
-        choices=["mvtec", "mvtec2", "resnet", "nasnet"],
+        choices=["mvtec", "mvtec2", "baselineCAE", "inceptionCAE", "resnet", "nasnet"],
         default="mvtec2",
         help="architecture of the model to use for training: 'mvtec', 'mvtec2' or 'resnet'",
     )
