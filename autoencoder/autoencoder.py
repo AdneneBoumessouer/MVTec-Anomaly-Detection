@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Tue Dec 10 19:46:17 2019
 
@@ -21,8 +20,9 @@ import matplotlib.pyplot as plt
 
 from autoencoder.models import mvtec
 from autoencoder.models import mvtec_2
-from autoencoder.models import resnet
-from autoencoder.models import nasnet
+from autoencoder.models import baselineCAE
+from autoencoder.models import inceptionCAE
+from autoencoder.models import resnetCAE
 from autoencoder import metrics
 from autoencoder import losses
 
@@ -30,6 +30,11 @@ from autoencoder import losses
 # Learning Rate Finder Parameters
 START_LR = 1e-5
 LR_MAX_EPOCHS = 10
+LRF_DECREASE_FACTOR = 0.95  # 0.88
+
+# Training Parameters
+EARLY_STOPPING = 16
+REDUCE_ON_PLATEAU = 8
 
 
 class AutoEncoder:
@@ -85,25 +90,33 @@ class AutoEncoder:
             self.vmin = mvtec_2.VMIN
             self.vmax = mvtec_2.VMAX
             self.dynamic_range = mvtec_2.DYNAMIC_RANGE
-        elif architecture == "resnet":
-            self.model = resnet.build_model()
-            self.rescale = resnet.RESCALE
-            self.shape = resnet.SHAPE
-            self.preprocessing_function = resnet.PREPROCESSING_FUNCTION
-            self.preprocessing = resnet.PREPROCESSING
-            self.vmin = resnet.VMIN
-            self.vmax = resnet.VMAX
-            self.dynamic_range = resnet.DYNAMIC_RANGE
-        elif architecture == "nasnet":
-            self.model = nasnet.build_model()
-            self.rescale = nasnet.RESCALE
-            self.shape = nasnet.SHAPE
-            self.preprocessing_function = nasnet.PREPROCESSING_FUNCTION
-            self.preprocessing = nasnet.PREPROCESSING
-            self.vmin = nasnet.VMIN
-            self.vmax = nasnet.VMAX
-            self.dynamic_range = nasnet.DYNAMIC_RANGE
-            raise NotImplementedError("nasnet not yet implemented.")
+        elif architecture == "baselineCAE":
+            self.model = baselineCAE.build_model(color_mode)
+            self.rescale = baselineCAE.RESCALE
+            self.shape = baselineCAE.SHAPE
+            self.preprocessing_function = baselineCAE.PREPROCESSING_FUNCTION
+            self.preprocessing = baselineCAE.PREPROCESSING
+            self.vmin = baselineCAE.VMIN
+            self.vmax = baselineCAE.VMAX
+            self.dynamic_range = baselineCAE.DYNAMIC_RANGE
+        elif architecture == "inceptionCAE":
+            self.model = inceptionCAE.build_model(color_mode)
+            self.rescale = inceptionCAE.RESCALE
+            self.shape = inceptionCAE.SHAPE
+            self.preprocessing_function = inceptionCAE.PREPROCESSING_FUNCTION
+            self.preprocessing = inceptionCAE.PREPROCESSING
+            self.vmin = inceptionCAE.VMIN
+            self.vmax = inceptionCAE.VMAX
+            self.dynamic_range = inceptionCAE.DYNAMIC_RANGE
+        elif architecture == "resnetCAE":
+            self.model = resnetCAE.build_model(color_mode)
+            self.rescale = resnetCAE.RESCALE
+            self.shape = resnetCAE.SHAPE
+            self.preprocessing_function = resnetCAE.PREPROCESSING_FUNCTION
+            self.preprocessing = resnetCAE.PREPROCESSING
+            self.vmin = resnetCAE.VMIN
+            self.vmax = resnetCAE.VMAX
+            self.dynamic_range = resnetCAE.DYNAMIC_RANGE
 
         # verbosity
         self.verbose = verbose
@@ -117,6 +130,7 @@ class AutoEncoder:
             self.loss_function = losses.mssim_loss(self.dynamic_range)
         elif loss == "l2":
             self.loss_function = losses.l2_loss
+            # self.loss_function = tf.keras.losses.MeanSquaredError()
 
         # set metrics to monitor training
         if color_mode == "grayscale":
@@ -161,7 +175,7 @@ class AutoEncoder:
                 max_epochs=LR_MAX_EPOCHS,
                 stop_factor=stop_factor,
                 verbose=self.verbose,
-                show_plot=True,  # False
+                show_plot=True,
             )
         except Exception:
             shutil.rmtree(self.save_dir)
@@ -179,7 +193,7 @@ class AutoEncoder:
         max_loss = np.amax(segment)
 
         # compute optimal loss
-        optimal_loss = max_loss - 0.92 * (max_loss - min_loss)
+        optimal_loss = max_loss - LRF_DECREASE_FACTOR * (max_loss - min_loss)
 
         # get index corresponding to optimal loss
         self.opt_lr_i = np.argwhere(segment < optimal_loss)[0][0]
@@ -212,13 +226,13 @@ class AutoEncoder:
             self.hist = self.learner.autofit(
                 self.opt_lr,
                 epochs=None,
-                early_stopping=6,
-                reduce_on_plateau=3,
+                early_stopping=EARLY_STOPPING,
+                reduce_on_plateau=REDUCE_ON_PLATEAU,
                 reduce_factor=2,
                 cycle_momentum=True,
                 max_momentum=0.95,
                 min_momentum=0.85,
-                monitor="val_loss",  # Check this
+                monitor="val_loss",
                 checkpoint_folder=None,
                 verbose=self.verbose,
                 callbacks=[tensorboard_cb],
@@ -413,4 +427,3 @@ class AutoEncoder:
             print("[INFO] loss_plot.png successfully saved.")
         return
 
-    ### Methods to load model (and data?) =================

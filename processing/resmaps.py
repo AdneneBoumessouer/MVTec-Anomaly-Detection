@@ -56,10 +56,10 @@ class TensorImages:
 
         # compute resmaps
         assert dtype in ["float64", "uint8"]
-        assert method in ["l2", "ssim"]
+        assert method in ["l2", "ssim", "mssim"]
         self.resmaps = calculate_resmaps(self.imgs_input, self.imgs_pred, method, dtype)
         if dtype == "float64":
-            if method == "ssim":
+            if method in ["ssim", "mssim"]:
                 self.thresh_min = THRESH_MIN_FLOAT_SSIM
                 self.thresh_step = THRESH_STEP_FLOAT_SSIM
                 self.vmin_resmap = 0.0
@@ -70,7 +70,7 @@ class TensorImages:
                 self.vmin_resmap = None
                 self.vmax_resmap = None
         elif dtype == "uint8":
-            if method == "ssim":
+            if method in ["ssim", "mssim"]:
                 self.thresh_min = THRESH_MIN_UINT8_SSIM
                 self.thresh_step = THRESH_STEP_UINT8_SSIM
                 self.vmin_resmap = 0
@@ -184,7 +184,7 @@ def get_plot_name(filename, suffix):
 def calculate_resmaps(imgs_input, imgs_pred, method, dtype="float64"):
     if method == "l2":
         resmaps = resmaps_l2(imgs_input, imgs_pred)
-    elif method == "ssim":
+    elif method in ["ssim", "mssim"]:
         resmaps = resmaps_ssim(imgs_input, imgs_pred)
     if dtype == "uint8":
         resmaps = img_as_ubyte(resmaps)
@@ -258,8 +258,12 @@ def label_images(images_th):
 
         # compute areas of anomalous regions in the current image
         regions = regionprops(image_labeled)
-        areas = [region.area for region in regions]
-        areas_all.append(areas)
+
+        if regions:
+            areas = [region.area for region in regions]
+            areas_all.append(areas)
+        else:
+            areas_all.append([0])
 
     return images_labeled, areas_all
 
