@@ -1,7 +1,4 @@
 import tensorflow as tf
-
-# from tensorflow import keras
-
 from tensorflow.keras.layers import (
     Input,
     Dense,
@@ -16,7 +13,6 @@ from tensorflow.keras.layers import (
     Flatten,
     Reshape,
 )
-
 from tensorflow.keras.models import Model
 from tensorflow.keras import regularizers
 

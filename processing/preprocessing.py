@@ -30,7 +30,6 @@ class Preprocessor:
         self.nb_test_images = None
 
     def get_train_generator(self, batch_size, shuffle=True):
-        print("[INFO] Using Keras's flow_from_directory method...")
         # This will do preprocessing and realtime data augmentation:
         train_datagen = ImageDataGenerator(
             # randomly rotate images in the range (degrees, 0 to 180)

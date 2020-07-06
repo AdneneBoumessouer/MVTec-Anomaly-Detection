@@ -13,10 +13,10 @@ from tensorflow.keras.regularizers import l2
 from autoencoder.models.resnet.resnet import ResnetBuilder
 
 # Preprocessing variables
-RESCALE = None
+RESCALE = 1 / 255
 SHAPE = (256, 256)
-PREPROCESSING_FUNCTION = keras.applications.inception_resnet_v2.preprocess_input
-PREPROCESSING = "keras.applications.inception_resnet_v2.preprocess_input"
+PREPROCESSING_FUNCTION = None  # keras.applications.inception_resnet_v2.preprocess_input
+PREPROCESSING = None  # "keras.applications.inception_resnet_v2.preprocess_input"
 VMIN = -1.0
 VMAX = 1.0
 DYNAMIC_RANGE = VMAX - VMIN

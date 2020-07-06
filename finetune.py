@@ -16,6 +16,10 @@ from processing.utils import printProgressBar
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 from test import predict_classes
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 FINETUNE_SPLIT = 0.2
 STEP_MIN_AREA = 5  # 5
@@ -267,12 +271,12 @@ def main(args):
         "dtype": dtype,
         "split": FINETUNE_SPLIT,
     }
-    print("[INFO] finetuning results: {}".format(finetuning_result))
+    print("finetuning results: {}".format(finetuning_result))
 
     # save validation result
     with open(os.path.join(save_dir, "finetuning_result.json"), "w") as json_file:
         json.dump(finetuning_result, json_file, indent=4, sort_keys=False)
-    print("[INFO] finetuning results saved at {}".format(save_dir))
+    logger.info("finetuning results saved at {}".format(save_dir))
 
     # save finetuning plots
     plot_min_area_threshold(dict_finetune, index_best=max_score_i, save_dir=save_dir)

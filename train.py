@@ -13,6 +13,10 @@ from processing.preprocessing import Preprocessor
 from processing.utils import printProgressBar as printProgressBar
 from processing import utils
 from processing import resmaps
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 """
@@ -21,10 +25,12 @@ Valid combinations for input arguments for architecture, color_mode and loss:
                         +----------------+----------------+
                         |       Model Architecture        |
                         +----------------+----------------+
-                        | mvtec, mvtec2  | Resnet, Nasnet |
+                        |  mvtec, mvtec2 |   ResnetCAE    |
+                        |  baselineCAE   |                |
+                        |  inceptionCAE  |                |
 ========================+================+================+
         ||              |                |                |
-        ||   grayscale  |    ssim, l2    |   Not Valid    |
+        ||   grayscale  |    ssim, l2    |    ssim, l2    |
 Color   ||              |                |                |
 Mode    ----------------+----------------+----------------+
         ||              |                |                |
@@ -35,10 +41,8 @@ Mode    ----------------+----------------+----------------+
 
 
 def check_arguments(architecture, color_mode, loss):
-    if architecture == "resnet" and color_mode == "grayscale":
-        raise ValueError("ResNet expects rgb images")
-    if architecture == "nasnet" and color_mode == "grayscale":
-        raise ValueError("NasNet expects rgb images")
+    # if architecture == "resnet" and color_mode == "grayscale":
+    #     raise ValueError("ResNet expects rgb images")
     if loss == "MSSIM" and color_mode == "grayscale":
         raise ValueError("MSSIM works only with rgb images")
     if loss == "SSIM" and color_mode == "rgb":
@@ -90,7 +94,7 @@ def main(args):
 
     if args.inspect:
         # -------------- INSPECTING VALIDATION IMAGES --------------
-        print("[INFO] generating inspection plots of validation images...")
+        logger.info("generating inspection plots of validation images...")
 
         # create a directory to save inspection plots
         inspection_val_dir = os.path.join(autoencoder.save_dir, "inspection_val")
@@ -105,7 +109,7 @@ def main(args):
         filenames_val = inspection_val_generator.filenames
 
         # get reconstructed images (i.e predictions) on validation dataset
-        print("[INFO] reconstructing validation images...")
+        logger.info("reconstructing validation images...")
         imgs_val_pred = autoencoder.model.predict(imgs_val_input)
 
         # convert to grayscale if RGB
@@ -134,7 +138,7 @@ def main(args):
         )
 
         # -------------- INSPECTING TEST IMAGES --------------
-        print("[INFO] generating inspection plots of test images...")
+        logger.info("generating inspection plots of test images...")
 
         # create a directory to save inspection plots
         inspection_test_dir = os.path.join(autoencoder.save_dir, "inspection_test")
@@ -151,7 +155,7 @@ def main(args):
         filenames_test = inspection_test_generator.filenames
 
         # get reconstructed images (i.e predictions) on validation dataset
-        print("[INFO] reconstructing test images...")
+        logger.info("reconstructing test images...")
         imgs_test_pred = autoencoder.model.predict(imgs_test_input)
 
         # convert to grayscale if RGB
@@ -179,7 +183,7 @@ def main(args):
             group="test", save_dir=inspection_test_dir
         )
 
-    print("exiting script...")
+    logger.info("done.")
     return
 
 
@@ -250,11 +254,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if tf.test.is_gpu_available():
-        print("[INFO] GPU was detected...")
+        logger.info("GPU was detected...")
     else:
-        print("[INFO] No GPU was detected. CNNs can be very slow without a GPU...")
-    print("[INFO] Tensorflow version: {} ...".format(tf.__version__))
-    print("[INFO] Keras version: {} ...".format(keras.__version__))
+        logger.info("No GPU was detected. CNNs can be very slow without a GPU...")
+    logger.info("Tensorflow version: {} ...".format(tf.__version__))
+    logger.info("Keras version: {} ...".format(keras.__version__))
     main(args)
 
 # Examples of commands to initiate training with mvtec architecture
