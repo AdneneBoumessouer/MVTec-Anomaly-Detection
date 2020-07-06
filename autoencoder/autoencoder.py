@@ -25,6 +25,10 @@ from autoencoder.models import inceptionCAE
 from autoencoder.models import resnetCAE
 from autoencoder import metrics
 from autoencoder import losses
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # Learning Rate Finder Parameters
@@ -130,7 +134,6 @@ class AutoEncoder:
             self.loss_function = losses.mssim_loss(self.dynamic_range)
         elif loss == "l2":
             self.loss_function = losses.l2_loss
-            # self.loss_function = tf.keras.losses.MeanSquaredError()
 
         # set metrics to monitor training
         if color_mode == "grayscale":
@@ -167,7 +170,7 @@ class AutoEncoder:
             stop_factor = 6
 
         # simulate training while recording learning rate and loss
-        print("[INFO] initiating learning rate finder to determine best learning rate.")
+        logger.info("initiating learning rate finder to determine best learning rate.")
         try:
             self.learner.lr_find(
                 start_lr=START_LR,
@@ -204,9 +207,9 @@ class AutoEncoder:
         # get base learning rate
         self.base_lr = self.opt_lr / 10
         self.base_lr_i = np.argwhere(lrs[:min_loss_i] > self.base_lr)[0][0]
-        print("[INFO] learning rate finder complete.")
-        print(f"\tbase learning rate: {self.base_lr:.2E}")
-        print(f"\toptimal learning rate: {self.opt_lr:.2E}")
+        logger.info("learning rate finder complete.")
+        logger.info(f"\tbase learning rate: {self.base_lr:.2E}")
+        logger.info(f"\toptimal learning rate: {self.opt_lr:.2E}")
         self.lr_find_plot(save=True)
         return
 
@@ -216,10 +219,11 @@ class AutoEncoder:
             log_dir=self.log_dir, write_graph=True, update_freq="epoch"
         )
         # Print command to paste in browser for visualizing in Tensorboard
-        print(
-            "[INFO] run the following command in a seperate terminal to monitor training on tensorboard:"
+        logger.info(
+            "run the following command in a seperate terminal to monitor training on tensorboard:\ntensorboard --logdir={}\n".format(
+                self.log_dir
+            )
         )
-        print("\ntensorboard --logdir={}\n".format(self.log_dir))
 
         # fit model using Cyclical Learning Rates
         try:
@@ -286,7 +290,6 @@ class AutoEncoder:
             json.dump(info, json_file, indent=4, sort_keys=False)
         # save training plots
         self.loss_plot(save=True)
-        # self.lr_find_plot(save=True)
         self.lr_schedule_plot(save=True)
         # save training history
         hist_dict = self.get_history_dict()
@@ -294,11 +297,9 @@ class AutoEncoder:
         hist_csv_file = os.path.join(self.save_dir, "history.csv")
         with open(hist_csv_file, mode="w") as csv_file:
             hist_df.to_csv(csv_file)
-        print("[INFO] training history has been successfully saved as csv file.")
-        print(
-            "[INFO] training files have been successfully saved at: \n{}".format(
-                self.save_dir
-            )
+        logger.info("training history has been successfully saved as csv file.")
+        logger.info(
+            "training files have been successfully saved at: \n{}".format(self.save_dir)
         )
         return
 
@@ -396,9 +397,9 @@ class AutoEncoder:
         if save:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "lr_plot.png"))
-            print("[INFO] lr_plot.png successfully saved.")
-        print(f"[INFO] base learning rate: {lrs[j]:.2E}")
-        print(f"[INFO] optimal learning rate: {lrs[i]:.2E}")
+            logger.info("lr_plot.png successfully saved.")
+        logger.info(f"base learning rate: {lrs[j]:.2E}")
+        logger.info(f"optimal learning rate: {lrs[i]:.2E}")
         return
 
     def lr_schedule_plot(self, save=False):
@@ -410,7 +411,7 @@ class AutoEncoder:
         if save:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "lr_schedule_plot.png"))
-            print("[INFO] lr_schedule_plot.png successfully saved.")
+            logger.info("lr_schedule_plot.png successfully saved.")
             # return fig
         return
 
@@ -424,6 +425,6 @@ class AutoEncoder:
         if save:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "loss_plot.png"))
-            print("[INFO] loss_plot.png successfully saved.")
+            logger.info("loss_plot.png successfully saved.")
         return
 

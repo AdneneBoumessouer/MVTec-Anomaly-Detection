@@ -11,6 +11,10 @@ from skimage.measure import label, regionprops
 from skimage.morphology import closing, square
 from skimage.color import label2rgb
 import cv2
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Segmentation Parameters
 
@@ -90,7 +94,7 @@ class TensorImages:
 
     def generate_inspection_plots(self, group, save_dir=None):
         assert group in ["validation", "test"]
-        print("[INFO] generating inspection plots on " + group + " images...")
+        logger.info("generating inspection plots on " + group + " images...")
         l = len(self.filenames)
         printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
         for i in range(len(self.imgs_input)):
@@ -99,7 +103,7 @@ class TensorImages:
             time.sleep(0.1)
             printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
         if save_dir is not None:
-            print("[INFO] all generated files are saved at: \n{}".format(save_dir))
+            logger.info("all generated files are saved at: \n{}".format(save_dir))
         return
 
     ### plottings methods for inspection
