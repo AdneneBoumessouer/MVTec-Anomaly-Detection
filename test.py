@@ -16,6 +16,10 @@ from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def get_true_classes(filenames):
@@ -91,8 +95,8 @@ def main(args):
     )
     subdirs = os.listdir(finetune_dir)
     for subdir in subdirs:
-        print(
-            "[INFO] testing with finetuning parameters from \n{}...".format(
+        logger.info(
+            "testing with finetuning parameters from \n{}...".format(
                 os.path.join(finetune_dir, subdir)
             )
         )
@@ -102,7 +106,8 @@ def main(args):
             ) as read_file:
                 validation_result = json.load(read_file)
         except FileNotFoundError:
-            sys.exit("[WARNING] run finetune.py before testing.\nexiting script.")
+            logger.warning("run finetune.py before testing.\nexiting script.")
+            sys.exit()
 
         min_area = validation_result["best_min_area"]
         threshold = validation_result["best_threshold"]
@@ -228,7 +233,7 @@ def main(args):
             save_segmented_images(tensor_test.resmaps, threshold, filenames, save_dir)
 
         # print test_results to console
-        print("[INFO] test results: {}".format(test_result))
+        print("test results: {}".format(test_result))
 
 
 if __name__ == "__main__":

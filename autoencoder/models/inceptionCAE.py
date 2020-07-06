@@ -1,7 +1,4 @@
 import tensorflow as tf
-
-# from tensorflow import keras
-
 from tensorflow.keras.layers import (
     Input,
     Dense,
@@ -16,14 +13,9 @@ from tensorflow.keras.layers import (
     Flatten,
     Reshape,
 )
-
 from tensorflow.keras.models import Model
 from tensorflow.keras import regularizers
 
-# import logging
-
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
 
 # Preprocessing variables
 RESCALE = 1.0 / 255
