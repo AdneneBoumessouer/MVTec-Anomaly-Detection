@@ -31,16 +31,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Learning Rate Finder Parameters
-START_LR = 1e-5
-LR_MAX_EPOCHS = 10
-LRF_DECREASE_FACTOR = 0.95  # 0.88
-
-# Training Parameters
-EARLY_STOPPING = 16
-REDUCE_ON_PLATEAU = 8
-
-
 class AutoEncoder:
     def __init__(
         self,
@@ -77,6 +67,7 @@ class AutoEncoder:
 
         # build model and preprocessing variables
         if architecture == "mvtec":
+            # Preprocessing parameters
             self.model = mvtec.build_model(color_mode)
             self.rescale = mvtec.RESCALE
             self.shape = mvtec.SHAPE
@@ -85,7 +76,16 @@ class AutoEncoder:
             self.vmin = mvtec.VMIN
             self.vmax = mvtec.VMAX
             self.dynamic_range = mvtec.DYNAMIC_RANGE
+            # Learning Rate Finder parameters
+            self.start_lr = mvtec.START_LR
+            self.lr_max_epochs = mvtec.LR_MAX_EPOCHS
+            self.lrf_decrease_factor = mvtec.LRF_DECREASE_FACTOR
+            # Training parameters
+            self.early_stopping = mvtec.EARLY_STOPPING
+            self.reduce_on_plateau = mvtec.REDUCE_ON_PLATEAU
+
         elif architecture == "mvtec2":
+            # Preprocessing parameters
             self.model = mvtec_2.build_model(color_mode)
             self.rescale = mvtec_2.RESCALE
             self.shape = mvtec_2.SHAPE
@@ -94,7 +94,16 @@ class AutoEncoder:
             self.vmin = mvtec_2.VMIN
             self.vmax = mvtec_2.VMAX
             self.dynamic_range = mvtec_2.DYNAMIC_RANGE
+            # Learning Rate Finder parameters
+            self.start_lr = mvtec_2.START_LR
+            self.lr_max_epochs = mvtec_2.LR_MAX_EPOCHS
+            self.lrf_decrease_factor = mvtec_2.LRF_DECREASE_FACTOR
+            # Training parameters
+            self.early_stopping = mvtec_2.EARLY_STOPPING
+            self.reduce_on_plateau = mvtec_2.REDUCE_ON_PLATEAU
+
         elif architecture == "baselineCAE":
+            # Preprocessing parameters
             self.model = baselineCAE.build_model(color_mode)
             self.rescale = baselineCAE.RESCALE
             self.shape = baselineCAE.SHAPE
@@ -103,7 +112,16 @@ class AutoEncoder:
             self.vmin = baselineCAE.VMIN
             self.vmax = baselineCAE.VMAX
             self.dynamic_range = baselineCAE.DYNAMIC_RANGE
+            # Learning Rate Finder parameters
+            self.start_lr = baselineCAE.START_LR
+            self.lr_max_epochs = baselineCAE.LR_MAX_EPOCHS
+            self.lrf_decrease_factor = baselineCAE.LRF_DECREASE_FACTOR
+            # Training parameters
+            self.early_stopping = baselineCAE.EARLY_STOPPING
+            self.reduce_on_plateau = baselineCAE.REDUCE_ON_PLATEAU
+
         elif architecture == "inceptionCAE":
+            # Preprocessing parameters
             self.model = inceptionCAE.build_model(color_mode)
             self.rescale = inceptionCAE.RESCALE
             self.shape = inceptionCAE.SHAPE
@@ -112,7 +130,16 @@ class AutoEncoder:
             self.vmin = inceptionCAE.VMIN
             self.vmax = inceptionCAE.VMAX
             self.dynamic_range = inceptionCAE.DYNAMIC_RANGE
+            # Learning Rate Finder parameters
+            self.start_lr = inceptionCAE.START_LR
+            self.lr_max_epochs = inceptionCAE.LR_MAX_EPOCHS
+            self.lrf_decrease_factor = inceptionCAE.LRF_DECREASE_FACTOR
+            # Training parameters
+            self.early_stopping = inceptionCAE.EARLY_STOPPING
+            self.reduce_on_plateau = inceptionCAE.REDUCE_ON_PLATEAU
+
         elif architecture == "resnetCAE":
+            # Preprocessing parameters
             self.model = resnetCAE.build_model(color_mode)
             self.rescale = resnetCAE.RESCALE
             self.shape = resnetCAE.SHAPE
@@ -121,6 +148,13 @@ class AutoEncoder:
             self.vmin = resnetCAE.VMIN
             self.vmax = resnetCAE.VMAX
             self.dynamic_range = resnetCAE.DYNAMIC_RANGE
+            # Learning Rate Finder parameters
+            self.start_lr = resnetCAE.START_LR
+            self.lr_max_epochs = resnetCAE.LR_MAX_EPOCHS
+            self.lrf_decrease_factor = resnetCAE.LRF_DECREASE_FACTOR
+            # Training parameters
+            self.early_stopping = resnetCAE.EARLY_STOPPING
+            self.reduce_on_plateau = resnetCAE.REDUCE_ON_PLATEAU
 
         # verbosity
         self.verbose = verbose
@@ -147,7 +181,7 @@ class AutoEncoder:
         self.create_save_dir()
 
         # compile model
-        optimizer = keras.optimizers.Adam(learning_rate=START_LR)
+        optimizer = keras.optimizers.Adam(learning_rate=self.start_lr)
         self.model.compile(
             loss=self.loss_function, optimizer=optimizer, metrics=self.metrics
         )
@@ -165,7 +199,7 @@ class AutoEncoder:
         )
 
         if self.loss in ["ssim", "mssim"]:
-            stop_factor = -6
+            stop_factor = -6  # 6 just for resnet model (-6 doesn't work)
         elif self.loss == "l2":
             stop_factor = 6
 
@@ -173,9 +207,9 @@ class AutoEncoder:
         logger.info("initiating learning rate finder to determine best learning rate.")
         try:
             self.learner.lr_find(
-                start_lr=START_LR,
+                start_lr=self.start_lr,
                 lr_mult=1.01,
-                max_epochs=LR_MAX_EPOCHS,
+                max_epochs=self.lr_max_epochs,
                 stop_factor=stop_factor,
                 verbose=self.verbose,
                 show_plot=True,
@@ -196,7 +230,7 @@ class AutoEncoder:
         max_loss = np.amax(segment)
 
         # compute optimal loss
-        optimal_loss = max_loss - LRF_DECREASE_FACTOR * (max_loss - min_loss)
+        optimal_loss = max_loss - self.lrf_decrease_factor * (max_loss - min_loss)
 
         # get index corresponding to optimal loss
         self.opt_lr_i = np.argwhere(segment < optimal_loss)[0][0]
@@ -208,8 +242,6 @@ class AutoEncoder:
         self.base_lr = self.opt_lr / 10
         self.base_lr_i = np.argwhere(lrs[:min_loss_i] > self.base_lr)[0][0]
         logger.info("learning rate finder complete.")
-        logger.info(f"\tbase learning rate: {self.base_lr:.2E}")
-        logger.info(f"\toptimal learning rate: {self.opt_lr:.2E}")
         self.lr_find_plot(save=True)
         return
 
@@ -230,8 +262,8 @@ class AutoEncoder:
             self.hist = self.learner.autofit(
                 self.opt_lr,
                 epochs=None,
-                early_stopping=EARLY_STOPPING,
-                reduce_on_plateau=REDUCE_ON_PLATEAU,
+                early_stopping=self.early_stopping,
+                reduce_on_plateau=self.reduce_on_plateau,
                 reduce_factor=2,
                 cycle_momentum=True,
                 max_momentum=0.95,
@@ -251,9 +283,7 @@ class AutoEncoder:
     def create_save_dir(self):
         # create a directory to save model
         now = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        # root_dir = str(Path(os.getcwd()).parent)
         save_dir = os.path.join(
-            # root_dir,
             os.getcwd(),
             "saved_models",
             self.input_directory,
@@ -412,7 +442,6 @@ class AutoEncoder:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "lr_schedule_plot.png"))
             logger.info("lr_schedule_plot.png successfully saved.")
-            # return fig
         return
 
     def loss_plot(self, save=False):

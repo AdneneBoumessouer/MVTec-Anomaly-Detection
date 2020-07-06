@@ -5,9 +5,9 @@ from keras.preprocessing.image import ImageDataGenerator
 
 
 # Data augmentation parameters (only for training)
-ROT_ANGLE = 0
-W_SHIFT_RANGE = 0.0
-H_SHIFT_RANGE = 0.0
+ROT_ANGLE = 5
+W_SHIFT_RANGE = 0.05
+H_SHIFT_RANGE = 0.05
 FILL_MODE = "nearest"
 BRIGHTNESS_RANGE = [0.95, 1.05]
 VAL_SPLIT = 0.1
