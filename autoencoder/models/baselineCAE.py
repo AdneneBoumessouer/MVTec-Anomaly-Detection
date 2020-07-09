@@ -33,11 +33,11 @@ DYNAMIC_RANGE = VMAX - VMIN
 # Learning Rate Finder parameters
 START_LR = 1e-5
 LR_MAX_EPOCHS = 10
-LRF_DECREASE_FACTOR = 0.95  # 0.88
+LRF_DECREASE_FACTOR = 0.88  # 0.88
 
 # Training parameters
-EARLY_STOPPING = 16
-REDUCE_ON_PLATEAU = 8
+EARLY_STOPPING = 12  # 16
+REDUCE_ON_PLATEAU = 6  # 8
 
 
 def build_model(color_mode):
@@ -94,7 +94,7 @@ def build_model(color_mode):
     x = Flatten()(x)
     x = Dense(encoding_dim, kernel_regularizer=regularizers.l2(1e-6))(x)
     x = LeakyReLU(alpha=0.1)(x)
-    encoded = x
+    # encoded = x
 
     # decoder
     x = Reshape((4, 4, encoding_dim // 16))(x)

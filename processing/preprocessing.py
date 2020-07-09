@@ -32,6 +32,9 @@ class Preprocessor:
     def get_train_generator(self, batch_size, shuffle=True):
         # This will do preprocessing and realtime data augmentation:
         train_datagen = ImageDataGenerator(
+            # standarize input
+            featurewise_center=False,
+            featurewise_std_normalization=False,
             # randomly rotate images in the range (degrees, 0 to 180)
             rotation_range=ROT_ANGLE,
             # randomly shift images horizontally (fraction of total width)

@@ -181,9 +181,8 @@ class AutoEncoder:
         self.create_save_dir()
 
         # compile model
-        optimizer = keras.optimizers.Adam(learning_rate=self.start_lr)
         self.model.compile(
-            loss=self.loss_function, optimizer=optimizer, metrics=self.metrics
+            loss=self.loss_function, optimizer="adam", metrics=self.metrics
         )
         return
 
@@ -198,30 +197,20 @@ class AutoEncoder:
             batch_size=self.batch_size,
         )
 
-        if self.loss in ["ssim", "mssim"]:
-            stop_factor = 6  # 6 just for resnet model (-6 doesn't work)
-        elif self.loss == "l2":
-            stop_factor = 6
-
         # simulate training while recording learning rate and loss
         logger.info("initiating learning rate finder to determine best learning rate.")
-        # try:
+
         self.learner.lr_find(
             start_lr=self.start_lr,
             lr_mult=1.01,
             max_epochs=self.lr_max_epochs,
-            stop_factor=stop_factor,
+            stop_factor=6,
             verbose=self.verbose,
             show_plot=True,
         )
-        # except Exception:
-        #     shutil.rmtree(self.save_dir)
-        #     sys.exit("\nexiting script.")
 
-        # using ktrain's opt_lr estimation
-        # self.lr_mg, self.lr_ml = self.learner.lr_estimate()
-        # logger.info(f"opt_lr with minimum numerical gradient: {self.lr_mg:.2E}")
-        # logger.info(f"opt_lr with minimum loss divided by 10: {self.lr_ml:.2E}")
+        # getting ktrain's opt_lr estimation
+        self.lr_mg, self.lr_ml = self.learner.lr_estimate()
 
         # using custom lr_opt estimation
         losses = np.array(self.learner.lr_finder.losses)
@@ -264,9 +253,8 @@ class AutoEncoder:
         )
 
         # fit model using Cyclical Learning Rates
-        # try:
         self.hist = self.learner.autofit(
-            self.opt_lr,
+            lr=self.opt_lr,
             epochs=None,
             early_stopping=self.early_stopping,
             reduce_on_plateau=self.reduce_on_plateau,
@@ -279,10 +267,7 @@ class AutoEncoder:
             verbose=self.verbose,
             callbacks=[tensorboard_cb],
         )
-        # except Exception:
-        #     shutil.rmtree(self.save_dir)
-        #     sys.exit("\nexiting script.")
-        # return
+        return
 
     ### Methods to create directory structure and save (and load?) model =================
 
@@ -314,7 +299,6 @@ class AutoEncoder:
             + self.architecture
             + "_b{}_e{}.hdf5".format(self.batch_size, epochs_trained)
         )
-        # model_path = os.path.join(save_dir, model_name + ".h5")
         return model_name
 
     def save(self):
@@ -401,8 +385,9 @@ class AutoEncoder:
     def lr_find_plot(self, save=False):
         losses = np.array(self.learner.lr_finder.losses)
         lrs = np.array(self.learner.lr_finder.lrs)
-        # mg = self.learner.lr_finder.mg
-        # ml = self.learner.lr_finder.ml
+        mg = self.learner.lr_finder.mg
+        ml = self.learner.lr_finder.ml
+        ml_10 = np.argwhere(lrs[: np.argmin(losses)] > losses[ml] / 10)[0][0]
         i = self.opt_lr_i
         j = self.base_lr_i
         with plt.style.context("seaborn-darkgrid"):
@@ -427,22 +412,22 @@ class AutoEncoder:
                 color="red",
                 label="opt_lr",
             )
-            # ax.plot(
-            #     lrs[mg],
-            #     losses[mg],
-            #     markersize=10,
-            #     marker="o",
-            #     color="blue",
-            #     label="opt_lr_mg",
-            # )
-            # ax.plot(
-            #     lrs[ml],
-            #     losses[ml],
-            #     markersize=10,
-            #     marker="o",
-            #     color="magenta",
-            #     label="opt_lr_ml",
-            # )
+            ax.plot(
+                lrs[mg],
+                losses[mg],
+                markersize=7,
+                marker="o",
+                color="blue",
+                label="opt_lr_mg",
+            )
+            ax.plot(
+                lrs[ml_10],
+                losses[ml_10],
+                markersize=7,
+                marker="o",
+                color="magenta",
+                label="opt_lr_ml",
+            )
             plt.title(
                 f"Learning Rate Plot \nbase learning rate: {lrs[j]:.2E}\noptimal learning rate: {lrs[i]:.2E}"
             )
@@ -454,8 +439,8 @@ class AutoEncoder:
             logger.info("lr_plot.png successfully saved.")
         logger.info(f"base learning rate: {lrs[j]:.2E}")
         logger.info(f"optimal learning rate: {lrs[i]:.2E}")
-        # logger.info(f"opt_lr with minimum numerical gradient: {lrs[mg]:.2E}")
-        # logger.info(f"opt_lr with minimum loss divided by 10: {lrs[ml]:.2E}")
+        logger.info(f"opt_lr with minimum numerical gradient: {lrs[mg]:.2E}")
+        logger.info(f"opt_lr with minimum loss divided by 10: {lrs[ml_10]:.2E}")
         return
 
     def lr_schedule_plot(self, save=False):
