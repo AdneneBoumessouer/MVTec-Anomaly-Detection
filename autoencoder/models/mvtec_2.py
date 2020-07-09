@@ -13,7 +13,7 @@ DYNAMIC_RANGE = VMAX - VMIN
 # Learning Rate Finder parameters
 START_LR = 1e-5
 LR_MAX_EPOCHS = 10
-LRF_DECREASE_FACTOR = 0.95  # 0.88
+LRF_DECREASE_FACTOR = 0.85  # 0.88
 
 # Training parameters
 EARLY_STOPPING = 10
