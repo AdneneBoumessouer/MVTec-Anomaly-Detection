@@ -10,6 +10,15 @@ VMIN = 0.0
 VMAX = 1.0
 DYNAMIC_RANGE = VMAX - VMIN
 
+# Learning Rate Finder parameters
+START_LR = 1e-5
+LR_MAX_EPOCHS = 10
+LRF_DECREASE_FACTOR = 0.95  # 0.88
+
+# Training parameters
+EARLY_STOPPING = 10
+REDUCE_ON_PLATEAU = 5
+
 
 def build_model(color_mode):
     """
