@@ -1,3 +1,7 @@
+"""
+Model inspired by: https://github.com/natasasdj/anomalyDetection
+"""
+
 import tensorflow as tf
 from tensorflow.keras.layers import (
     Input,
@@ -17,7 +21,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras import regularizers
 
 
-# Preprocessing variables
+# Preprocessing parameters
 RESCALE = 1.0 / 255
 SHAPE = (256, 256)
 PREPROCESSING_FUNCTION = None
@@ -26,7 +30,14 @@ VMIN = 0.0
 VMAX = 1.0
 DYNAMIC_RANGE = VMAX - VMIN
 
-# https://github.com/natasasdj/anomalyDetection
+# Learning Rate Finder parameters
+START_LR = 1e-5
+LR_MAX_EPOCHS = 10
+LRF_DECREASE_FACTOR = 0.88
+
+# Training parameters
+EARLY_STOPPING = 8  # 10
+REDUCE_ON_PLATEAU = 4  # 5
 
 
 def inception_layer(x, filters):
@@ -98,7 +109,7 @@ def build_model(color_mode, filters=[32, 64, 128]):
     x = MaxPooling2D((2, 2), strides=(2, 2), padding="same")(x)
     # -------------------------------------------
 
-    encoded = x
+    # encoded = x
 
     # decoder
     x = inception_layer(x, filters[2])
@@ -136,48 +147,3 @@ def build_model(color_mode, filters=[32, 64, 128]):
     autoencoder = Model(input_img, decoded)
     return autoencoder
 
-
-# def build_model(color_mode, filters=[32, 64, 128]):
-#     # set channels
-#     if color_mode == "grayscale":
-#         channels = 1
-#     elif color_mode == "rgb":
-#         channels = 3
-#     img_dim = (*SHAPE, channels)
-
-#     # input
-#     input_img = Input(shape=img_dim)
-
-#     # encoder
-#     x = inception_layer(input_img, filters[0])
-#     x = MaxPooling2D((2, 2), padding="same")(x)
-
-#     x = inception_layer(x, filters[1])
-#     x = MaxPooling2D((2, 2), padding="same")(x)
-
-#     x = inception_layer(x, filters[2])
-#     x = MaxPooling2D((2, 2), padding="same")(x)
-
-#     encoded = x
-
-#     # decoder
-#     x = inception_layer(x, filters[2])
-#     x = UpSampling2D((2, 2))(x)
-
-#     x = inception_layer(x, filters[1])
-#     x = UpSampling2D((2, 2))(x)
-
-#     x = inception_layer(x, filters[0])
-#     x = UpSampling2D((2, 2))(x)
-
-#     x = Conv2D(
-#         img_dim[2], (3, 3), padding="same", kernel_regularizer=regularizers.l2(1e-6)
-#     )(x)
-#     x = BatchNormalization()(x)
-
-#     x = Activation("sigmoid")(x)
-
-#     decoded = x
-#     # model
-#     autoencoder = Model(input_img, decoded)
-#     return autoencoder

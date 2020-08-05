@@ -5,9 +5,9 @@ from keras.preprocessing.image import ImageDataGenerator
 
 
 # Data augmentation parameters (only for training)
-ROT_ANGLE = 0
-W_SHIFT_RANGE = 0.0
-H_SHIFT_RANGE = 0.0
+ROT_ANGLE = 5
+W_SHIFT_RANGE = 0.05
+H_SHIFT_RANGE = 0.05
 FILL_MODE = "nearest"
 BRIGHTNESS_RANGE = [0.95, 1.05]
 VAL_SPLIT = 0.1
@@ -32,6 +32,9 @@ class Preprocessor:
     def get_train_generator(self, batch_size, shuffle=True):
         # This will do preprocessing and realtime data augmentation:
         train_datagen = ImageDataGenerator(
+            # standarize input
+            featurewise_center=False,
+            featurewise_std_normalization=False,
             # randomly rotate images in the range (degrees, 0 to 180)
             rotation_range=ROT_ANGLE,
             # randomly shift images horizontally (fraction of total width)
@@ -151,10 +154,6 @@ class Preprocessor:
 
 
 def get_preprocessing_function(architecture):
-    if architecture in ["mvtec", "mvtec2"]:
+    if architecture in ["mvtec", "mvtec2", "baselineCAE", "indexptionCAE", "resnetCAE"]:
         preprocessing_function = None
-    elif architecture == "resnet":
-        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
-    elif architecture == "nasnet":
-        preprocessing_function = keras.applications.nasnet.preprocess_input
     return preprocessing_function
