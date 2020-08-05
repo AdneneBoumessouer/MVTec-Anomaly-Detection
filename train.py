@@ -43,9 +43,9 @@ Mode    ----------------+----------------+----------------+
 def check_arguments(architecture, color_mode, loss):
     # if architecture == "resnet" and color_mode == "grayscale":
     #     raise ValueError("ResNet expects rgb images")
-    if loss == "MSSIM" and color_mode == "grayscale":
+    if loss == "mssim" and color_mode == "grayscale":
         raise ValueError("MSSIM works only with rgb images")
-    if loss == "SSIM" and color_mode == "rgb":
+    if loss == "ssim" and color_mode == "rgb":
         raise ValueError("SSIM works only with grayscale images")
     return
 

@@ -15,8 +15,8 @@ from autoencoder.models.resnet.resnet import ResnetBuilder
 # Preprocessing variables
 RESCALE = 1 / 255
 SHAPE = (256, 256)
-PREPROCESSING_FUNCTION = None  # keras.applications.inception_resnet_v2.preprocess_input
-PREPROCESSING = None  # "keras.applications.inception_resnet_v2.preprocess_input"
+PREPROCESSING_FUNCTION = None
+PREPROCESSING = None
 VMIN = 0.0  # -1.0
 VMAX = 1.0
 DYNAMIC_RANGE = VMAX - VMIN

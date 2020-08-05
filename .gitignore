@@ -10,6 +10,7 @@ xyz.py
 /report
 
 check_resmaps.ipynb
+mssim.ipynb
 demo.ipynb
 train_multiple.py
 
