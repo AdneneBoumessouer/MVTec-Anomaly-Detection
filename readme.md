@@ -20,7 +20,7 @@ The dataset being used is the [MVTec dataset](https://www.mvtec.com/company/rese
 Libraries and packages used in this project: 
 * `tensorflow-gpu 2.1.0`
 * `Keras 2.3.1`
-* `ktrain 0.13.0`
+* `ktrain 0.17.0`
 * `scikit-image 0.17.2`
 * `opencv-python 4.2.0.34`
 * `pandas 1.0.3`
@@ -102,12 +102,6 @@ To train with your own dataset, you need to have a comparable directory structur
 
 ## Training (`train.py`)
 
-### Description
-The method uses a Convolutional Auto-Encoder (CAE). There are two proposed variants:
-* CAE proposed in the paper [MVTec AD — A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf)
-* CAE that uses Keras's inception_resnet_v2 CNN-model pretrained on imagenet as the Encoder. 
-The Decoder is inspired by the paper [Anomaly Detection and Localization in Images using Guided Attention](https://openreview.net/forum?id=B1gikpEtwH). NOTE: This model seems not to work properly at the moment and is still being tested.
-
 During training, the CAE trains exclusively on defect-free images and learns to reconstruct (predict) defect-free training samples.
 
 ### Usage
@@ -136,9 +130,8 @@ python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale
 ```
 **NOTE 1:** There is no need for the user to pass a number of epochs since the training process implements an Early Stopping strategy.
 
-**NOTE 2:** There is a total of 3 models implemented in this project: *resnet*, *mvtec* and *mvtec2*. *Resnet* seems not to be working properly at the moment and needs further investigation/testing. 
-
-**NOTE 3:** While *mvtec* and *mvtec2* are two slightly different variants of the same model, we **recommend** opting for mvtec2, as it has been tested extensively.
+**NOTE 2:** There is a total of 5 models implemented in this project: *resnetCAE*, *baselineCAE*, *inceptionCAE* *mvtec* and *mvtec2*. 
+*resnetCAE* is still being tested, while *mvtec* seems to perform poorly. *baselineCAE*, *inceptionCAE* and *mvtec_2* perform fairly well.
 
 
 ## Finetuning (`finetune.py`)
@@ -212,7 +205,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
-* Paul Bergmann, the main author of the paper which this project relies on.
+* Paul Bergmann, author of the paper which this project relies on.
 * François Chollet, author of the Keras deep learning library.
 * Aurélien Géron, autor of the great book Hands on Machine Learning with Scikit-Learn, Keras and Tensorflow.
 * Arun S. Maiya, author of the [ktrain](https://github.com/amaiya/ktrain) library: a wrapper for TensorFlow Keras that makes deep learning and AI more accessible and easier to apply.

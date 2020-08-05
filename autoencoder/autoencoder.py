@@ -385,9 +385,9 @@ class AutoEncoder:
     def lr_find_plot(self, save=False):
         losses = np.array(self.learner.lr_finder.losses)
         lrs = np.array(self.learner.lr_finder.lrs)
-        mg = self.learner.lr_finder.mg
-        ml = self.learner.lr_finder.ml
-        ml_10 = np.argwhere(lrs[: np.argmin(losses)] > losses[ml] / 10)[0][0]
+        # mg = self.learner.lr_finder.mg
+        # ml = self.learner.lr_finder.ml
+        # ml_10 = np.argwhere(lrs[: np.argmin(losses)] > losses[ml] / 10)[0][0]
         i = self.opt_lr_i
         j = self.base_lr_i
         with plt.style.context("seaborn-darkgrid"):
@@ -412,22 +412,22 @@ class AutoEncoder:
                 color="red",
                 label="opt_lr",
             )
-            ax.plot(
-                lrs[mg],
-                losses[mg],
-                markersize=7,
-                marker="o",
-                color="blue",
-                label="opt_lr_mg",
-            )
-            ax.plot(
-                lrs[ml_10],
-                losses[ml_10],
-                markersize=7,
-                marker="o",
-                color="magenta",
-                label="opt_lr_ml",
-            )
+            # ax.plot(
+            #     lrs[mg],
+            #     losses[mg],
+            #     markersize=7,
+            #     marker="o",
+            #     color="blue",
+            #     label="opt_lr_mg",
+            # )
+            # ax.plot(
+            #     lrs[ml_10],
+            #     losses[ml_10],
+            #     markersize=7,
+            #     marker="o",
+            #     color="magenta",
+            #     label="opt_lr_ml",
+            # )
             plt.title(
                 f"Learning Rate Plot \nbase learning rate: {lrs[j]:.2E}\noptimal learning rate: {lrs[i]:.2E}"
             )
@@ -439,8 +439,8 @@ class AutoEncoder:
             logger.info("lr_plot.png successfully saved.")
         logger.info(f"base learning rate: {lrs[j]:.2E}")
         logger.info(f"optimal learning rate: {lrs[i]:.2E}")
-        logger.info(f"opt_lr with minimum numerical gradient: {lrs[mg]:.2E}")
-        logger.info(f"opt_lr with minimum loss divided by 10: {lrs[ml_10]:.2E}")
+        # logger.info(f"opt_lr with minimum numerical gradient: {lrs[mg]:.2E}")
+        # logger.info(f"opt_lr with minimum loss divided by 10: {lrs[ml_10]:.2E}")
         return
 
     def lr_schedule_plot(self, save=False):

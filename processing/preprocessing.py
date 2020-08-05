@@ -154,10 +154,6 @@ class Preprocessor:
 
 
 def get_preprocessing_function(architecture):
-    if architecture in ["mvtec", "mvtec2"]:
+    if architecture in ["mvtec", "mvtec2", "baselineCAE", "indexptionCAE", "resnetCAE"]:
         preprocessing_function = None
-    elif architecture == "resnet":
-        preprocessing_function = keras.applications.inception_resnet_v2.preprocess_input
-    elif architecture == "nasnet":
-        preprocessing_function = keras.applications.nasnet.preprocess_input
     return preprocessing_function
