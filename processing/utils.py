@@ -19,11 +19,11 @@ def get_model_info(model_path):
 
 
 def load_model_HDF5(model_path):
-    """Loads model (HDF5 format), training setup and training history.
-    This format makes it difficult to load a trained model for further training,
-    but works good enough for one training round."""
+    """
+    Loads model (HDF5 format), training setup and training history.
+    """
 
-    # load loss function used in training
+    # load parameters
     info = get_model_info(model_path)
     loss = info["model"]["loss"]
     dynamic_range = info["preprocessing"]["dynamic_range"]

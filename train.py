@@ -25,7 +25,7 @@ Valid combinations for input arguments for architecture, color_mode and loss:
                         +----------------+----------------+
                         |       Model Architecture        |
                         +----------------+----------------+
-                        |  mvtec, mvtec2 |   ResnetCAE    |
+                        |  mvtecCAE      |   ResnetCAE    |
                         |  baselineCAE   |                |
                         |  inceptionCAE  |                |
 ========================+================+================+
@@ -41,8 +41,6 @@ Mode    ----------------+----------------+----------------+
 
 
 def check_arguments(architecture, color_mode, loss):
-    # if architecture == "resnet" and color_mode == "grayscale":
-    #     raise ValueError("ResNet expects rgb images")
     if loss == "mssim" and color_mode == "grayscale":
         raise ValueError("MSSIM works only with rgb images")
     if loss == "ssim" and color_mode == "rgb":
@@ -208,9 +206,9 @@ if __name__ == "__main__":
         type=str,
         required=False,
         metavar="",
-        choices=["mvtec", "mvtec2", "baselineCAE", "inceptionCAE", "resnetCAE"],
+        choices=["mvtecCAE", "baselineCAE", "inceptionCAE", "resnetCAE"],
         default="mvtec2",
-        help="architecture of the model to use for training: 'mvtec', 'mvtec2' or 'resnet'",
+        help="architecture of the model to use for training: 'mvtecCAE', 'baselineCAE', 'inceptionCAE' or 'resnetCAE'",
     )
 
     parser.add_argument(
@@ -263,6 +261,6 @@ if __name__ == "__main__":
 
 # Examples of commands to initiate training with mvtec architecture
 
-# python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale --inspect
-
-# python3 train.py -d werkstueck/data_a30_nikon_weiss_edit -a mvtec2 -b 8 -l l2 -c grayscale --inspect
+# python3 train.py -d mvtec/capsule -a mvtecCAE -b 8 -l ssim -c grayscale --inspect
+# python3 train.py -d mvtec/hazelnut -a resnetCAE -b 8 -l mssim -c rgb --inspect
+# python3 train.py -d mvtec/pill -a inceptionCAE -b 8 -l mssim -c rgb --inspect

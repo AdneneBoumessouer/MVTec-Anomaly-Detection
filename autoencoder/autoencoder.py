@@ -18,8 +18,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from autoencoder.models import mvtec
-from autoencoder.models import mvtec_2
+from autoencoder.models import mvtecCAE
 from autoencoder.models import baselineCAE
 from autoencoder.models import inceptionCAE
 from autoencoder.models import resnetCAE
@@ -66,41 +65,23 @@ class AutoEncoder:
         self.epochs_trained = None
 
         # build model and preprocessing variables
-        if architecture == "mvtec":
+        if architecture == "mvtecCAE":
             # Preprocessing parameters
-            self.model = mvtec.build_model(color_mode)
-            self.rescale = mvtec.RESCALE
-            self.shape = mvtec.SHAPE
-            self.preprocessing_function = mvtec.PREPROCESSING_FUNCTION
-            self.preprocessing = mvtec.PREPROCESSING
-            self.vmin = mvtec.VMIN
-            self.vmax = mvtec.VMAX
-            self.dynamic_range = mvtec.DYNAMIC_RANGE
+            self.model = mvtecCAE.build_model(color_mode)
+            self.rescale = mvtecCAE.RESCALE
+            self.shape = mvtecCAE.SHAPE
+            self.preprocessing_function = mvtecCAE.PREPROCESSING_FUNCTION
+            self.preprocessing = mvtecCAE.PREPROCESSING
+            self.vmin = mvtecCAE.VMIN
+            self.vmax = mvtecCAE.VMAX
+            self.dynamic_range = mvtecCAE.DYNAMIC_RANGE
             # Learning Rate Finder parameters
-            self.start_lr = mvtec.START_LR
-            self.lr_max_epochs = mvtec.LR_MAX_EPOCHS
-            self.lrf_decrease_factor = mvtec.LRF_DECREASE_FACTOR
+            self.start_lr = mvtecCAE.START_LR
+            self.lr_max_epochs = mvtecCAE.LR_MAX_EPOCHS
+            self.lrf_decrease_factor = mvtecCAE.LRF_DECREASE_FACTOR
             # Training parameters
-            self.early_stopping = mvtec.EARLY_STOPPING
-            self.reduce_on_plateau = mvtec.REDUCE_ON_PLATEAU
-
-        elif architecture == "mvtec2":
-            # Preprocessing parameters
-            self.model = mvtec_2.build_model(color_mode)
-            self.rescale = mvtec_2.RESCALE
-            self.shape = mvtec_2.SHAPE
-            self.preprocessing_function = mvtec_2.PREPROCESSING_FUNCTION
-            self.preprocessing = mvtec_2.PREPROCESSING
-            self.vmin = mvtec_2.VMIN
-            self.vmax = mvtec_2.VMAX
-            self.dynamic_range = mvtec_2.DYNAMIC_RANGE
-            # Learning Rate Finder parameters
-            self.start_lr = mvtec_2.START_LR
-            self.lr_max_epochs = mvtec_2.LR_MAX_EPOCHS
-            self.lrf_decrease_factor = mvtec_2.LRF_DECREASE_FACTOR
-            # Training parameters
-            self.early_stopping = mvtec_2.EARLY_STOPPING
-            self.reduce_on_plateau = mvtec_2.REDUCE_ON_PLATEAU
+            self.early_stopping = mvtecCAE.EARLY_STOPPING
+            self.reduce_on_plateau = mvtecCAE.REDUCE_ON_PLATEAU
 
         elif architecture == "baselineCAE":
             # Preprocessing parameters
@@ -294,10 +275,8 @@ class AutoEncoder:
 
     def create_model_name(self):
         epochs_trained = self.get_best_epoch()
-        model_name = (
-            "CAE_"
-            + self.architecture
-            + "_b{}_e{}.hdf5".format(self.batch_size, epochs_trained)
+        model_name = self.architecture + "_b{}_e{}.hdf5".format(
+            self.batch_size, epochs_trained
         )
         return model_name
 
