@@ -1,7 +1,4 @@
-## NOTE: The work on this project is still in progress.
-
 # Anomaly Detection
-
 This project aims at developping a Deep Learning model using an unsupervided method to detect surface anomalies on images.
 
 ## Overview
@@ -52,28 +49,6 @@ In the case of using the *mvtec* dataset, here is an example of how the director
     │   │   └── good
     │   └── train
     │       └── good
-    ├── cable
-    │   ├── ground_truth
-    │   │   ├── bent_wire
-    │   │   ├── cable_swap
-    │   │   ├── combined
-    │   │   ├── cut_inner_insulation
-    │   │   ├── cut_outer_insulation
-    │   │   ├── missing_cable
-    │   │   ├── missing_wire
-    │   │   └── poke_insulation
-    │   ├── test
-    │   │   ├── bent_wire
-    │   │   ├── cable_swap
-    │   │   ├── combined
-    │   │   ├── cut_inner_insulation
-    │   │   ├── cut_outer_insulation
-    │   │   ├── good
-    │   │   ├── missing_cable
-    │   │   ├── missing_wire
-    │   │   └── poke_insulation
-    │   └── train
-    │       └── good
     ...
 
 
@@ -113,7 +88,7 @@ optional arguments:
 
   -d , --input-dir      directory containing training images
 
-  -a , --architecture   architecture of the model to use for training: 'resnet', 'mvtec' or 'mvtec2'
+  -a , --architecture   architecture of the model to use for training: 'mvtecCAE', 'baselineCAE', 'inceptionCAE' or 'resnetCAE'
 
   -c , --color          color mode for preprocessing images before training: 'rgb' or 'grayscale'
 
@@ -126,12 +101,19 @@ optional arguments:
 
 Example usage:
 ```
-python3 train.py -d mvtec/capsule -a mvtec2 -b 8 -l ssim -c grayscale
+python3 train.py -d mvtec/capsule -a mvtecCAE -b 8 -l ssim -c grayscale
 ```
 **NOTE 1:** There is no need for the user to pass a number of epochs since the training process implements an Early Stopping strategy.
 
-**NOTE 2:** There is a total of 5 models implemented in this project: *resnetCAE*, *baselineCAE*, *inceptionCAE* *mvtec* and *mvtec2*. 
-*resnetCAE* is still being tested, while *mvtec* seems to perform poorly. *baselineCAE*, *inceptionCAE* and *mvtec_2* perform fairly well.
+**NOTE 2:** There is a total of 4 models implemented in this project:
+* *mvtecCAE* is the model implemented in the [MVTec Paper](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf)
+* *baselineCAE* is inspired by: https://github.com/natasasdj/anomalyDetection
+* *inceptionCAE* is inspired by: https://github.com/natasasdj/anomalyDetection
+* *resnetCAE* is inspired by: https://arxiv.org/pdf/1606.08921.pdf
+
+**NOTE 3:**
+The models *mvtecCAE*, *baselineCAE* and *inceptionCAE* are quite comparable in performance.
+*resnetCAE* is still being tested.
 
 
 ## Finetuning (`finetune.py`)
@@ -153,7 +135,7 @@ optional arguments:
 
 Example usage:
 ```
-python3 finetune.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5 -m ssim -t float64
+python3 finetune.py -p saved_models/mvtec/capsule/mvtecCAE/ssim/13-06-2020_15-35-10/mvtecCAE_b8_e39.hdf5 -m ssim -t float64
 ```
 
 ## Testing (`test.py`)
@@ -172,7 +154,7 @@ optional arguments:
 
 Example usage:
 ```
-python3 test.py -p saved_models/mvtec/capsule/mvtec2/ssim/13-06-2020_15-35-10/CAE_mvtec2_b8_e39.hdf5
+python3 test.py -p saved_models/mvtec/capsule/mvtecCAE/ssim/13-06-2020_15-35-10/mvtecCAE_b8_e39.hdf5
 ```
 
 
@@ -197,7 +179,7 @@ Project Organization
 
 ## Authors
 
-* **Adnene Boumessouer** - (https://github.com/AdneneBoumessouer)
+* **Adnene Boumessouer** - https://github.com/AdneneBoumessouer
 
 ## License
 
@@ -205,7 +187,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
-* Paul Bergmann, author of the paper which this project relies on.
+* Paul Bergmann, Michael Fauser, David Sattlegger and Carsten Steger, the authors of the MVTec paper which this project relies on.
 * François Chollet, author of the Keras deep learning library.
 * Aurélien Géron, autor of the great book Hands on Machine Learning with Scikit-Learn, Keras and Tensorflow.
 * Arun S. Maiya, author of the [ktrain](https://github.com/amaiya/ktrain) library: a wrapper for TensorFlow Keras that makes deep learning and AI more accessible and easier to apply.
