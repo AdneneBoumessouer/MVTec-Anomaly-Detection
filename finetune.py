@@ -8,10 +8,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from processing import utils
-from processing import resmaps
+from processing import postprocessing
 from processing.preprocessing import Preprocessor
 from processing.preprocessing import get_preprocessing_function
-from processing.resmaps import label_images
+from processing.postprocessing import label_images
 from processing.utils import printProgressBar
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -122,7 +122,7 @@ def main(args):
     imgs_val_pred = imgs_val_pred[:, :, :, 0]
 
     # instantiate TensorImages object to compute validation resmaps
-    tensor_val = resmaps.TensorImages(
+    tensor_val = postprocessing.TensorImages(
         imgs_input=imgs_val_input,
         imgs_pred=imgs_val_pred,
         vmin=vmin,
@@ -181,7 +181,7 @@ def main(args):
     imgs_ft_pred = imgs_ft_pred[:, :, :, 0]
 
     # instantiate TensorImages object to compute finetuning resmaps
-    tensor_ft = resmaps.TensorImages(
+    tensor_ft = postprocessing.TensorImages(
         imgs_input=imgs_ft_input,
         imgs_pred=imgs_ft_pred,
         vmin=vmin,

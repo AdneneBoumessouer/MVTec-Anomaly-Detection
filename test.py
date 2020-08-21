@@ -6,10 +6,10 @@ import time
 import json
 import tensorflow as tf
 from processing import utils
-from processing import resmaps
+from processing import postprocessing
 from processing.preprocessing import Preprocessor
 from processing.preprocessing import get_preprocessing_function
-from processing.resmaps import label_images
+from processing.postprocessing import label_images
 from processing.utils import printProgressBar
 from skimage.util import img_as_ubyte
 from sklearn.metrics import confusion_matrix
@@ -153,7 +153,7 @@ def main(args):
         imgs_test_pred = imgs_test_pred[:, :, :, 0]
 
         # instantiate TensorImages object
-        tensor_test = resmaps.TensorImages(
+        tensor_test = postprocessing.TensorImages(
             imgs_input=imgs_test_input,
             imgs_pred=imgs_test_pred,
             vmin=vmin,
