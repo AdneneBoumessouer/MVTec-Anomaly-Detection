@@ -191,7 +191,7 @@ class AutoEncoder:
         )
 
         # getting ktrain's opt_lr estimation
-        self.lr_mg, self.lr_ml = self.learner.lr_estimate()
+        # self.lr_mg, self.lr_ml = self.learner.lr_estimate()
 
         # using custom lr_opt estimation
         losses = np.array(self.learner.lr_finder.losses)
