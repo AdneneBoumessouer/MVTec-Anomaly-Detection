@@ -12,7 +12,7 @@ from autoencoder.autoencoder import AutoEncoder
 from processing.preprocessing import Preprocessor
 from processing.utils import printProgressBar as printProgressBar
 from processing import utils
-from processing import resmaps
+from processing import postprocessing
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -120,7 +120,7 @@ def main(args):
         imgs_val_pred = imgs_val_pred[:, :, :, 0]
 
         # instantiate TensorImages object to compute validation resmaps
-        tensor_val = resmaps.TensorImages(
+        tensor_val = postprocessing.TensorImages(
             imgs_input=imgs_val_input,
             imgs_pred=imgs_val_pred,
             vmin=autoencoder.vmin,
@@ -166,7 +166,7 @@ def main(args):
         imgs_test_pred = imgs_test_pred[:, :, :, 0]
 
         # instantiate TensorImages object to compute test resmaps
-        tensor_test = resmaps.TensorImages(
+        tensor_test = postprocessing.TensorImages(
             imgs_input=imgs_test_input,
             imgs_pred=imgs_test_pred,
             vmin=autoencoder.vmin,

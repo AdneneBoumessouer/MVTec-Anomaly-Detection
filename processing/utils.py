@@ -178,14 +178,3 @@ def save_dataframe_as_text_file(df, save_dir, filename):
         f.write(df.to_string(header=True, index=True))
         print("[INFO] validation_results.txt saved at {}".format(save_dir))
 
-
-"""
-SAVE AND LOAD LINKS:
-https://www.tensorflow.org/tutorials/keras/save_and_load#hdf5_format
-https://www.tensorflow.org/api_docs/python/tf/keras/models/save_model
-https://www.tensorflow.org/api_docs/python/tf/saved_model/save
-https://www.tensorflow.org/api_docs/python/tf/keras/models/load_model
-
-
-https://stackoverflow.com/questions/55364954/keras-load-model-cant-recognize-tensorflows-activation-functions
-"""
