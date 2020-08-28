@@ -21,44 +21,41 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Finetuning parameters
 FINETUNE_SPLIT = 0.1
-STEP_MIN_AREA = 5  # 5
+STEP_MIN_AREA = 5
+START_MIN_AREA = 5
+STOP_MIN_AREA = 1005
 
 
-def determine_threshold(resmaps, min_area, thresh_min, thresh_max, thresh_step):
-    # set initial threshold, counter and max number of steps
-    n_steps = (thresh_max - thresh_min) // thresh_step + 1
-    thresholds = np.arange(
-        start=thresh_min, stop=thresh_max + thresh_step, step=thresh_step
-    )
+def calculate_largest_areas(resmaps, thresholds):
+
+    # initialize largest areas to an empty list
+    largest_areas = []
 
     # initialize progress bar
-    printProgressBar(0, n_steps, prefix="Progress:", suffix="Complete", length=50)
+    printProgressBar(
+        0, len(thresholds), prefix="Progress:", suffix="Complete", length=80
+    )
 
     for index, threshold in enumerate(thresholds):
         # segment (threshold) residual maps
         resmaps_th = resmaps > threshold
 
         # compute labeled connected components
-        _, areas_all = label_images(resmaps_th)
+        _, areas_th = label_images(resmaps_th)
 
-        # check if area of largest anomalous region is below the minimum area
-        areas_all_flat = [item for sublist in areas_all for item in sublist]
-        largest_area = np.amax(np.array(areas_all_flat))
-
-        if min_area > largest_area:
-            time.sleep(0.1)
-            printProgressBar(
-                n_steps, n_steps, prefix="Progress:", suffix="Complete", length=50
-            )
-            break
+        # retieve largest area of all resmaps for current threshold
+        areas_th_total = [item for sublist in areas_th for item in sublist]
+        largest_area = np.amax(np.array(areas_th_total))
+        largest_areas.append(largest_area)
 
         # print progress bar
         time.sleep(0.1)
         printProgressBar(
-            index, n_steps, prefix="Progress:", suffix="Complete", length=50
+            index + 1, len(thresholds), prefix="Progress:", suffix="Complete", length=80
         )
-    return threshold
+    return largest_areas
 
 
 def main(args):
@@ -204,20 +201,37 @@ def main(args):
         "score": [],
     }
 
-    # create discrete min_area values
-    min_areas = np.arange(start=5, stop=505, step=STEP_MIN_AREA)
+    # initialize discrete min_area values
+    min_areas = np.arange(start=START_MIN_AREA, stop=STOP_MIN_AREA, step=STEP_MIN_AREA)
     length = len(min_areas)
 
+    # initialize thresholds
+    thresholds = np.arange(
+        start=tensor_val.thresh_min,
+        stop=tensor_val.thresh_max + tensor_val.thresh_step,
+        step=tensor_val.thresh_step,
+    )
+
+    # compute largest anomaly areas in resmaps for increasing thresholds
+    print("step 1/2: computing largest anomaly areas for increasing thresholds...")
+    largest_areas = calculate_largest_areas(
+        resmaps=tensor_val.resmaps, thresholds=thresholds,
+    )
+
+    # select best minimum area and threshold pair to use for testing
+    print("step 2/2: selecting best minimum area and threshold pair for testing...")
+    printProgressBar(
+        0, len(min_areas), prefix="Progress:", suffix="Complete", length=80
+    )
+
     for i, min_area in enumerate(min_areas):
-        print("step {}/{} | current min_area = {}".format(i + 1, length, min_area))
-        # compute threshold corresponding to current min_area
-        threshold = determine_threshold(
-            resmaps=tensor_val.resmaps,
-            min_area=min_area,
-            thresh_min=tensor_val.thresh_min,
-            thresh_max=tensor_val.thresh_max,
-            thresh_step=tensor_val.thresh_step,
-        )
+        # compare current min_area with the largest area
+        for index, largest_area in enumerate(largest_areas):
+            if min_area > largest_area:
+                break
+
+        # select threshold corresponding to current min_area
+        threshold = thresholds[index]
 
         # apply the min_area, threshold pair to finetuning images
         y_ft_pred = predict_classes(
@@ -237,6 +251,11 @@ def main(args):
         dict_finetune["FPR"].append(fpr)
         dict_finetune["FNR"].append(fnr)
         dict_finetune["score"].append((tpr + tnr) / 2)
+
+        # print progress bar
+        printProgressBar(
+            i + 1, len(min_areas), prefix="Progress:", suffix="Complete", length=80
+        )
 
     # get min_area, threshold pair corresponding to best score
     max_score_i = np.argmax(dict_finetune["score"])

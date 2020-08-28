@@ -57,9 +57,6 @@ def main(args):
     loss = args.loss
     batch_size = args.batch
 
-    # get dir path containing training images
-    train_data_dir = os.path.join(input_dir, "train")
-
     # check arguments
     check_arguments(architecture, color_mode, loss)
 
