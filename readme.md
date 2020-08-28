@@ -100,11 +100,17 @@ usage: train.py [-h] -d  [-a] [-c] [-l] [-b] [-i]
 optional arguments:
 
   -h, --help            show this help message and exit
+
   -d , --input-dir      directory containing training images
+
   -a , --architecture   architecture of the model to use for training: 'mvtecCAE', 'baselineCAE', 'inceptionCAE' or 'resnetCAE'
+
   -c , --color          color mode for preprocessing images before training: 'rgb' or 'grayscale'
+
   -l , --loss           loss function to use for training: 'mssim', 'ssim' or 'l2'
+
   -b , --batch          batch size to use for training
+
   -i, --inspect         generate inspection plots after training
 
 
@@ -122,8 +128,11 @@ usage: finetune.py [-h] -p  [-m] [-t]
 
 optional arguments:
   -h, --help      show this help message and exit
+
   -p , --path     path to saved model
+
   -m , --method   method for generating resmaps: 'ssim' or 'l2'
+
   -t , --dtype    datatype for processing resmaps: 'float64' or 'uint8'
 
 
@@ -140,7 +149,9 @@ usage: test.py [-h] -p  [-s]
 
 optional arguments:
   -h, --help    show this help message and exit
+
   -p , --path   path to saved model
+  
   -s, --save    save segmented images
 
 
