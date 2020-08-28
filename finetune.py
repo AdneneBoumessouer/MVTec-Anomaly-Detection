@@ -21,8 +21,11 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Finetuning parameters
 FINETUNE_SPLIT = 0.1
-STEP_MIN_AREA = 5  # 5
+STEP_MIN_AREA = 5
+START_MIN_AREA = 5
+STOP_MIN_AREA = 1005
 
 
 def calculate_largest_areas(resmaps, thresholds):
@@ -32,7 +35,7 @@ def calculate_largest_areas(resmaps, thresholds):
 
     # initialize progress bar
     printProgressBar(
-        0, len(thresholds), prefix="Progress:", suffix="Complete", length=50
+        0, len(thresholds), prefix="Progress:", suffix="Complete", length=80
     )
 
     for index, threshold in enumerate(thresholds):
@@ -50,7 +53,7 @@ def calculate_largest_areas(resmaps, thresholds):
         # print progress bar
         time.sleep(0.1)
         printProgressBar(
-            index + 1, len(thresholds), prefix="Progress:", suffix="Complete", length=50
+            index + 1, len(thresholds), prefix="Progress:", suffix="Complete", length=80
         )
     return largest_areas
 
@@ -198,8 +201,8 @@ def main(args):
         "score": [],
     }
 
-    # create discrete min_area values
-    min_areas = np.arange(start=5, stop=505, step=STEP_MIN_AREA)
+    # initialize discrete min_area values
+    min_areas = np.arange(start=START_MIN_AREA, stop=STOP_MIN_AREA, step=STEP_MIN_AREA)
     length = len(min_areas)
 
     # initialize thresholds
@@ -209,16 +212,16 @@ def main(args):
         step=tensor_val.thresh_step,
     )
 
-    # compute largest areas corresponding to the thresholds
-    print("step 1/2: computing largest areas for increasing thresholds...")
+    # compute largest anomaly areas in resmaps for increasing thresholds
+    print("step 1/2: computing largest anomaly areas for increasing thresholds...")
     largest_areas = calculate_largest_areas(
         resmaps=tensor_val.resmaps, thresholds=thresholds,
     )
 
-    # select best minimum area and threshold pair for testing
-    print("step 2/2: selecting best minimum area and threshold for testing...")
+    # select best minimum area and threshold pair to use for testing
+    print("step 2/2: selecting best minimum area and threshold pair for testing...")
     printProgressBar(
-        0, len(min_areas), prefix="Progress:", suffix="Complete", length=50
+        0, len(min_areas), prefix="Progress:", suffix="Complete", length=80
     )
 
     for i, min_area in enumerate(min_areas):
@@ -251,7 +254,7 @@ def main(args):
 
         # print progress bar
         printProgressBar(
-            i + 1, len(min_areas), prefix="Progress:", suffix="Complete", length=50
+            i + 1, len(min_areas), prefix="Progress:", suffix="Complete", length=80
         )
 
     # get min_area, threshold pair corresponding to best score
