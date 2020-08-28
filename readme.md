@@ -100,17 +100,11 @@ usage: train.py [-h] -d  [-a] [-c] [-l] [-b] [-i]
 optional arguments:
 
   -h, --help            show this help message and exit
-
   -d , --input-dir      directory containing training images
-
   -a , --architecture   architecture of the model to use for training: 'mvtecCAE', 'baselineCAE', 'inceptionCAE' or 'resnetCAE'
-
   -c , --color          color mode for preprocessing images before training: 'rgb' or 'grayscale'
-
   -l , --loss           loss function to use for training: 'mssim', 'ssim' or 'l2'
-
   -b , --batch          batch size to use for training
-
   -i, --inspect         generate inspection plots after training
 
 
@@ -127,13 +121,9 @@ This script used a subset of defect-free training images and a subset of both de
 usage: finetune.py [-h] -p  [-m] [-t]
 
 optional arguments:
-
   -h, --help      show this help message and exit
-
   -p , --path     path to saved model
-
   -m , --method   method for generating resmaps: 'ssim' or 'l2'
-
   -t , --dtype    datatype for processing resmaps: 'float64' or 'uint8'
 
 
@@ -146,13 +136,12 @@ python3 finetune.py -p saved_models/mvtec/capsule/mvtecCAE/ssim/13-06-2020_15-35
 
 This script classifies test images using the *minimum defect area* and *threshold* previously approximated at the finetuning step.
 
-usage: test.py [-h] -p
+usage: test.py [-h] -p  [-s]
 
 optional arguments:
-
   -h, --help    show this help message and exit
-
   -p , --path   path to saved model
+  -s, --save    save segmented images
 
 
 Example usage:
