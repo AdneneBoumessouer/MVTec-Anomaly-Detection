@@ -22,6 +22,7 @@ from autoencoder.models import mvtecCAE
 from autoencoder.models import baselineCAE
 from autoencoder.models import inceptionCAE
 from autoencoder.models import resnetCAE
+from autoencoder.models import skipCAE
 from autoencoder import metrics
 from autoencoder import losses
 import logging
@@ -136,6 +137,24 @@ class AutoEncoder:
             # Training parameters
             self.early_stopping = resnetCAE.EARLY_STOPPING
             self.reduce_on_plateau = resnetCAE.REDUCE_ON_PLATEAU
+
+        elif architecture == "skipCAE":
+            # Preprocessing parameters
+            self.model = skipCAE.build_model(color_mode)
+            self.rescale = skipCAE.RESCALE
+            self.shape = skipCAE.SHAPE
+            self.preprocessing_function = skipCAE.PREPROCESSING_FUNCTION
+            self.preprocessing = skipCAE.PREPROCESSING
+            self.vmin = skipCAE.VMIN
+            self.vmax = skipCAE.VMAX
+            self.dynamic_range = skipCAE.DYNAMIC_RANGE
+            # Learning Rate Finder parameters
+            self.start_lr = skipCAE.START_LR
+            self.lr_max_epochs = skipCAE.LR_MAX_EPOCHS
+            self.lrf_decrease_factor = skipCAE.LRF_DECREASE_FACTOR
+            # Training parameters
+            self.early_stopping = skipCAE.EARLY_STOPPING
+            self.reduce_on_plateau = skipCAE.REDUCE_ON_PLATEAU
 
         # verbosity
         self.verbose = verbose

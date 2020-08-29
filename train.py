@@ -203,9 +203,9 @@ if __name__ == "__main__":
         type=str,
         required=False,
         metavar="",
-        choices=["mvtecCAE", "baselineCAE", "inceptionCAE", "resnetCAE"],
+        choices=["mvtecCAE", "baselineCAE", "inceptionCAE", "resnetCAE", "skipCAE"],
         default="mvtec2",
-        help="architecture of the model to use for training: 'mvtecCAE', 'baselineCAE', 'inceptionCAE' or 'resnetCAE'",
+        help="architecture of the model to use for training: 'mvtecCAE', 'baselineCAE', 'inceptionCAE', 'resnetCAE' or 'skipCAE'",
     )
 
     parser.add_argument(
