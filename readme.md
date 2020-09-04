@@ -2,12 +2,15 @@
 This project proposes an end-to-end framework for semi-supervised Anomaly Detection and Segmentation in images based on Deep Learning.
 
 ## Method Overview
-The proposed method employs a thresholded pixel-wise difference between reconstructed image and input image to localize anomaly where the threshold is determined by using a first subset of anomalous-free training images and a second subset of both anomalous-free and anomalous test images.
+The proposed method employs a thresholded pixel-wise difference between reconstructed image and input image to localize anomaly. The threshold is determined by first using a subset of anomalous-free training images, i.e validation images, to determine possible values of minimum area and threshold pairs followed by using a subset of both anomalous-free and anomalous test images to select the best pair for classification and segmentation of the remaining test images.
 
 It is inspired to a great extent by the papers [MVTec AD — A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf) and [Improving Unsupervised Defect Segmentation by Applying Structural Similarity to Autoencoders](https://arxiv.org/abs/1807.02011).
 The method is devided in 3 steps: training, finetuning and testing.
 
 ![Image of Yaktocat](overview.png)
+
+**NOTE: Why Semi-Supervised and not Unsupervised?**
+The method proposed in the [MVTec paper](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf) is unsupervised, as a subset containing only anomaly-free training images (validation set) are used during the validation step to determine the threshold for classification and segmentation of test images. However, the validation algorithm is based on a user input parameter, the minimum defect area, which definition remains unclear and unexplained in the aforementioned paper. Because the choice of this parameter can greatly influence the classification and segmentation results and in an effort to automate the process and remove the need for all user input, we developed a finetuning algorithm that computes different thresholds corresponding to a wide range of discrete minimum defect areas using the validation set. Subsequently, a small subset of anomaly and anomaly-free images of the test set (finetuning set) is used to select the best minimum defect area and threshold pait that will finally be used to classify and segment the remaining test images. Since our method relies on test images for finetuning, we describe it as being semi-supervised.
 
 ## Dataset
 
@@ -15,15 +18,16 @@ The proposed framework has been tested successfully on the [MVTec dataset](https
 
 ## Models
 
-There is a total of 4 models based on the Convolutional Auto-Encoder (CAE) architecture implemented in this project:
+There is a total of 5 models based on the Convolutional Auto-Encoder (CAE) architecture implemented in this project:
 * *mvtecCAE* is the model implemented in the [MVTec Paper](https://www.mvtec.com/fileadmin/Redaktion/mvtec.com/company/research/mvtec_ad.pdf)
 * *baselineCAE* is inspired by: https://github.com/natasasdj/anomalyDetection
 * *inceptionCAE* is inspired by: https://github.com/natasasdj/anomalyDetection
 * *resnetCAE* is inspired by: https://arxiv.org/pdf/1606.08921.pdf
+* *skipCAE* is inspired by: https://arxiv.org/pdf/1606.08921.pdf
 
 **NOTE:**
 The models *mvtecCAE*, *baselineCAE* and *inceptionCAE* are quite comparable in performance.
-*resnetCAE* is still being tested.
+Both remaining models, *resnetCAE* and *skipCAE*, are still being tested, as they are prone to overfitting, which translates in the case of convolutional auto-encoders by copying its inputs without filtering out the defective regions.
 
 ## Prerequisites
 
