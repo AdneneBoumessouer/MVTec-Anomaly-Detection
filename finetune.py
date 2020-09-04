@@ -263,7 +263,7 @@ def main(args):
     best_min_area = int(dict_finetune["min_area"][max_score_i])
     best_threshold = float(dict_finetune["threshold"][max_score_i])
 
-    # ===================== SAVE VALIDATION RESULTS ========================
+    # ===================== SAVE FINETUNING RESULTS ========================
 
     # create a results directory if not existent
     model_dir_name = os.path.basename(str(Path(model_path).parent))

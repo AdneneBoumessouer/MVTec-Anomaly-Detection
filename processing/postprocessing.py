@@ -96,12 +96,12 @@ class TensorImages:
         assert group in ["validation", "test"]
         logger.info("generating inspection plots on " + group + " images...")
         l = len(self.filenames)
-        printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=50)
+        printProgressBar(0, l, prefix="Progress:", suffix="Complete", length=80)
         for i in range(len(self.imgs_input)):
             self.plot_input_pred_resmap(index=i, group=group, save_dir=save_dir)
             # print progress bar
             time.sleep(0.1)
-            printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=50)
+            printProgressBar(i + 1, l, prefix="Progress:", suffix="Complete", length=80)
         if save_dir is not None:
             logger.info("all generated files are saved at: \n{}".format(save_dir))
         return
@@ -225,32 +225,30 @@ def resmaps_l2(imgs_input, imgs_pred):
 def label_images(images_th):
     """
     Segments images into images of connected components (regions).
-    Returns segmented images and a list of lists, whereby each list 
+    Returns segmented images and a list of lists, where each list 
     contains the areas of the regions of the corresponding image. 
     
     Parameters
     ----------
-    images_th : array of uint8
+    images_th : array of binary images
         Thresholded residual maps.
-    kernel_size : int, optional
-        Size of the kernel window. The default is 3.
 
     Returns
     -------
-    images_labeled : array of uint8
+    images_labeled : array of labeled images
         Labeled images.
     areas_all : list of lists
-        List of lists, whereby each list contains the areas of the regions of the corresponding image.
+        List of lists, where each list contains the areas of the regions of the corresponding image.
 
     """
     images_labeled = np.zeros(shape=images_th.shape)
     areas_all = []
     for i, image_th in enumerate(images_th):
         # close small holes with binary closing
-        bw = closing(image_th, square(3))
+        # bw = closing(image_th, square(3))
 
         # remove artifacts connected to image border
-        cleared = clear_border(bw)
+        cleared = clear_border(image_th)
 
         # label image regions
         image_labeled = label(cleared)
