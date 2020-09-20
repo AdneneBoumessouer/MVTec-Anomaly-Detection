@@ -16,16 +16,11 @@ from processing.utils import printProgressBar
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 from test import predict_classes
+import config
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Finetuning parameters
-FINETUNE_SPLIT = 0.1
-STEP_MIN_AREA = 5
-START_MIN_AREA = 5
-STOP_MIN_AREA = 1005
 
 
 def calculate_largest_areas(resmaps, thresholds):
@@ -109,15 +104,6 @@ def main(args):
     # reconstruct (i.e predict) validation images
     imgs_val_pred = model.predict(imgs_val_input)
 
-    # convert to grayscale if RGB
-    if color_mode == "rgb":
-        imgs_val_input = tf.image.rgb_to_grayscale(imgs_val_input).numpy()
-        imgs_val_pred = tf.image.rgb_to_grayscale(imgs_val_pred).numpy()
-
-    # remove last channel since images are grayscale
-    imgs_val_input = imgs_val_input[:, :, :, 0]
-    imgs_val_pred = imgs_val_pred[:, :, :, 0]
-
     # instantiate TensorImages object to compute validation resmaps
     tensor_val = postprocessing.TensorImages(
         imgs_input=imgs_val_input,
@@ -150,7 +136,7 @@ def main(args):
     _, index_array_ft, _, classes_ft = train_test_split(
         index_array,
         classes,
-        test_size=FINETUNE_SPLIT,
+        test_size=config.FINETUNE_SPLIT,
         random_state=42,
         stratify=classes,
     )
@@ -167,15 +153,6 @@ def main(args):
 
     # reconstruct (i.e predict) finetuning images
     imgs_ft_pred = model.predict(imgs_ft_input)
-
-    # convert to grayscale if RGB
-    if color_mode == "rgb":
-        imgs_ft_input = tf.image.rgb_to_grayscale(imgs_ft_input).numpy()
-        imgs_ft_pred = tf.image.rgb_to_grayscale(imgs_ft_pred).numpy()
-
-    # remove last channel since images are grayscale
-    imgs_ft_input = imgs_ft_input[:, :, :, 0]
-    imgs_ft_pred = imgs_ft_pred[:, :, :, 0]
 
     # instantiate TensorImages object to compute finetuning resmaps
     tensor_ft = postprocessing.TensorImages(
@@ -202,8 +179,11 @@ def main(args):
     }
 
     # initialize discrete min_area values
-    min_areas = np.arange(start=START_MIN_AREA, stop=STOP_MIN_AREA, step=STEP_MIN_AREA)
-    length = len(min_areas)
+    min_areas = np.arange(
+        start=config.START_MIN_AREA,
+        stop=config.STOP_MIN_AREA,
+        step=config.STEP_MIN_AREA,
+    )
 
     # initialize thresholds
     thresholds = np.arange(
@@ -288,7 +268,7 @@ def main(args):
         "best_score": max_score,
         "method": method,
         "dtype": dtype,
-        "split": FINETUNE_SPLIT,
+        "split": config.FINETUNE_SPLIT,
     }
     print("finetuning results: {}".format(finetuning_result))
 
@@ -306,8 +286,6 @@ def main(args):
 
 def plot_min_area_threshold(dict_finetune, index_best=None, save_dir=None):
     df_finetune = pd.DataFrame.from_dict(dict_finetune)
-    min_areas = dict_finetune["min_area"]
-    thresholds = dict_finetune["threshold"]
     with plt.style.context("seaborn-darkgrid"):
         df_finetune.plot(x="min_area", y=["threshold"], figsize=(12, 8))
         if index_best is not None:

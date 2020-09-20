@@ -26,14 +26,6 @@ VMIN = 0.0
 VMAX = 1.0
 DYNAMIC_RANGE = VMAX - VMIN
 
-# Learning Rate Finder parameters
-START_LR = 1e-5
-LR_MAX_EPOCHS = 10
-LRF_DECREASE_FACTOR = 0.88  # 0.88
-
-# Training parameters
-EARLY_STOPPING = 12  # 16
-REDUCE_ON_PLATEAU = 6  # 8
 
 # Helper function to apply activation and batch normalization to the
 # output added with output of residual connection from the encoder
@@ -52,33 +44,30 @@ def build_model(color_mode):
         channels = 3
     img_dim = (*SHAPE, channels)
 
-    # Input
-    # input_img = Input(shape=(128, 128, 3))
-
     # added ----------------------------------------------------------------
     input_img = Input(shape=img_dim)
     # ----------------------------------------------------------------------
 
     # Encoder
 
-    # added ----------------------------------------------------------------
+    # # added ----------------------------------------------------------------
     y = Conv2D(32, (3, 3), padding="same", strides=(2, 2))(input_img)
     y = LeakyReLU()(y)
-    # ----------------------------------------------------------------------
+    # # ----------------------------------------------------------------------
 
-    y = Conv2D(32, (3, 3), padding="same", strides=(2, 2))(input_img)
-    y = LeakyReLU()(y)
-    y = Conv2D(64, (3, 3), padding="same", strides=(2, 2))(y)
+    y = Conv2D(32, (3, 3), padding="same", strides=(2, 2))(y)
     y = LeakyReLU()(y)
     y1 = Conv2D(64, (3, 3), padding="same", strides=(2, 2))(y)  # skip-1 64
     y = LeakyReLU()(y1)
-    y = Conv2D(128, (3, 3), padding="same", strides=(2, 2))(y)  # 128
+    y = Conv2D(64, (3, 3), padding="same", strides=(2, 2))(y)
     y = LeakyReLU()(y)
     y2 = Conv2D(128, (3, 3), padding="same", strides=(2, 2))(y)  # skip-2 #128
     y = LeakyReLU()(y2)
-    y = Conv2D(256, (3, 3), padding="same", strides=(2, 2))(y)  # 256
+    y = Conv2D(128, (3, 3), padding="same", strides=(2, 2))(y)
     y = LeakyReLU()(y)
-    y = Conv2D(256, (3, 3), padding="same", strides=(2, 2))(y)  # 256
+    y = Conv2D(256, (3, 3), padding="same", strides=(2, 2))(y)
+    y = LeakyReLU()(y)
+    y = Conv2D(256, (3, 3), padding="same", strides=(2, 2))(y)
     y = LeakyReLU()(y)
 
     # Flattening for the bottleneck
@@ -89,26 +78,26 @@ def build_model(color_mode):
     # Decoder
     y = Dense(np.prod(vol[1:]), activation="relu")(latent)
     y = Reshape((vol[1], vol[2], vol[3]))(y)
-    y = Conv2DTranspose(256, (3, 3), padding="same")(y)  # 256
+    y = Conv2DTranspose(256, (3, 3), padding="same")(y)
     y = LeakyReLU()(y)
-    y = Conv2DTranspose(256, (3, 3), padding="same", strides=(2, 2))(y)  # 256
+    y = Conv2DTranspose(256, (3, 3), padding="same", strides=(2, 2))(y)
     y = LeakyReLU()(y)
-    y = Conv2DTranspose(128, (3, 3), padding="same", strides=(2, 2))(y)  # 128
+    y = Conv2DTranspose(128, (3, 3), padding="same", strides=(2, 2))(y)
+    y = LeakyReLU()(y)
+    y = Conv2DTranspose(128, (3, 3), padding="same", strides=(2, 2))(y)
     y = Add()([y2, y])  # second skip connection added here
     y = lrelu_bn(y)
-    y = Conv2DTranspose(128, (3, 3), padding="same", strides=(2, 2))(y)  # 128
+    y = Conv2DTranspose(64, (3, 3), padding="same", strides=(2, 2))(y)
     y = LeakyReLU()(y)
-    y = Conv2DTranspose(64, (3, 3), padding="same", strides=(2, 2))(y)  # 64
+    y = Conv2DTranspose(64, (3, 3), padding="same", strides=(2, 2))(y)
     y = Add()([y1, y])  # first skip connection added here
     y = lrelu_bn(y)
-    y = Conv2DTranspose(64, (3, 3), padding="same", strides=(2, 2))(y)  # 64
-    y = LeakyReLU()(y)
     y = Conv2DTranspose(32, (3, 3), padding="same", strides=(2, 2))(y)
     y = LeakyReLU()(y)
 
     # # added ----------------------------------------------------------------
-    # y = Conv2DTranspose(32, (3, 3), padding="same", strides=(2, 2))(y)
-    # y = LeakyReLU()(y)
+    y = Conv2DTranspose(32, (3, 3), padding="same", strides=(2, 2))(y)
+    y = LeakyReLU()(y)
     # # ----------------------------------------------------------------------
 
     y = Conv2DTranspose(
@@ -118,4 +107,3 @@ def build_model(color_mode):
     # model
     autoencoder = Model(input_img, y)
     return autoencoder
-

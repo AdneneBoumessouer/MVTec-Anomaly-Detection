@@ -1,6 +1,5 @@
 import tensorflow as tf
-from tensorflow import keras
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 
 def ssim_metric(dynamic_range):

@@ -1,6 +1,5 @@
 """
 Created on Tue Dec 10 19:46:17 2019
-
 @author: Adnene Boumessouer
 """
 import sys
@@ -25,6 +24,8 @@ from autoencoder.models import resnetCAE
 from autoencoder.models import skipCAE
 from autoencoder import metrics
 from autoencoder import losses
+
+import config
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -52,11 +53,17 @@ class AutoEncoder:
         self.loss = loss
         self.batch_size = batch_size
 
-        # learning rate finder attributes
-        self.opt_lr = None
-        self.opt_lr_i = None
-        self.base_lr = None
-        self.base_lr_i = None
+        # custom learning rate estimation attributes
+        self.lr_opt = None
+        self.lr_opt_i = None
+        self.lr_base = None
+        self.lr_base_i = None
+
+        # ktrain learning rate estimation attributes
+        self.lr_mg_i = None
+        self.lr_mg = None
+        self.lr_ml_10_i = None
+        self.lr_ml_10 = None
 
         # training attributes
         self.learner = None
@@ -76,13 +83,6 @@ class AutoEncoder:
             self.vmin = mvtecCAE.VMIN
             self.vmax = mvtecCAE.VMAX
             self.dynamic_range = mvtecCAE.DYNAMIC_RANGE
-            # Learning Rate Finder parameters
-            self.start_lr = mvtecCAE.START_LR
-            self.lr_max_epochs = mvtecCAE.LR_MAX_EPOCHS
-            self.lrf_decrease_factor = mvtecCAE.LRF_DECREASE_FACTOR
-            # Training parameters
-            self.early_stopping = mvtecCAE.EARLY_STOPPING
-            self.reduce_on_plateau = mvtecCAE.REDUCE_ON_PLATEAU
 
         elif architecture == "baselineCAE":
             # Preprocessing parameters
@@ -94,13 +94,6 @@ class AutoEncoder:
             self.vmin = baselineCAE.VMIN
             self.vmax = baselineCAE.VMAX
             self.dynamic_range = baselineCAE.DYNAMIC_RANGE
-            # Learning Rate Finder parameters
-            self.start_lr = baselineCAE.START_LR
-            self.lr_max_epochs = baselineCAE.LR_MAX_EPOCHS
-            self.lrf_decrease_factor = baselineCAE.LRF_DECREASE_FACTOR
-            # Training parameters
-            self.early_stopping = baselineCAE.EARLY_STOPPING
-            self.reduce_on_plateau = baselineCAE.REDUCE_ON_PLATEAU
 
         elif architecture == "inceptionCAE":
             # Preprocessing parameters
@@ -112,13 +105,6 @@ class AutoEncoder:
             self.vmin = inceptionCAE.VMIN
             self.vmax = inceptionCAE.VMAX
             self.dynamic_range = inceptionCAE.DYNAMIC_RANGE
-            # Learning Rate Finder parameters
-            self.start_lr = inceptionCAE.START_LR
-            self.lr_max_epochs = inceptionCAE.LR_MAX_EPOCHS
-            self.lrf_decrease_factor = inceptionCAE.LRF_DECREASE_FACTOR
-            # Training parameters
-            self.early_stopping = inceptionCAE.EARLY_STOPPING
-            self.reduce_on_plateau = inceptionCAE.REDUCE_ON_PLATEAU
 
         elif architecture == "resnetCAE":
             # Preprocessing parameters
@@ -130,13 +116,6 @@ class AutoEncoder:
             self.vmin = resnetCAE.VMIN
             self.vmax = resnetCAE.VMAX
             self.dynamic_range = resnetCAE.DYNAMIC_RANGE
-            # Learning Rate Finder parameters
-            self.start_lr = resnetCAE.START_LR
-            self.lr_max_epochs = resnetCAE.LR_MAX_EPOCHS
-            self.lrf_decrease_factor = resnetCAE.LRF_DECREASE_FACTOR
-            # Training parameters
-            self.early_stopping = resnetCAE.EARLY_STOPPING
-            self.reduce_on_plateau = resnetCAE.REDUCE_ON_PLATEAU
 
         elif architecture == "skipCAE":
             # Preprocessing parameters
@@ -148,13 +127,15 @@ class AutoEncoder:
             self.vmin = skipCAE.VMIN
             self.vmax = skipCAE.VMAX
             self.dynamic_range = skipCAE.DYNAMIC_RANGE
-            # Learning Rate Finder parameters
-            self.start_lr = skipCAE.START_LR
-            self.lr_max_epochs = skipCAE.LR_MAX_EPOCHS
-            self.lrf_decrease_factor = skipCAE.LRF_DECREASE_FACTOR
-            # Training parameters
-            self.early_stopping = skipCAE.EARLY_STOPPING
-            self.reduce_on_plateau = skipCAE.REDUCE_ON_PLATEAU
+
+        # Learning Rate Finder parameters
+        self.start_lr = config.START_LR
+        self.lr_max_epochs = config.LR_MAX_EPOCHS
+        self.lrf_decrease_factor = config.LRF_DECREASE_FACTOR
+
+        # Training parameters
+        self.early_stopping = config.EARLY_STOPPING
+        self.reduce_on_plateau = config.REDUCE_ON_PLATEAU
 
         # verbosity
         self.verbose = verbose
@@ -188,7 +169,7 @@ class AutoEncoder:
 
     ### Methods for training =================================================
 
-    def find_opt_lr(self, train_generator, validation_generator):
+    def find_lr_opt(self, train_generator, validation_generator):
         # initialize learner object
         self.learner = ktrain.get_learner(
             model=self.model,
@@ -207,54 +188,72 @@ class AutoEncoder:
             stop_factor=6,
             verbose=self.verbose,
             show_plot=True,
+            restore_weights_only=True,
         )
+        self.ktrain_lr_estimate()
+        self.custom_lr_estimate()
+        self.lr_find_plot(n_skip_beginning=10, n_skip_end=1, save=True)
+        return
 
-        # getting ktrain's opt_lr estimation
-        # self.lr_mg, self.lr_ml = self.learner.lr_estimate()
-
-        # using custom lr_opt estimation
+    def ktrain_lr_estimate(self):
+        # get losses and learning rates
         losses = np.array(self.learner.lr_finder.losses)
         lrs = np.array(self.learner.lr_finder.lrs)
+        # minimum loss devided by 10
+        self.ml_i = self.learner.lr_finder.ml
+        self.lr_ml_10 = lrs[self.ml_i] / 10
+        logger.info(f"lr with minimum loss divided by 10: {self.lr_ml_10:.2E}")
+        try:
+            min_loss_i = np.argmin(losses)
+            self.lr_ml_10_i = np.argwhere(lrs[:min_loss_i] > self.lr_ml_10)[0][0]
+        except:
+            self.lr_ml_10_i = None
+        # minimum gradient
+        self.lr_mg_i = self.learner.lr_finder.mg
+        if self.lr_mg_i is not None:
+            self.lr_mg = lrs[self.lr_mg_i]
+            logger.info(f"lr with minimum numerical gradient: {self.lr_mg:.2E}")
+        return
 
+    def custom_lr_estimate(self):
+        # get losses and learning rates
+        losses = np.array(self.learner.lr_finder.losses)
+        lrs = np.array(self.learner.lr_finder.lrs)
         # find optimal learning rate
         min_loss = np.amin(losses)
         min_loss_i = np.argmin(losses)
-
         # retrieve segment containing decreasing losses
         segment = losses[: min_loss_i + 1]
         max_loss = np.amax(segment)
-
         # compute optimal loss
         optimal_loss = max_loss - self.lrf_decrease_factor * (max_loss - min_loss)
-
-        # get index corresponding to optimal loss
-        self.opt_lr_i = np.argwhere(segment < optimal_loss)[0][0]
-
-        # get optimal learning rate
-        self.opt_lr = float(lrs[self.opt_lr_i])
-
+        # get optimal learning rate index (corresponding to optimal loss) and value
+        self.lr_opt_i = np.argwhere(segment < optimal_loss)[0][0]
+        self.lr_opt = float(lrs[self.lr_opt_i])
         # get base learning rate
-        self.base_lr = self.opt_lr / 10
-        self.base_lr_i = np.argwhere(lrs[:min_loss_i] > self.base_lr)[0][0]
+        self.lr_base_i = np.argwhere(lrs[:min_loss_i] > self.lr_opt / 10)[0][0]
+        self.lr_base = float(lrs[self.lr_base_i])
+        # log to console
+        logger.info(f"custom base learning rate: {lrs[self.lr_base_i]:.2E}")
+        logger.info(f"custom optimal learning rate: {lrs[self.lr_opt_i]:.2E}")
         logger.info("learning rate finder complete.")
-        self.lr_find_plot(save=True)
         return
 
-    def fit(self):
+    def fit(self, lr_opt):
         # create tensorboard callback to monitor training
         tensorboard_cb = keras.callbacks.TensorBoard(
             log_dir=self.log_dir, write_graph=True, update_freq="epoch"
         )
         # Print command to paste in browser for visualizing in Tensorboard
         logger.info(
-            "run the following command in a seperate terminal to monitor training on tensorboard:\ntensorboard --logdir={}\n".format(
-                self.log_dir
-            )
+            "run the following command in a seperate terminal to monitor training on tensorboard:"
+            + "\ntensorboard --logdir={}\n".format(self.log_dir)
         )
+        assert self.learner.model is self.model
 
         # fit model using Cyclical Learning Rates
         self.hist = self.learner.autofit(
-            lr=self.opt_lr,
+            lr=lr_opt,
             epochs=None,
             early_stopping=self.early_stopping,
             reduce_on_plateau=self.reduce_on_plateau,
@@ -345,7 +344,7 @@ class AutoEncoder:
                 "dynamic_range": self.dynamic_range,
                 "preprocessing": self.preprocessing,
             },
-            "lr_finder": {"base_lr": self.base_lr, "opt_lr": self.opt_lr,},
+            "lr_finder": {"lr_base": self.lr_base, "lr_opt": self.lr_opt,},
             "training": {
                 "batch_size": self.batch_size,
                 "epochs_trained": self.get_best_epoch(),
@@ -380,54 +379,57 @@ class AutoEncoder:
 
     ### Methods for plotting ============================================
 
-    def lr_find_plot(self, save=False):
+    def lr_find_plot(self, n_skip_beginning=10, n_skip_end=1, save=False):
+        # get losses and learning rates
         losses = np.array(self.learner.lr_finder.losses)
         lrs = np.array(self.learner.lr_finder.lrs)
-        # mg = self.learner.lr_finder.mg
-        # ml = self.learner.lr_finder.ml
-        # ml_10 = np.argwhere(lrs[: np.argmin(losses)] > losses[ml] / 10)[0][0]
-        i = self.opt_lr_i
-        j = self.base_lr_i
+        # get display indicies
+        sb = n_skip_beginning
+        se = n_skip_end
+        # plot
         with plt.style.context("seaborn-darkgrid"):
             fig, ax = plt.subplots()
             plt.ylabel("loss")
             plt.xlabel("learning rate (log scale)")
-            ax.plot(lrs[10:-1], losses[10:-1])
+            ax.plot(lrs[sb:-se], losses[sb:-se])
             plt.xscale("log")
             ax.plot(
-                lrs[j],
-                losses[j],
+                lrs[self.lr_base_i],
+                losses[self.lr_base_i],
                 markersize=10,
                 marker="o",
                 color="green",
-                label="base_lr",
+                label="custom_lr_base",
             )
             ax.plot(
-                lrs[i],
-                losses[i],
+                lrs[self.lr_opt_i],
+                losses[self.lr_opt_i],
                 markersize=10,
                 marker="o",
                 color="red",
-                label="opt_lr",
+                label="custom_lr_opt",
             )
-            # ax.plot(
-            #     lrs[mg],
-            #     losses[mg],
-            #     markersize=7,
-            #     marker="o",
-            #     color="blue",
-            #     label="opt_lr_mg",
-            # )
-            # ax.plot(
-            #     lrs[ml_10],
-            #     losses[ml_10],
-            #     markersize=7,
-            #     marker="o",
-            #     color="magenta",
-            #     label="opt_lr_ml",
-            # )
+            if self.lr_ml_10_i is not None:
+                ax.plot(
+                    lrs[self.lr_ml_10_i],
+                    losses[self.lr_ml_10_i],
+                    markersize=7,
+                    marker="s",
+                    color="magenta",
+                    label="lr_min_loss_div_10",
+                )
+            if self.lr_mg_i is not None:
+                ax.plot(
+                    lrs[self.lr_mg_i],
+                    losses[self.lr_mg_i],
+                    markersize=7,
+                    marker="s",
+                    color="blue",
+                    label="lr_min_gradient",
+                )
             plt.title(
-                f"Learning Rate Plot \nbase learning rate: {lrs[j]:.2E}\noptimal learning rate: {lrs[i]:.2E}"
+                f"Learning Rate Plot \ncustom base learning rate: {lrs[self.lr_base_i]:.2E}\n"
+                + f"custom optimal learning rate: {lrs[self.lr_opt_i]:.2E}"
             )
             ax.legend()
             plt.show()
@@ -435,10 +437,6 @@ class AutoEncoder:
             plt.close()
             fig.savefig(os.path.join(self.save_dir, "lr_plot.png"))
             logger.info("lr_plot.png successfully saved.")
-        logger.info(f"base learning rate: {lrs[j]:.2E}")
-        logger.info(f"optimal learning rate: {lrs[i]:.2E}")
-        # logger.info(f"opt_lr with minimum numerical gradient: {lrs[mg]:.2E}")
-        # logger.info(f"opt_lr with minimum loss divided by 10: {lrs[ml_10]:.2E}")
         return
 
     def lr_schedule_plot(self, save=False):
@@ -465,4 +463,3 @@ class AutoEncoder:
             fig.savefig(os.path.join(self.save_dir, "loss_plot.png"))
             logger.info("loss_plot.png successfully saved.")
         return
-

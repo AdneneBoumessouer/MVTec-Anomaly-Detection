@@ -1,16 +1,6 @@
 import os
-import tensorflow as tf
-from tensorflow import keras
-from keras.preprocessing.image import ImageDataGenerator
-
-
-# Data augmentation parameters (only for training)
-ROT_ANGLE = 5
-W_SHIFT_RANGE = 0.05
-H_SHIFT_RANGE = 0.05
-FILL_MODE = "nearest"
-BRIGHTNESS_RANGE = [0.95, 1.05]
-VAL_SPLIT = 0.1
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import config
 
 
 class Preprocessor:
@@ -24,7 +14,7 @@ class Preprocessor:
         self.shape = shape
         self.color_mode = color_mode
         self.preprocessing_function = preprocessing_function
-        self.validation_split = VAL_SPLIT
+        self.validation_split = config.VAL_SPLIT
 
         self.nb_val_images = None
         self.nb_test_images = None
@@ -36,17 +26,17 @@ class Preprocessor:
             featurewise_center=False,
             featurewise_std_normalization=False,
             # randomly rotate images in the range (degrees, 0 to 180)
-            rotation_range=ROT_ANGLE,
+            rotation_range=config.ROT_ANGLE,
             # randomly shift images horizontally (fraction of total width)
-            width_shift_range=W_SHIFT_RANGE,
+            width_shift_range=config.W_SHIFT_RANGE,
             # randomly shift images vertically (fraction of total height)
-            height_shift_range=H_SHIFT_RANGE,
+            height_shift_range=config.H_SHIFT_RANGE,
             # set mode for filling points outside the input boundaries
-            fill_mode=FILL_MODE,
+            fill_mode=config.FILL_MODE,
             # value used for fill_mode = "constant"
             cval=0.0,
             # randomly change brightness (darker < 1 < brighter)
-            brightness_range=BRIGHTNESS_RANGE,
+            brightness_range=config.BRIGHTNESS_RANGE,
             # set rescaling factor (applied before any other transformation)
             rescale=self.rescale,
             # set function that will be applied on each input

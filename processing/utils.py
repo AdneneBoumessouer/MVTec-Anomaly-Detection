@@ -177,4 +177,3 @@ def save_dataframe_as_text_file(df, save_dir, filename):
     with open(os.path.join(save_dir, filename), "w+") as f:
         f.write(df.to_string(header=True, index=True))
         print("[INFO] validation_results.txt saved at {}".format(save_dir))
-

@@ -143,15 +143,6 @@ def main(args):
         # predict on test images
         imgs_test_pred = model.predict(imgs_test_input)
 
-        # convert to grayscale if RGB
-        if color_mode == "rgb":
-            imgs_test_input = tf.image.rgb_to_grayscale(imgs_val_input).numpy()
-            imgs_test_pred = tf.image.rgb_to_grayscale(imgs_val_pred).numpy()
-
-        # remove last channel since images are grayscale
-        imgs_test_input = imgs_test_input[:, :, :, 0]
-        imgs_test_pred = imgs_test_pred[:, :, :, 0]
-
         # instantiate TensorImages object
         tensor_test = postprocessing.TensorImages(
             imgs_input=imgs_test_input,

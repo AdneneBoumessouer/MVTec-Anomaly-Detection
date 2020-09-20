@@ -30,15 +30,6 @@ VMIN = 0.0
 VMAX = 1.0
 DYNAMIC_RANGE = VMAX - VMIN
 
-# Learning Rate Finder parameters
-START_LR = 1e-5
-LR_MAX_EPOCHS = 10
-LRF_DECREASE_FACTOR = 0.88
-
-# Training parameters
-EARLY_STOPPING = 8  # 10
-REDUCE_ON_PLATEAU = 4  # 5
-
 
 def inception_layer(x, filters):
     # 1x1 convolution
@@ -146,4 +137,3 @@ def build_model(color_mode, filters=[32, 64, 128]):
     # model
     autoencoder = Model(input_img, decoded)
     return autoencoder
-
