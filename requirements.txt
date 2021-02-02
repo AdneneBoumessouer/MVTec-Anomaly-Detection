@@ -7,7 +7,7 @@ async-generator==1.10
 attrs @ file:///tmp/build/80754af9/attrs_1600298409949/work
 backcall==0.2.0
 black==19.10b0
-bleach==3.2.0
+bleach==3.3.0
 bokeh==2.2.1
 cachetools==4.1.1
 cchardet==2.1.6
