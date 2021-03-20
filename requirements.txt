@@ -39,7 +39,7 @@ ipython-genutils==0.2.0
 isort @ file:///tmp/build/80754af9/isort_1597597579974/work
 jedi==0.17.2
 jieba==0.42.1
-Jinja2==2.11.2
+Jinja2==2.11.3
 joblib==0.16.0
 jsonschema==3.2.0
 jupyter-client==6.1.7
