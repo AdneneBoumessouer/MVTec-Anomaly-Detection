@@ -101,7 +101,7 @@ pyrsistent==0.17.3
 python-dateutil==2.8.1
 pytz==2020.1
 PyWavelets==1.1.1
-PyYAML==5.3.1
+PyYAML==5.4
 pyzmq==19.0.2
 regex @ file:///tmp/build/80754af9/regex_1596829692676/work
 requests==2.24.0
