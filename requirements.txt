@@ -34,7 +34,7 @@ idna==2.10
 imageio @ file:///tmp/build/80754af9/imageio_1594161405741/work
 importlib-metadata==1.7.0
 ipykernel==5.3.4
-ipython==7.18.1
+ipython==7.31.1
 ipython-genutils==0.2.0
 isort @ file:///tmp/build/80754af9/isort_1597597579974/work
 jedi==0.17.2
