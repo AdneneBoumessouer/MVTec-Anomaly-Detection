@@ -70,7 +70,7 @@ mkl-random==1.1.1
 mkl-service==2.3.0
 mypy-extensions==0.4.3
 nbclient==0.5.0
-nbconvert==6.0.3
+nbconvert==6.3.0
 nbformat==5.0.7
 nest-asyncio==1.4.0
 networkx @ file:///tmp/build/80754af9/networkx_1598376031484/work
